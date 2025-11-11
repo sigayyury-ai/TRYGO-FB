@@ -1,0 +1,2186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TRYGO SEO Agent Prototype</title>
+    <style>
+      :root {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #0b1f33;
+        background-color: #f7fbff;
+      }
+      body {
+        margin: 0;
+        display: flex;
+        height: 100vh;
+      }
+      aside {
+        width: 240px;
+        background: #ffffff;
+        box-shadow: 1px 0 0 #e3e9ef;
+        padding: 24px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .nav-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .nav-section h4 {
+        margin: 0;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #7a8fa6;
+      }
+      .nav-link {
+        padding: 10px 12px;
+        border-radius: 12px;
+        color: #354c67;
+        text-decoration: none;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .nav-link.active {
+        background: #e6f0ff;
+        color: #0b59ff;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        background: #ffffff;
+        border-bottom: 1px solid #e3e9ef;
+      }
+      .chip-bar {
+        display: flex;
+        gap: 12px;
+      }
+      .chip {
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        background: #f1f5fb;
+        color: #354c67;
+      }
+      .chip.primary {
+        background: #0b59ff;
+        color: #ffffff;
+      }
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .workspace {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 24px;
+      }
+      .console {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+      }
+      .tabs button {
+        padding: 10px 16px;
+        border-radius: 20px;
+        background: #f1f5fb;
+        color: #354c67;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .tabs button.active {
+        background: #0b59ff;
+        color: #ffffff;
+      }
+      .tab-content {
+        display: none;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .tab-content.active {
+        display: flex;
+      }
+      .plan-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 4px rgba(14, 35, 64, 0.04);
+      }
+      .plan-header h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #0b1f33;
+      }
+      .plan-header p {
+        margin: 6px 0 0;
+        font-size: 14px;
+        color: #576b82;
+      }
+      .plan-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .plan-week {
+        border-radius: 14px;
+        padding: 16px;
+        background: #f7fbff;
+        border: 1px solid #d7e4f1;
+      }
+      .plan-week h4 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        color: #0b59ff;
+      }
+      .plan-entries {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .plan-entry {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: inset 0 0 0 1px #e3e9ef;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+        cursor: pointer;
+        transition: box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .plan-entry .date {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #7a8fa6;
+      }
+      .plan-entry .title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #0b1f33;
+      }
+      .plan-entry .details {
+        font-size: 13px;
+        color: #465b73;
+      }
+      .plan-entry:hover {
+        box-shadow: 0 6px 16px rgba(14, 35, 64, 0.08);
+        transform: translateY(-1px);
+      }
+      .entry-actions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: inline-flex;
+        gap: 6px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      .plan-entry:hover .entry-actions {
+        opacity: 1;
+      }
+      .icon-button {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        border: 1px solid #d2deeb;
+        background: rgba(255, 255, 255, 0.92);
+        color: #355b85;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, border 0.15s ease;
+      }
+      .icon-button:hover {
+        background: #0b59ff;
+        border-color: #0b59ff;
+        color: #ffffff;
+      }
+      .icon-button.delete {
+        color: #b13434;
+      }
+      .icon-button.delete:hover {
+        background: #f55e5e;
+        border-color: #f55e5e;
+        color: #ffffff;
+      }
+      .plan-entry .title-link {
+        text-decoration: none;
+        color: inherit;
+      }
+      .plan-notes {
+        font-size: 13px;
+        color: #465b73;
+        background: #f1f5fb;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .settings-panel {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 4px rgba(14, 35, 64, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .semantics-panel {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 4px rgba(14, 35, 64, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .semantics-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .semantics-header h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #0b1f33;
+      }
+      .semantics-header p {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: #576b82;
+      }
+      .semantics-tools {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .semantics-tools input[type="search"] {
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid #c7d5e3;
+        font-size: 14px;
+        min-width: 220px;
+      }
+      .intent-chips {
+        display: inline-flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .intent-chip {
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        border: 1px solid #d2deeb;
+        color: #354c67;
+        background: #f1f5fb;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, border 0.15s ease;
+      }
+      .intent-chip.active {
+        background: #0b59ff;
+        border-color: #0b59ff;
+        color: #ffffff;
+      }
+      .create-cluster {
+        border-radius: 16px;
+        border: 1px dashed #b9c9d9;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background: #f8fbff;
+      }
+      .create-cluster h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #0b1f33;
+      }
+      .create-fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .create-fields label {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+        color: #576b82;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .create-fields input,
+      .create-fields select,
+      .create-fields textarea {
+        border-radius: 12px;
+        border: 1px solid #c7d5e3;
+        padding: 12px;
+        font-size: 14px;
+        font-family: inherit;
+        background: #ffffff;
+      }
+      .create-fields textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      .create-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .create-actions button {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .create-actions .primary {
+        background: #0b59ff;
+        color: #ffffff;
+      }
+      .create-actions .ghost {
+        background: transparent;
+        color: #0b59ff;
+        border: 1px solid #0b59ff;
+      }
+      .semantic-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .semantic-card {
+        border-radius: 16px;
+        border: 1px solid #d7e4f1;
+        background: #ffffff;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: 0 1px 3px rgba(14, 35, 64, 0.04);
+        transition: box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .semantic-card:hover {
+        box-shadow: 0 6px 18px rgba(14, 35, 64, 0.08);
+        transform: translateY(-2px);
+      }
+      .semantic-card-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .semantic-card-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #0b1f33;
+      }
+      .semantic-card-header span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #7a8fa6;
+      }
+      .intent-pill {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #eef3ff;
+        color: #0b59ff;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .semantic-card button {
+        border-radius: 999px;
+        border: 1px solid #0b59ff;
+        background: rgba(11, 89, 255, 0.08);
+        color: #0b59ff;
+        padding: 8px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .semantic-card button:hover {
+        background: #0b59ff;
+        color: #ffffff;
+      }
+      .semantic-keywords {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .semantic-keywords label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #7a8fa6;
+      }
+      .semantic-keywords textarea {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid #c7d5e3;
+        padding: 12px;
+        font-family: inherit;
+        font-size: 13px;
+        resize: vertical;
+        min-height: 220px;
+        box-sizing: border-box;
+      }
+      .semantic-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: #7a8fa6;
+      }
+      .semantic-footer button {
+        border: none;
+        background: transparent;
+        color: #0b59ff;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 0;
+      }
+      .semantic-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .semantic-actions .icon-button {
+        width: 30px;
+        height: 30px;
+      }
+      .settings-panel h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #0b1f33;
+      }
+      .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+      .settings-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .settings-field label {
+        font-size: 13px;
+        color: #576b82;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .settings-field select,
+      .settings-field input {
+        border-radius: 12px;
+        border: 1px solid #c7d5e3;
+        padding: 12px;
+        font-size: 14px;
+        font-family: inherit;
+        background: #f9fbff;
+      }
+      .settings-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: #354c67;
+      }
+      .settings-toggle input {
+        accent-color: #0b59ff;
+        width: 18px;
+        height: 18px;
+      }
+      .settings-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .settings-actions button {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .settings-actions .primary {
+        background: #0b59ff;
+        color: #ffffff;
+      }
+      .settings-actions .ghost {
+        background: transparent;
+        color: #0b59ff;
+        border: 1px solid #0b59ff;
+      }
+      .content-panel {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 4px rgba(14, 35, 64, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .content-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .content-header h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #0b1f33;
+      }
+      .content-header p {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: #576b82;
+      }
+      .content-filters {
+        display: none;
+      }
+      .content-ideas {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .idea-section {
+        border-radius: 14px;
+        border: 1px solid #d7e4f1;
+        background: #f8fbff;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .idea-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .idea-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #0b1f33;
+      }
+      .idea-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .idea-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(14, 35, 64, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        position: relative;
+      }
+      .idea-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #0b1f33;
+      }
+      .idea-desc {
+        font-size: 13px;
+        color: #465b73;
+      }
+      .idea-tags {
+        display: inline-flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .format-chip,
+      .category-chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eef3ff;
+        color: #1f3d7a;
+      }
+      .category-chip.pain {
+        background: #ffecec;
+        color: #b43838;
+      }
+      .category-chip.goal {
+        background: #e9f7ef;
+        color: #1b7d4a;
+      }
+      .category-chip.trigger {
+        background: #fff3df;
+        color: #a56205;
+      }
+      .category-chip.info {
+        background: #f1f5fb;
+        color: #3c4f6c;
+      }
+      .idea-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .idea-actions .icon-button {
+        width: 30px;
+        height: 30px;
+      }
+      .custom-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        color: #0b59ff;
+        font-size: 13px;
+      }
+      .content-create {
+        border-radius: 14px;
+        padding: 18px;
+        border: 1px dashed #b9c9d9;
+        background: #f8fbff;
+        display: none;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .content-create.open {
+        display: flex;
+      }
+      .content-create h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #0b1f33;
+      }
+      .content-create-fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+      .content-create-fields label,
+      .content-meta label {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+        color: #576b82;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .content-create-fields input,
+      .content-create-fields select,
+      .content-create textarea,
+      .content-meta input,
+      .content-meta select {
+        border-radius: 12px;
+        border: 1px solid #c7d5e3;
+        padding: 12px;
+        font-size: 14px;
+        font-family: inherit;
+        background: #ffffff;
+      }
+      .content-create textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .content-create-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .content-create-actions button {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .content-create-actions .primary {
+        background: #0b59ff;
+        color: #ffffff;
+      }
+      .content-create-actions .ghost {
+        background: transparent;
+        color: #0b59ff;
+        border: 1px solid #0b59ff;
+      }
+      .content-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+      }
+      .content-card {
+        border-radius: 16px;
+        border: 1px solid #d7e4f1;
+        background: #ffffff;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        box-shadow: 0 1px 3px rgba(14, 35, 64, 0.04);
+        transition: box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .content-card:hover {
+        box-shadow: 0 6px 18px rgba(14, 35, 64, 0.08);
+        transform: translateY(-2px);
+      }
+      .content-card-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+      .content-title {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        font-weight: 600;
+        color: #0b1f33;
+      }
+      .content-title:focus {
+        outline: none;
+      }
+      .status-chip {
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .status-chip.draft {
+        background: #fff5e6;
+        color: #a06200;
+      }
+      .status-chip.review {
+        background: #f3f6ff;
+        color: #2949c7;
+      }
+      .status-chip.ready {
+        background: #e8f7f0;
+        color: #1b8a4f;
+      }
+      .content-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      .content-outline {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .content-outline label {
+        font-size: 13px;
+        color: #576b82;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .content-outline textarea {
+        border-radius: 12px;
+        border: 1px solid #c7d5e3;
+        padding: 12px;
+        font-family: inherit;
+        font-size: 13px;
+        min-height: 140px;
+        resize: vertical;
+      }
+      .content-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .content-actions .icon-button {
+        width: 30px;
+        height: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <div class="nav-section">
+        <h4>Understand</h4>
+        <a class="nav-link" href="#">Core</a>
+        <a class="nav-link" href="#">ICP</a>
+      </div>
+      <div class="nav-section">
+        <h4>Define</h4>
+        <a class="nav-link" href="#">Research</a>
+        <a class="nav-link" href="#">Validation</a>
+      </div>
+      <div class="nav-section">
+        <h4>Prototype</h4>
+        <a class="nav-link" href="#">Packing</a>
+        <a class="nav-link" href="#">Branding</a>
+        <a class="nav-link active" href="#">SEO Agent</a>
+      </div>
+      <div class="nav-section">
+        <h4>Deliver</h4>
+        <a class="nav-link" href="#">GTM</a>
+        <a class="nav-link" href="#">Pitch Materials</a>
+      </div>
+      <div class="nav-section">
+        <h4>Support</h4>
+        <a class="nav-link" href="#">Features &amp; Bugs</a>
+        <a class="nav-link" href="#">Support</a>
+      </div>
+    </aside>
+    <main>
+      <header>
+        <div class="chip-bar">
+          <div class="chip">COMOON IT (Demo)</div>
+          <div class="chip primary">Hypothesis: Remote IT Support</div>
+          <div class="chip">SEO Agent</div>
+        </div>
+        <div class="chip">Dev Shell Mode</div>
+      </header>
+
+      <div class="workspace">
+        <section class="console">
+          <div class="tabs">
+            <button class="tab active" data-target="tab-plan">Plan</button>
+            <button class="tab" data-target="tab-content">Content</button>
+            <button class="tab" data-target="tab-semantics">Semantics</button>
+            <button class="tab" data-target="tab-analytics">Analytics</button>
+            <button class="tab" data-target="tab-settings">Settings</button>
+          </div>
+
+          <div class="tab-content active" id="tab-plan">
+            <div class="plan-panel">
+              <div class="plan-header">
+                <h2>SEO Sprint Schedule</h2>
+                <p id="planRange">Upcoming publication cadence</p>
+              </div>
+              <div class="plan-list" id="planList"></div>
+              <div class="plan-notes">
+                • Two publish slots per week (Tuesday &amp; Thursday) with supporting social content.<br />
+                • Deliverables sync to the TRYGO calendar so owners receive reminders automatically.<br />
+                • Switch tabs for semantic clustering, content drafts, and performance analytics once available.
+              </div>
+            </div>
+            <div class="plan-panel" style="margin-top: 12px;">
+              <div class="plan-header">
+                <h2>Backlog Ideas</h2>
+                <p id="backlogRange">Ideas generated from Semantics tab</p>
+              </div>
+              <div class="plan-list" id="backlogList"></div>
+              <div class="plan-notes">
+                • Push backlog items into sprint slots when ready to schedule.<br />
+                • Editing a backlog entry updates the original cluster automatically.
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-content">
+            <div class="content-panel">
+              <div class="content-header">
+                <div>
+                  <h3>Content Production</h3>
+                  <p>Auto-generated blog and commercial page ideas grouped by strategic intent. Move entries into backlog или публикацию одним кликом.</p>
+                </div>
+              </div>
+
+              <div class="content-ideas" id="contentIdeas"></div>
+
+              <div class="custom-toggle" id="customToggle">
+                <span>＋</span> Add custom piece
+              </div>
+              <div class="content-create" id="customForm">
+                <h4>Create new piece</h4>
+                <div class="content-create-fields">
+                  <label>
+                    Title
+                    <input type="text" placeholder="e.g. Remote IT onboarding checklist" />
+                  </label>
+                  <label>
+                    Category
+                    <select>
+                      <option value="pain">Article by pains</option>
+                      <option value="goal">Article by goals</option>
+                      <option value="trigger">Article by triggers</option>
+                      <option value="feature">Commercial page – feature</option>
+                      <option value="benefit">Commercial page – benefit</option>
+                      <option value="faq">FAQ article</option>
+                      <option value="info">Informational article</option>
+                    </select>
+                  </label>
+                  <label>
+                    Owner
+                    <input type="text" placeholder="Assign teammate" />
+                  </label>
+                </div>
+                <div class="content-outline">
+                  <label>Outline</label>
+                  <textarea placeholder="Key sections, CTAs, assets needed..."></textarea>
+                </div>
+                <div class="content-create-actions">
+                  <button class="primary">Add to production queue</button>
+                  <button class="ghost">Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-semantics">
+            <div class="semantics-panel">
+              <div class="semantics-header">
+                <div>
+                  <h3>Keyword Clusters</h3>
+                  <p>Organize ideas by intent, search demand, and competitiveness.</p>
+                </div>
+                <div class="semantics-tools">
+                  <input type="search" placeholder="Search keywords or clusters…" />
+                  <div class="intent-chips">
+                    <div class="intent-chip active">Commercial</div>
+                    <div class="intent-chip">Transactional</div>
+                    <div class="intent-chip">Informational</div>
+                    <div class="intent-chip">Navigational</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="semantic-grid">
+                <div class="create-cluster">
+                  <h4>Create new cluster</h4>
+                  <div class="create-fields">
+                    <label>
+                      Cluster title
+                      <input type="text" id="new-cluster-title" placeholder="e.g. Managed service onboarding" />
+                    </label>
+                    <label>
+                      Intent
+                      <select id="new-cluster-intent">
+                        <option>Commercial</option>
+                        <option>Transactional</option>
+                        <option>Informational</option>
+                        <option>Navigational</option>
+                      </select>
+                    </label>
+                    <label>
+                      Keywords (one per line)
+                      <textarea id="new-cluster-keywords" rows="5" placeholder="keyword one&#10;keyword two"></textarea>
+                    </label>
+                  </div>
+                  <div class="create-actions">
+                    <button class="primary" id="createClusterBtn">Add cluster</button>
+                    <button class="ghost" id="clearClusterBtn">Clear</button>
+                  </div>
+                </div>
+
+                <div class="semantic-card" data-cluster="Remote IT support pricing">
+                  <div class="semantic-card-header">
+                    <div>
+                      <h4>Remote IT support pricing</h4>
+                      <span><span class="intent-pill">Commercial</span> Cluster</span>
+                    </div>
+                  </div>
+                  <div class="semantic-keywords">
+                    <label>Primary keywords</label>
+                    <textarea class="keywords-input">remote it support pricing
+it support cost per user
+outsourced it support rates</textarea>
+                  </div>
+                  <div class="semantic-actions">
+                    <button class="icon-button save-cluster" title="Save cluster">✓</button>
+                    <button class="icon-button delete delete-cluster" title="Delete cluster">✕</button>
+                  </div>
+                </div>
+
+                <div class="semantic-card" data-cluster="24/7 network monitoring">
+                  <div class="semantic-card-header">
+                    <div>
+                      <h4>24/7 network monitoring</h4>
+                      <span><span class="intent-pill">Commercial</span> Cluster</span>
+                    </div>
+                  </div>
+                  <div class="semantic-keywords">
+                    <label>Primary keywords</label>
+                    <textarea class="keywords-input">24/7 network monitoring services
+remote infrastructure monitoring
+managed network monitoring</textarea>
+                  </div>
+                  <div class="semantic-actions">
+                    <button class="icon-button save-cluster" title="Save cluster">✓</button>
+                    <button class="icon-button delete delete-cluster" title="Delete cluster">✕</button>
+                  </div>
+                </div>
+
+                <div class="semantic-card" data-cluster="Remote onboarding process">
+                  <div class="semantic-card-header">
+                    <div>
+                      <h4>Remote onboarding process</h4>
+                      <span><span class="intent-pill">Informational</span> Cluster</span>
+                    </div>
+                  </div>
+                  <div class="semantic-keywords">
+                    <label>Primary keywords</label>
+                    <textarea class="keywords-input">remote employee onboarding checklist
+virtual onboarding best practices
+remote onboarding tools</textarea>
+                  </div>
+                  <div class="semantic-actions">
+                    <button class="icon-button save-cluster" title="Save cluster">✓</button>
+                    <button class="icon-button delete delete-cluster" title="Delete cluster">✕</button>
+                  </div>
+                </div>
+
+                <div class="semantic-card" data-cluster="Co-managed IT services">
+                  <div class="semantic-card-header">
+                    <div>
+                      <h4>Co-managed IT services</h4>
+                      <span><span class="intent-pill">Commercial</span> Cluster</span>
+                    </div>
+                  </div>
+                  <div class="semantic-keywords">
+                    <label>Primary keywords</label>
+                    <textarea class="keywords-input">co managed it support
+co managed it pricing
+co managed it service providers</textarea>
+                  </div>
+                  <div class="semantic-actions">
+                    <button class="icon-button save-cluster" title="Save cluster">✓</button>
+                    <button class="icon-button delete delete-cluster" title="Delete cluster">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-content">
+            <div class="content-panel">
+              <div class="content-header">
+                <div>
+                  <h3>Content Production</h3>
+                  <p>Auto-generated blog ideas grouped by strategic intent. Move entries into backlog or publish-ready queue в один клик.</p>
+                </div>
+              </div>
+
+              <div class="content-ideas" id="contentIdeas"></div>
+
+              <div class="custom-toggle" id="customToggle">
+                <span>＋</span> Add custom piece
+              </div>
+              <div class="content-create" id="customForm">
+                <h4>Create new piece</h4>
+                <div class="content-create-fields">
+                  <label>
+                    Title
+                    <input type="text" placeholder="e.g. Remote IT onboarding checklist" />
+                  </label>
+                  <label>
+                    Category
+                    <select>
+                      <option value="pain">Article by pains</option>
+                      <option value="goal">Article by goals</option>
+                      <option value="trigger">Article by triggers</option>
+                      <option value="info">Informational article</option>
+                    </select>
+                  </label>
+                  <label>
+                    Owner
+                    <input type="text" placeholder="Assign teammate" />
+                  </label>
+                </div>
+                <div class="content-outline">
+                  <label>Outline</label>
+                  <textarea placeholder="Key sections, CTAs, assets needed..."></textarea>
+                </div>
+                <div class="content-create-actions">
+                  <button class="primary">Add to production queue</button>
+                  <button class="ghost">Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-analytics">
+            <div class="settings-panel">
+              <h3>Analytics Overview</h3>
+              <p style="margin:0;color:#576b82;font-size:14px;">
+                Coming soon: performance charts aligned with hypothesis metrics.
+              </p>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-settings">
+            <div class="settings-panel">
+              <h3>Posting Settings</h3>
+              <div class="settings-grid">
+                <div class="settings-field">
+                  <label for="weeklyCadence">Weekly publish cadence</label>
+                  <select id="weeklyCadence">
+                    <option>2 posts / week</option>
+                    <option>3 posts / week</option>
+                    <option>4 posts / week</option>
+                  </select>
+                </div>
+                <div class="settings-field">
+                  <label for="preferredDays">Preferred days</label>
+                  <select id="preferredDays" multiple>
+                    <option selected>Tuesday</option>
+                    <option selected>Thursday</option>
+                    <option>Saturday</option>
+                    <option>Sunday</option>
+                  </select>
+                  <small style="color:#7a8fa6;font-size:12px;">Select days that auto-fill new slots.</small>
+                </div>
+                <div class="settings-field">
+                  <label for="contentMix">Content mix</label>
+                  <select id="contentMix">
+                    <option>70% evergreen / 30% timely</option>
+                    <option>Balanced</option>
+                    <option>Campaign heavy</option>
+                  </select>
+                </div>
+              </div>
+              <div class="settings-toggle">
+                <input type="checkbox" id="autoPublish" checked />
+                <label for="autoPublish">Auto-publish when drafts approved</label>
+              </div>
+              <div class="settings-actions">
+                <button class="primary">Save cadence</button>
+                <button class="ghost">Reset to defaults</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script>
+      (function () {
+        const monthNames = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        const topics = [
+          {
+            title: "Audit: Technical health of remote IT landing pages",
+            details: "Resolve CLS issues, update schema, tighten keyword mapping.",
+          },
+          {
+            title: "Article: Remote IT Support vs In-House Teams",
+            details: "2,000-word comparison targeting mid-market IT leads.",
+          },
+          {
+            title: "Article: 10 KPIs for Remote IT Support Vendors",
+            details: "Listicle with downloadable scorecard CTA.",
+          },
+          {
+            title: "LinkedIn Carousel: Remote Onboarding Checklist",
+            details: "Promotes KPI article with visual workflow.",
+          },
+          {
+            title: "Landing Page: 24/7 Remote Monitoring",
+            details: "New conversion page including quote calculator module.",
+          },
+          {
+            title: "Newsletter Spotlight",
+            details: "Email announcement driving traffic to monitoring page.",
+          },
+          {
+            title: "Case Study Refresh",
+            details: "Update healthcare client stats and testimonial pull quotes.",
+          },
+          {
+            title: "Partner Outreach Kit",
+            details: "Sequence templates for co-marketing with MSP partners.",
+          },
+        ];
+
+        const formatRange = (start, end) => {
+          const sameMonth = start.getMonth() === end.getMonth();
+          const startStr = `${monthNames[start.getMonth()]} ${start.getDate()}`;
+          const endStr = `${sameMonth ? "" : monthNames[end.getMonth()] + " "}${
+            end.getDate() < 10 ? "0" : ""
+          }${end.getDate()}`;
+          return `${startStr} – ${endStr}`;
+        };
+
+        const formatDate = (date) =>
+          `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()].slice(
+            0,
+            3
+          )} ${date.getDate()}`;
+
+        const today = new Date();
+        const monday = new Date(today);
+        const diff = monday.getDay() === 0 ? -6 : 1 - monday.getDay();
+        monday.setDate(monday.getDate() + diff);
+
+        const planRangeEl = document.getElementById("planRange");
+        const planListEl = document.getElementById("planList");
+        const backlogRangeEl = document.getElementById("backlogRange");
+        const backlogListEl = document.getElementById("backlogList");
+        const contentIdeasEl = document.getElementById("contentIdeas");
+        const customToggle = document.getElementById("customToggle");
+        const customForm = document.getElementById("customForm");
+
+        const categoryOrder = [
+          { key: "pain", label: "Articles by pains" },
+          { key: "goal", label: "Articles by goals" },
+          { key: "trigger", label: "Articles by triggers" },
+          { key: "feature", label: "Commercial pages: product features" },
+          { key: "benefit", label: "Commercial pages: benefits" },
+          { key: "faq", label: "FAQ articles" },
+          { key: "info", label: "Informational articles" },
+        ];
+
+        const ideaPools = {
+          pain: [
+            {
+              title: "Article: Hidden costs of in-house IT support",
+              description:
+                "Pain-focused teardown of overtime, staffing churn, and SLA penalties when teams stay fully internal.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Pain signals your help desk is overwhelmed",
+              description:
+                "Pain catalog outlining ticket backlogs, SLA breaches, and burnout indicators with recommended fixes.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Remote IT downtime horror stories",
+              description:
+                "Collection of real-world outages illustrating risks of under-resourced help desks.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Budget overruns caused by legacy vendors",
+              description:
+                "Explains how hidden fees and rigid retainers create unexpected costs for IT leaders.",
+              format: "Blog article",
+            },
+          ],
+          goal: [
+            {
+              title: "Article: Remote onboarding success metrics",
+              description:
+                "Explains measurable KPIs for onboarding distributed teams and how TRYGO reduces ramp time.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Case study playbook for remote incident response",
+              description:
+                "Goal-oriented blueprint showing how clients cut MTTR with TRYGO’s remote response squad.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Building a roadmap for co-managed IT transformation",
+              description:
+                "Step-by-step goal-focused guide to implement TRYGO alongside internal teams.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Executive dashboard for hybrid IT performance",
+              description:
+                "Shows how leaders can monitor goals with TRYGO analytics widgets.",
+              format: "Blog article",
+            },
+          ],
+          trigger: [
+            {
+              title: "Article: 7 triggers that signal you need co-managed IT",
+              description:
+                "Trigger-based storytelling covering audits, growth spurts, and compliance shifts that demand support.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Trigger checklist before scaling IT team",
+              description:
+                "Lists milestones (new locations, compliance changes) that require remote coverage.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Security incidents that demand 24/7 monitoring",
+              description:
+                "Details breach scenarios pushing companies toward TRYGO automation.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Seasonal triggers for help desk overload",
+              description:
+                "Explains hiring seasons, product launches, and M&A events that spike demand.",
+              format: "Blog article",
+            },
+          ],
+          feature: [
+            {
+              title: "Commercial page: Remote onboarding playbook",
+              description:
+                "Feature-focused landing explaining TRYGO’s guided onboarding workflows with module breakdown.",
+              format: "Commercial page",
+            },
+            {
+              title: "Commercial page: Feature comparison vs. MSPs",
+              description:
+                "Table comparing TRYGO orchestration vs. traditional MSP offerings.",
+              format: "Commercial page",
+            },
+            {
+              title: "Commercial page: Automated incident escalation",
+              description:
+                "Highlights orchestration features for alerting, routing, and post-mortems.",
+              format: "Commercial page",
+            },
+            {
+              title: "Commercial page: TRYGO integrations marketplace",
+              description:
+                "Feature tour of connectors with ticketing, monitoring, and knowledge tools.",
+              format: "Commercial page",
+            },
+          ],
+          benefit: [
+            {
+              title: "Commercial page: Benefits of 24/7 monitoring",
+              description:
+                "Benefit-oriented page highlighting uptime guarantees, alerts, and ROI calculator.",
+              format: "Commercial page",
+            },
+            {
+              title: "Article: Benefits of co-managed IT for hybrid teams",
+              description:
+                "Shows TRYGO outcomes (faster response, lower costs) for hybrid teams’ needs.",
+              format: "Blog article",
+            },
+            {
+              title: "Commercial page: TRYGO value for compliance-driven teams",
+              description:
+                "Benefit story focusing on audit readiness, documentation, and reporting.",
+              format: "Commercial page",
+            },
+            {
+              title: "Article: Quantifying TRYGO ROI in the first quarter",
+              description:
+                "Benefit-focused case with metrics from pilot customers.",
+              format: "Blog article",
+            },
+          ],
+          faq: [
+            {
+              title: "FAQ article: Remote IT support pricing",
+              description:
+                "FAQ-style content answering the top procurement questions about pricing tiers and billing.",
+              format: "FAQ entry",
+            },
+            {
+              title: "FAQ article: How TRYGO integrates with existing toolset",
+              description:
+                "Explains integrations with ticketing, monitoring, and documentation platforms.",
+              format: "FAQ entry",
+            },
+            {
+              title: "FAQ article: Security and compliance commitments",
+              description:
+                "Answers frequent security questionnaires from compliance teams.",
+              format: "FAQ entry",
+            },
+            {
+              title: "FAQ article: Onboarding and training expectations",
+              description:
+                "Sets expectations for rollout phases, timelines, and success metrics.",
+              format: "FAQ entry",
+            },
+          ],
+          info: [
+            {
+              title: "Article: Glossary of remote IT support terminology",
+              description:
+                "Evergreen explainer covering common acronyms, tooling, and workflows for remote IT teams.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Remote IT support industry benchmark report",
+              description:
+                "Informational summary of market stats and trends with CTA to download full PDF.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Remote help desk maturity model",
+              description:
+                "Guide describing stages of remote IT maturity with checklists.",
+              format: "Blog article",
+            },
+            {
+              title: "Article: Building a remote IT playbook for acquisitions",
+              description:
+                "Informational piece on integrating IT post-merger.",
+              format: "Blog article",
+            },
+          ],
+        };
+
+        const activeIdeas = {};
+
+        function ensureIdeas(category) {
+          if (!activeIdeas[category]) {
+            activeIdeas[category] = [];
+          }
+          while (activeIdeas[category].length < 3 && ideaPools[category].length) {
+            activeIdeas[category].push(ideaPools[category].shift());
+          }
+        }
+
+        function renderContentIdeas() {
+          if (!contentIdeasEl) return;
+          contentIdeasEl.innerHTML = "";
+          categoryOrder.forEach(({ key, label }) => {
+            ensureIdeas(key);
+            if (!activeIdeas[key] || !activeIdeas[key].length) {
+              return;
+            }
+
+            const sectionEl = document.createElement("div");
+            sectionEl.className = "idea-section";
+            sectionEl.dataset.category = key;
+
+            const headerEl = document.createElement("div");
+            headerEl.className = "idea-header";
+            const titleEl = document.createElement("h4");
+            titleEl.textContent = label;
+            const countEl = document.createElement("span");
+            countEl.style.color = "#576b82";
+            countEl.style.fontSize = "13px";
+            countEl.textContent = `${activeIdeas[key].length} suggestions`;
+            headerEl.appendChild(titleEl);
+            headerEl.appendChild(countEl);
+
+            const listEl = document.createElement("div");
+            listEl.className = "idea-list";
+
+            activeIdeas[key].forEach((idea, index) => {
+              const cardEl = document.createElement("div");
+              cardEl.className = "idea-card";
+              cardEl.dataset.category = key;
+
+              const ideaTitle = document.createElement("div");
+              ideaTitle.className = "idea-title";
+              ideaTitle.textContent = idea.title;
+
+              const ideaDesc = document.createElement("div");
+              ideaDesc.className = "idea-desc";
+              ideaDesc.textContent = idea.description;
+
+              const tagsEl = document.createElement("div");
+              tagsEl.className = "idea-tags";
+              const formatChip = document.createElement("span");
+              formatChip.className = "format-chip";
+              formatChip.textContent = idea.format;
+              const categoryChip = document.createElement("span");
+              categoryChip.className = `category-chip ${key}`;
+              const categoryLabel =
+                key === "pain"
+                  ? "Pain point"
+                  : key === "goal"
+                  ? "Goal"
+                  : key === "trigger"
+                  ? "Trigger"
+                  : key === "feature"
+                  ? "Feature"
+                  : key === "benefit"
+                  ? "Benefit"
+                  : key === "faq"
+                  ? "FAQ"
+                  : "Info";
+              categoryChip.textContent = categoryLabel;
+              tagsEl.appendChild(formatChip);
+              tagsEl.appendChild(categoryChip);
+
+              const actionsEl = document.createElement("div");
+              actionsEl.className = "idea-actions";
+              const toBacklogBtn = document.createElement("button");
+              toBacklogBtn.className = "icon-button publish";
+              toBacklogBtn.title = "Add to backlog";
+              toBacklogBtn.innerHTML = "↗";
+              toBacklogBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                moveIdeaToBacklog(key, index);
+              });
+
+              const skipBtn = document.createElement("button");
+              skipBtn.className = "icon-button delete";
+              skipBtn.title = "Dismiss idea";
+              skipBtn.innerHTML = "✕";
+              skipBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                dismissIdea(key, index);
+              });
+
+              actionsEl.appendChild(toBacklogBtn);
+              actionsEl.appendChild(skipBtn);
+
+              cardEl.appendChild(ideaTitle);
+              cardEl.appendChild(ideaDesc);
+              cardEl.appendChild(tagsEl);
+              cardEl.appendChild(actionsEl);
+
+              listEl.appendChild(cardEl);
+            });
+
+            sectionEl.appendChild(headerEl);
+            sectionEl.appendChild(listEl);
+            contentIdeasEl.appendChild(sectionEl);
+          });
+        }
+
+        function dismissIdea(category, index) {
+          activeIdeas[category].splice(index, 1);
+          ensureIdeas(category);
+          renderContentIdeas();
+        }
+
+        const backlogItems = [
+          {
+            title: "Compare remote monitoring vendors",
+            description:
+              "Roundup article outlining must-have features, pricing, and evaluation checklist.",
+            source: "24/7 network monitoring cluster",
+          },
+          {
+            title: "LinkedIn carousel: remote onboarding KPIs",
+            description:
+              "6-slide carousel distilling top metrics from onboarding checklist cluster.",
+            source: "Remote onboarding process cluster",
+          },
+          {
+            title: "Email drip: in-house vs remote help desk",
+            description:
+              "Three-email nurture sequence addressing CFO objections about outsourced IT.",
+            source: "Remote IT support pricing cluster",
+          },
+          {
+            title: "Commercial page: Feature comparison vs. MSPs",
+            description:
+              "Landing highlighting TRYGO orchestration strengths vs legacy vendors.",
+            source: "Feature cluster",
+          },
+          {
+            title: "Article: Remote IT support pricing models explained",
+            description:
+              "Breakdown of retainers, per-seat and usage-based models with calculator CTA.",
+            source: "Pricing cluster",
+          },
+          {
+            title: "FAQ article: Remote onboarding timeline",
+            description:
+              "Answers top questions about time-to-value for remote onboarding program.",
+            source: "FAQ cluster",
+          },
+          {
+            title: "Article: Hybrid IT help desk staffing plan",
+            description:
+              "Goal-based idea describing team structure with TRYGO co-managed support.",
+            source: "Goal cluster",
+          },
+          {
+            title: "Commercial page: TRYGO security & compliance overview",
+            description:
+              "Benefits page describing SOC2, ISO, and data residency commitments.",
+            source: "Benefit cluster",
+          },
+          {
+            title: "Article: Onboarding remote contractors faster",
+            description:
+              "Pain-focused piece with step-by-step fix using TRYGO modules.",
+            source: "Pain cluster",
+          },
+          {
+            title: "Article: Checklist for post-merger IT integration",
+            description:
+              "Informational guide aligning with trigger events (M&A).",
+            source: "Trigger cluster",
+          },
+          {
+            title: "FAQ article: TRYGO support coverage hours",
+            description:
+              "Clarifies SLAs, response times, and escalation path.",
+            source: "FAQ cluster",
+          },
+          {
+            title: "Commercial page: Benefits of remote patch management",
+            description:
+              "Benefit content focusing on automated updates and reporting.",
+            source: "Benefit cluster",
+          },
+          {
+            title: "Article: IT budgeting template for remote support",
+            description:
+              "Goal content giving finance-friendly budgeting guidance.",
+            source: "Goal cluster",
+          },
+          {
+            title: "Article: Signals your network monitoring is outdated",
+            description:
+              "Trigger list pushing toward 24/7 monitoring adoption.",
+            source: "Trigger cluster",
+          },
+          {
+            title: "Commercial page: TRYGO onboarding wizard walkthrough",
+            description:
+              "Feature content detailing wizard steps with screenshots.",
+            source: "Feature cluster",
+          },
+          {
+            title: "Article: Remote IT support myths debunked",
+            description:
+              "Informational article countering common objections.",
+            source: "Info cluster",
+          },
+          {
+            title: "Article: How TRYGO helps meet SOC2 requirements",
+            description:
+              "Goal/benefit hybrid showing compliance wins.",
+            source: "Benefit cluster",
+          },
+          {
+            title: "FAQ article: Data residency & storage questions",
+            description:
+              "Covers top FAQs from legal and compliance stakeholders.",
+            source: "FAQ cluster",
+          },
+          {
+            title: "Commercial page: Benefits for internal IT leadership",
+            description:
+              "Benefit page aligning with CIO/CTO objectives.",
+            source: "Benefit cluster",
+          },
+          {
+            title: "Article: Remote help desk onboarding checklist",
+            description:
+              "Pain-to-goal article bridging problems to TRYGO solution.",
+            source: "Pain cluster",
+          },
+        ];
+
+        function renderBacklog() {
+          if (!backlogListEl) return;
+          backlogListEl.innerHTML = "";
+          backlogItems.forEach((item, index) => {
+            const entryEl = document.createElement("div");
+            entryEl.className = "plan-entry";
+
+            const actionsEl = document.createElement("div");
+            actionsEl.className = "entry-actions";
+
+            const moveBtn = document.createElement("button");
+            moveBtn.className = "icon-button publish";
+            moveBtn.title = "Move to sprint";
+            moveBtn.innerHTML = "↗";
+            moveBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              alert(`Move "${item.title}" into the sprint schedule`);
+              backlogItems.splice(index, 1);
+              renderBacklog();
+            });
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "icon-button delete";
+            deleteBtn.title = "Remove idea";
+            deleteBtn.innerHTML = "✕";
+            deleteBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              const confirmed = confirm(`Remove "${item.title}" from backlog?`);
+              if (confirmed) {
+                backlogItems.splice(index, 1);
+                renderBacklog();
+              }
+            });
+
+            actionsEl.appendChild(moveBtn);
+            actionsEl.appendChild(deleteBtn);
+            entryEl.appendChild(actionsEl);
+
+            const titleEl = document.createElement("div");
+            titleEl.className = "title";
+            titleEl.textContent = item.title;
+
+            const detailsEl = document.createElement("div");
+            detailsEl.className = "details";
+            detailsEl.textContent = item.description;
+
+            const sourceEl = document.createElement("div");
+            sourceEl.style.fontSize = "12px";
+            sourceEl.style.color = "#7a8fa6";
+            sourceEl.textContent = `Source: ${item.source}`;
+
+            entryEl.appendChild(titleEl);
+            entryEl.appendChild(detailsEl);
+            entryEl.appendChild(sourceEl);
+
+            entryEl.addEventListener("click", () => {
+              alert(`Open backlog idea "${item.title}" for editing`);
+            });
+
+            backlogListEl.appendChild(entryEl);
+          });
+
+          if (backlogRangeEl) {
+            backlogRangeEl.textContent = `${backlogItems.length} ideas queued for scheduling`;
+          }
+        }
+
+        function moveIdeaToBacklog(category, index) {
+          const idea = activeIdeas[category][index];
+          backlogItems.unshift({
+            title: idea.title,
+            description: idea.description,
+            source: `${category.charAt(0).toUpperCase()}${category.slice(1)} cluster`,
+          });
+          dismissIdea(category, index);
+          renderBacklog();
+        }
+
+        const rangeEnd = new Date(monday);
+        rangeEnd.setDate(rangeEnd.getDate() + 27);
+        planRangeEl.textContent = `${formatRange(monday, rangeEnd)} · Current cadence`;
+
+        let topicIndex = 0;
+        for (let week = 0; week < 4; week++) {
+          const weekStart = new Date(monday);
+          weekStart.setDate(monday.getDate() + week * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+
+          const weekEl = document.createElement("div");
+          weekEl.className = "plan-week";
+
+          const heading = document.createElement("h4");
+          heading.textContent = `Week of ${formatDate(weekStart)} (${formatRange(
+            weekStart,
+            weekEnd
+          )})`;
+          weekEl.appendChild(heading);
+
+          const entriesEl = document.createElement("div");
+          entriesEl.className = "plan-entries";
+
+          [2, 4].forEach((offset) => {
+            const publishDate = new Date(weekStart);
+            publishDate.setDate(weekStart.getDate() + offset);
+
+            const entryEl = document.createElement("div");
+            entryEl.className = "plan-entry";
+            const topic = topics[topicIndex % topics.length];
+            topicIndex += 1;
+            entryEl.dataset.topicTitle = topic.title;
+
+            const actionsEl = document.createElement("div");
+            actionsEl.className = "entry-actions";
+
+            const publishBtn = document.createElement("button");
+            publishBtn.className = "icon-button publish";
+            publishBtn.title = "Post immediately";
+            publishBtn.innerHTML = "▶";
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "icon-button delete";
+            deleteBtn.title = "Remove from plan";
+            deleteBtn.innerHTML = "✕";
+
+            actionsEl.appendChild(publishBtn);
+            actionsEl.appendChild(deleteBtn);
+            entryEl.appendChild(actionsEl);
+
+            const dateEl = document.createElement("div");
+            dateEl.className = "date";
+            dateEl.textContent = formatDate(publishDate);
+
+            const titleEl = document.createElement("div");
+            titleEl.className = "title";
+            titleEl.textContent = topic.title;
+
+            const detailsEl = document.createElement("div");
+            detailsEl.className = "details";
+            detailsEl.textContent = topic.details;
+
+            entryEl.appendChild(dateEl);
+            entryEl.appendChild(titleEl);
+            entryEl.appendChild(detailsEl);
+
+            entryEl.addEventListener("click", () => {
+              alert(`Open editor for "${topic.title}"`);
+            });
+
+            publishBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              alert(`Post "${topic.title}" right away`);
+            });
+
+            deleteBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              const confirmDelete = confirm(
+                `Remove "${topic.title}" from the sprint schedule?`
+              );
+              if (confirmDelete) {
+                entryEl.remove();
+              }
+            });
+
+            entriesEl.appendChild(entryEl);
+          });
+
+          weekEl.appendChild(entriesEl);
+          planListEl.appendChild(weekEl);
+        }
+
+        if (backlogListEl) {
+          const backlogItems = [
+            {
+              title: "Compare remote monitoring vendors",
+              description:
+                "Roundup article outlining must-have features, pricing, and evaluation checklist.",
+              source: "24/7 network monitoring cluster",
+            },
+            {
+              title: "LinkedIn carousel: remote onboarding KPIs",
+              description:
+                "6-slide carousel distilling top metrics from onboarding checklist cluster.",
+              source: "Remote onboarding process cluster",
+            },
+            {
+              title: "Email drip: in-house vs remote help desk",
+              description:
+                "Three-email nurture series guiding IT leads toward remote support adoption.",
+              source: "Remote IT support pricing cluster",
+            },
+          ];
+
+          backlogRangeEl.textContent = `${backlogItems.length} ideas queued for scheduling`;
+
+          backlogItems.forEach((item) => {
+            const entryEl = document.createElement("div");
+            entryEl.className = "plan-entry";
+
+            const actionsEl = document.createElement("div");
+            actionsEl.className = "entry-actions";
+
+            const moveBtn = document.createElement("button");
+            moveBtn.className = "icon-button publish";
+            moveBtn.title = "Move to sprint";
+            moveBtn.innerHTML = "↗";
+            moveBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              alert(`Move "${item.title}" into the sprint schedule`);
+            });
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "icon-button delete";
+            deleteBtn.title = "Remove idea";
+            deleteBtn.innerHTML = "✕";
+            deleteBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              const confirmed = confirm(`Remove "${item.title}" from backlog?`);
+              if (confirmed) {
+                entryEl.remove();
+              }
+            });
+
+            actionsEl.appendChild(moveBtn);
+            actionsEl.appendChild(deleteBtn);
+            entryEl.appendChild(actionsEl);
+
+            const titleEl = document.createElement("div");
+            titleEl.className = "title";
+            titleEl.textContent = item.title;
+
+            const detailsEl = document.createElement("div");
+            detailsEl.className = "details";
+            detailsEl.textContent = item.description;
+
+            const sourceEl = document.createElement("div");
+            sourceEl.style.fontSize = "12px";
+            sourceEl.style.color = "#7a8fa6";
+            sourceEl.textContent = `Source: ${item.source}`;
+
+            entryEl.appendChild(titleEl);
+            entryEl.appendChild(detailsEl);
+            entryEl.appendChild(sourceEl);
+
+            entryEl.addEventListener("click", () => {
+              alert(`Open backlog idea "${item.title}" for editing`);
+            });
+
+            backlogListEl.appendChild(entryEl);
+          });
+        }
+
+        if (contentIdeasEl) {
+          const ideaData = [
+            {
+              title: "Article: Remote onboarding success metrics",
+              description:
+                "Explains measurable KPIs for onboarding distributed teams and how TRYGO reduces ramp time.",
+              format: "Blog article",
+              category: "goal",
+            },
+            {
+              title: "Article: Hidden costs of in-house IT support",
+              description:
+                "Pain-focused teardown of overtime, staffing churn, and SLA penalties when teams stay fully internal.",
+              format: "Blog article",
+              category: "pain",
+            },
+            {
+              title: "Article: 7 triggers that signal you need co-managed IT",
+              description:
+                "Trigger-based storytelling covering audits, growth spurts, and compliance shifts that demand support.",
+              format: "Blog article",
+              category: "trigger",
+            },
+            {
+              title: "Article: Glossary of remote IT support terminology",
+              description:
+                "Evergreen explainer covering common acronyms, tooling, and workflows for remote IT teams.",
+              format: "Blog article",
+              category: "info",
+            },
+            {
+              title: "Article: Case study playbook for remote incident response",
+              description:
+                "Goal-oriented blueprint showing how clients cut MTTR with TRYGO’s remote response squad.",
+              format: "Blog article",
+              category: "goal",
+            },
+            {
+              title: "Article: Pain signals your help desk is overwhelmed",
+              description:
+                "Pain catalog outlining ticket backlogs, SLA breaches, and burnout indicators with recommended fixes.",
+              format: "Blog article",
+              category: "pain",
+            },
+            {
+              title: "Commercial page: Remote onboarding playbook",
+              description:
+                "Feature-focused landing explaining TRYGO’s guided onboarding workflows with module breakdown.",
+              format: "Commercial page",
+              category: "feature",
+            },
+            {
+              title: "Commercial page: Benefits of 24/7 monitoring",
+              description:
+                "Benefit-oriented page highlighting uptime guarantees, alerts, and ROI calculator.",
+              format: "Commercial page",
+              category: "benefit",
+            },
+            {
+              title: "FAQ article: Remote IT support pricing",
+              description:
+                "FAQ-style content answering the top 6 procurement questions about pricing tiers and billing.",
+              format: "FAQ entry",
+              category: "faq",
+            },
+            {
+              title: "Article: Trigger checklist before scaling IT team",
+              description:
+                "Trigger category story listing milestones (new locations, compliance changes) that demand remote coverage.",
+              format: "Blog article",
+              category: "trigger",
+            },
+            {
+              title: "Commercial page: Feature comparison vs. MSPs",
+              description:
+                "Feature section comparing TRYGO orchestration vs traditional MSP offerings with table.",
+              format: "Commercial page",
+              category: "feature",
+            },
+            {
+              title: "Article: Benefits of co-managed IT for hybrid teams",
+              description:
+                "Benefit category article tying TRYGO outcomes (faster response, lower costs) to hybrid teams’ needs.",
+              format: "Blog article",
+              category: "benefit",
+            },
+            {
+              title: "FAQ article: How TRYGO integrates with existing toolset",
+              description:
+                "FAQ explaining integrations with ticketing, monitoring, and documentation platforms.",
+              format: "FAQ entry",
+              category: "faq",
+            },
+          ];
+
+          const categoryOrder = [
+            { key: "pain", label: "Articles by pains" },
+            { key: "goal", label: "Articles by goals" },
+            { key: "trigger", label: "Articles by triggers" },
+            { key: "feature", label: "Commercial pages: product features" },
+            { key: "benefit", label: "Commercial pages: benefits" },
+            { key: "faq", label: "FAQ articles" },
+            { key: "info", label: "Informational articles" },
+          ];
+
+          categoryOrder.forEach(({ key, label }) => {
+            const ideasForCategory = ideaData.filter((idea) => idea.category === key);
+            if (!ideasForCategory.length) return;
+
+            const sectionEl = document.createElement("div");
+            sectionEl.className = "idea-section";
+            sectionEl.dataset.category = key;
+
+            const headerEl = document.createElement("div");
+            headerEl.className = "idea-header";
+            const titleEl = document.createElement("h4");
+            titleEl.textContent = label;
+            const countEl = document.createElement("span");
+            countEl.style.color = "#576b82";
+            countEl.style.fontSize = "13px";
+            countEl.textContent = `${ideasForCategory.length} suggestions`;
+            headerEl.appendChild(titleEl);
+            headerEl.appendChild(countEl);
+
+            const listEl = document.createElement("div");
+            listEl.className = "idea-list";
+
+            ideasForCategory.forEach((idea) => {
+              const cardEl = document.createElement("div");
+              cardEl.className = "idea-card";
+              cardEl.dataset.category = idea.category;
+
+              const ideaTitle = document.createElement("div");
+              ideaTitle.className = "idea-title";
+              ideaTitle.textContent = idea.title;
+
+              const ideaDesc = document.createElement("div");
+              ideaDesc.className = "idea-desc";
+              ideaDesc.textContent = idea.description;
+
+              const tagsEl = document.createElement("div");
+              tagsEl.className = "idea-tags";
+              const formatChip = document.createElement("span");
+              formatChip.className = "format-chip";
+              formatChip.textContent = idea.format;
+              const categoryChip = document.createElement("span");
+              categoryChip.className = `category-chip ${idea.category}`;
+              const categoryLabel =
+                idea.category === "pain"
+                  ? "Pain point"
+                  : idea.category === "goal"
+                  ? "Goal"
+                  : idea.category === "trigger"
+                  ? "Trigger"
+                  : idea.category === "feature"
+                  ? "Feature"
+                  : idea.category === "benefit"
+                  ? "Benefit"
+                  : idea.category === "faq"
+                  ? "FAQ"
+                  : "Info";
+              categoryChip.textContent = categoryLabel;
+              tagsEl.appendChild(formatChip);
+              tagsEl.appendChild(categoryChip);
+
+              const actionsEl = document.createElement("div");
+              actionsEl.className = "idea-actions";
+              const toBacklogBtn = document.createElement("button");
+              toBacklogBtn.className = "icon-button publish";
+              toBacklogBtn.title = "Add to backlog";
+              toBacklogBtn.innerHTML = "↗";
+              toBacklogBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                alert(`Add "${idea.title}" to backlog`);
+              });
+
+              const skipBtn = document.createElement("button");
+              skipBtn.className = "icon-button delete";
+              skipBtn.title = "Dismiss idea";
+              skipBtn.innerHTML = "✕";
+              skipBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                cardEl.remove();
+              });
+
+              actionsEl.appendChild(toBacklogBtn);
+              actionsEl.appendChild(skipBtn);
+
+              cardEl.appendChild(ideaTitle);
+              cardEl.appendChild(ideaDesc);
+              cardEl.appendChild(tagsEl);
+              cardEl.appendChild(actionsEl);
+
+              listEl.appendChild(cardEl);
+            });
+
+            sectionEl.appendChild(headerEl);
+            sectionEl.appendChild(listEl);
+            contentIdeasEl.appendChild(sectionEl);
+          });
+        }
+
+        if (customToggle && customForm) {
+          customToggle.addEventListener("click", () => {
+            customForm.classList.toggle("open");
+          });
+        }
+
+        const tabButtons = document.querySelectorAll(".tabs button");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        tabButtons.forEach((btn) =>
+          btn.addEventListener("click", () => {
+            const targetId = btn.dataset.target;
+
+            tabButtons.forEach((b) => b.classList.remove("active"));
+            tabContents.forEach((content) => content.classList.remove("active"));
+
+            btn.classList.add("active");
+            const targetContent = document.getElementById(targetId);
+            if (targetContent) {
+              targetContent.classList.add("active");
+            }
+          })
+        );
+
+        const intentChips = document.querySelectorAll(".intent-chip");
+        intentChips.forEach((chip) =>
+          chip.addEventListener("click", () => {
+            intentChips.forEach((c) => c.classList.remove("active"));
+            chip.classList.add("active");
+          })
+        );
+
+        // Content filters removed by product request; all idea sections remain visible by default.
+      })();
+    </script>
+  </body>
+</html>
+
