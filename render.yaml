@@ -1,0 +1,72 @@
+services:
+  # Backend (GraphQL API)
+  - type: web
+    name: seo-agent-backend
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_IMAGE_MODEL
+        value: dall-e-2
+      - key: FRONTEND_URL
+        sync: false
+      - key: SEMANTICS_SERVICE_URL
+        sync: false
+      - key: IMAGES_SERVICE_URL
+        sync: false
+      - key: WEBSITE_PAGES_SERVICE_URL
+        fromService:
+          type: web
+          name: website-pages-service
+          property: host
+      - key: IMAGE_PROVIDER
+        value: openai
+      - key: WORDPRESS_BASE_URL
+        sync: false
+      - key: WORDPRESS_USERNAME
+        sync: false
+      - key: WORDPRESS_APP_PASSWORD
+        sync: false
+
+  # Frontend (React SPA) - Static Site
+  - type: static_site
+    name: seo-agent-frontend
+    region: frankfurt
+    rootDir: TRYGO-Front
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: seo-agent-backend
+          property: host
+
+  # Website Pages Service
+  - type: web
+    name: website-pages-service
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: website-pages-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4400
+      - key: OPENAI_API_KEY
+        sync: false
+
