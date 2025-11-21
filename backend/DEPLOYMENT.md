@@ -16,9 +16,11 @@
 
 1. Зайдите в Render Dashboard → **New** → **Web Service**
 2. Подключите ваш репозиторий
-3. Выберите репозиторий и ветку
+3. Выберите репозиторий и ветку `001-openapi-content-ideas`
 4. **Важно**: Укажите **Root Directory** как `backend`
-5. Render автоматически определит настройки из `render.yaml`
+5. **Build Command**: `npm install && npm run build`
+6. **Start Command**: `npm start`
+7. Render может автоматически определить настройки из `render.yaml`, но лучше указать команды вручную
 
 #### Вариант B: Через render.yaml (автоматически)
 
