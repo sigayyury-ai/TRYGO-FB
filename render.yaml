@@ -47,11 +47,18 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
-      - key: VITE_API_URL
+      - key: VITE_SERVER_URL
         fromService:
           type: web
           name: seo-agent-backend
           property: host
+      - key: VITE_WS_SERVER_URL
+        fromService:
+          type: web
+          name: seo-agent-backend
+          property: host
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
 
   # Website Pages Service
   - type: web
