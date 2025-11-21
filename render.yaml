@@ -22,9 +22,15 @@ services:
       - key: FRONTEND_URL
         sync: false
       - key: SEMANTICS_SERVICE_URL
-        sync: false
+        fromService:
+          type: web
+          name: semantics-service
+          property: host
       - key: IMAGES_SERVICE_URL
-        sync: false
+        fromService:
+          type: web
+          name: images-service
+          property: host
       - key: WEBSITE_PAGES_SERVICE_URL
         fromService:
           type: web
@@ -60,7 +66,7 @@ services:
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
 
-  # Website Pages Service
+  # Website Pages Service (Content Generation)
   - type: web
     name: website-pages-service
     env: node
@@ -74,6 +80,44 @@ services:
         value: production
       - key: PORT
         value: 4400
+      - key: OPENAI_API_KEY
+        sync: false
+
+  # Images Service (Image Generation)
+  - type: web
+    name: images-service
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: images-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4300
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_IMAGE_MODEL
+        value: dall-e-2
+
+  # Semantics Service
+  - type: web
+    name: semantics-service
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: semantics-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4200
+      - key: MONGODB_URI
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
 
