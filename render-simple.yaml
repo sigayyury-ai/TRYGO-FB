@@ -1,0 +1,77 @@
+# ============================================
+# TRYGO Platform - Упрощенная конфигурация для Render
+# ============================================
+# 
+# Этот файл содержит упрощенную конфигурацию с 2 сервисами:
+# 1. Backend (объединенный)
+# 2. Frontend
+#
+# Используйте этот файл, если хотите упростить деплой.
+# Для полной микросервисной архитектуры используйте render.yaml
+#
+# ============================================
+
+services:
+  # ============================================
+  # Backend (Объединенный)
+  # Включает: основной API, SEO Agent, Website Pages
+  # ============================================
+  - type: web
+    name: trygo-backend
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: TRYGO-Backend
+    buildCommand: npm install && npm run build && npm run codegen
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false  # Установить вручную в Render Dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # Установить вручную в Render Dashboard
+      - key: JWT_SECRET
+        sync: false  # Установить вручную (минимум 32 символа)
+      - key: FRONTEND_URL
+        fromService:
+          type: static_site
+          name: trygo-frontend
+          property: host
+      # Опционально (для подписок)
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # Опционально (для OAuth)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+  # ============================================
+  # Frontend (React SPA)
+  # ============================================
+  - type: static_site
+    name: trygo-frontend
+    region: frankfurt
+    rootDir: TRYGO-Front
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # URL бэкенда
+      - key: VITE_SERVER_URL
+        fromService:
+          type: web
+          name: trygo-backend
+          property: host
+      # WebSocket URL
+      - key: VITE_WS_SERVER_URL
+        fromService:
+          type: web
+          name: trygo-backend
+          property: host
+      # Google OAuth Client ID
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false  # Установить вручную в Render Dashboard
+
