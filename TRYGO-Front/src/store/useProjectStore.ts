@@ -37,17 +37,17 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
       const { data } = await getProjectsQuery();
       const projects = data?.getProjects || [];
 
-      // Пытаемся восстановить из cookies
+      // Восстанавливаем из cookies
       const savedProjectId = Cookies.get(COOKIE_PROJECT_ID);
       let activeProject: ProjectDto | null = null;
 
       if (savedProjectId) {
-        // Ищем сохраненный проект в свежих данных
+        // Ищем сохраненный проект в свежих данных из API
         const foundProject = projects.find(p => p.id === savedProjectId);
         if (foundProject) {
           activeProject = foundProject;
         } else {
-          // Сохраненный проект не найден - очищаем cookie
+          // Сохраненный проект не найден в API - очищаем cookie
           Cookies.remove(COOKIE_PROJECT_ID);
         }
       }
