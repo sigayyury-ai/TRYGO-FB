@@ -1,0 +1,14 @@
+type RequestFeature {
+    id: ID!
+    userId: ID!
+    requestedFeature: RequestedFeature!
+}
+
+enum RequestedFeature {
+    BRANDING
+    PITCH_MATERIALS
+}
+
+type Mutation {
+    createRequestFeature(requestedFeature: RequestedFeature!): String!
+}

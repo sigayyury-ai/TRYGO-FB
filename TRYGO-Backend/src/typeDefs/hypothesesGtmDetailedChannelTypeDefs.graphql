@@ -1,0 +1,118 @@
+type HypothesesGtmDetailedChannel {
+    id: ID!
+    userId: ID!
+    hypothesesGtmChannelId: ID!
+    customerSegmentId: ID!
+    channelStrategy: String!
+    channelPreparationTasks: [TextIsCompleted!]!
+    tools: String!
+    resources: String!
+    contentIdeas: [GtmChannelContentIdea!]
+    actionPlan: [GtmChannelActionPlan!]!
+    metricsAndKpis: [GtmChannelMetricsAndKpis!]!
+}
+
+type TextIsCompleted {
+    id: ID!
+    text: String!
+    isCompleted: Boolean!
+}
+
+type GtmChannelContentIdea {
+    id: ID!
+    title: String!
+    text: String!
+}
+
+type GtmChannelActionPlan {
+    id: ID!
+    stageTitle: String!
+    tasks: [TextIsCompleted!]!
+    isCompleted: Boolean!
+}
+
+type GtmChannelMetricsAndKpis {
+    id: ID!
+    key: String!
+    value: String!
+}
+
+input GetHypothesesGtmDetailedChannelInput {
+    hypothesesGtmChannelId: ID!
+    customerSegmentId: ID!
+}
+
+type Query {
+    getHypothesesGtmDetailedChannel(
+        input: GetHypothesesGtmDetailedChannelInput!
+    ): HypothesesGtmDetailedChannel
+}
+
+input ChangeHypothesesGtmDetailedChannelInput {
+    id: ID!
+    channelStrategy: String
+    channelPreparationTasks: [TextIsCompletedInput!]
+    tools: String
+    resources: String
+    contentIdeas: [GtmChannelContentIdeaInput!]
+    actionPlan: [GtmChannelActionPlanInput!]
+    metricsAndKpis: [GtmChannelMetricsAndKpisInput!]
+}
+
+input TextIsCompletedInput {
+    id: ID!
+    text: String!
+    isCompleted: Boolean!
+}
+
+input GtmChannelContentIdeaInput {
+    id: ID!
+    title: String!
+    text: String!
+}
+
+input GtmChannelActionPlanInput {
+    id: ID!
+    stageTitle: String!
+    tasks: [TextIsCompletedInput!]
+    isCompleted: Boolean!
+}
+
+input GtmChannelMetricsAndKpisInput {
+    id: ID!
+    key: String!
+    value: String!
+}
+
+input RegenerateHypothesesGtmDetailedChannelInput {
+        hypothesesGtmChannelId: ID!
+    customerSegmentId: ID!
+    projectHypothesisId: ID!
+    promptPart: String!
+}
+
+input GenerateHypothesesGtmDetailedChannelContentIdeaInput {
+    hypothesesGtmChannelId: ID!
+    customerSegmentId: ID!
+}
+
+input CreateHypothesesGtmDetailedChannelInput {
+    hypothesesGtmChannelId: ID!
+    customerSegmentId: ID!
+    projectHypothesisId: ID!
+}
+
+type Mutation {
+    createHypothesesGtmDetailedChannel(
+        input: CreateHypothesesGtmDetailedChannelInput!
+    ): HypothesesGtmDetailedChannel!
+    changeHypothesesGtmDetailedChannel(
+        input: ChangeHypothesesGtmDetailedChannelInput!
+    ): HypothesesGtmDetailedChannel!
+    regenerateHypothesesGtmDetailedChannel(
+        input: RegenerateHypothesesGtmDetailedChannelInput!
+    ): HypothesesGtmDetailedChannel!
+    generateHypothesesGtmDetailedChannelContentIdea(
+        input: GenerateHypothesesGtmDetailedChannelContentIdeaInput!
+    ): GtmChannelContentIdea!
+}

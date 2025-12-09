@@ -1,0 +1,4 @@
+input ProjectHypothesisIdPromptPartInput {
+    projectHypothesisId: ID!
+    promptPart: String!
+}

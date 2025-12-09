@@ -1,0 +1,58 @@
+type HypothesesValidation {
+    id: ID!
+    userId: ID!
+    projectHypothesisId: ID!
+    threadId: String!
+    validationChannels: [String!]!
+    customerInterviewQuestions: [String!]!
+    uploadedCustomerInterviews: String
+    insightsCustomerInterviews: String
+    summaryInterview: SummaryInterview
+}
+
+type SummaryInterview {
+    goals: [String!]
+    pains: [String!]
+    hypotheses: [String!]
+    toneOfVoice: String
+}
+
+type Query {
+    getHypothesesValidation(projectHypothesisId: ID!): HypothesesValidation
+}
+
+input ChangeHypothesesValidationInput {
+    id: ID!
+    customerInterviewQuestions: [String]
+    uploadedCustomerInterviews: String
+    insightsCustomerInterviews: String
+    summaryInterview: SummaryInterviewInput
+}
+
+input SummaryInterviewInput {
+    goals: [String!]!
+    pains: [String!]!
+    hypotheses: [String!]!
+    toneOfVoice: String!
+}
+
+input UploadHypothesesValidationCustomerInterviewInput {
+    id: ID!
+    customerInterview: String!
+}
+
+
+
+type Mutation {
+    changeHypothesesValidation(
+        input: ChangeHypothesesValidationInput!
+    ): HypothesesValidation!
+    createHypothesesValidation(projectHypothesisId: ID!): HypothesesValidation!
+    uploadHypothesesValidationCustomerInterview(
+        input: UploadHypothesesValidationCustomerInterviewInput!
+    ): HypothesesValidation!
+
+    regenerateHypothesesValidation(
+        input: ProjectHypothesisIdPromptPartInput!
+    ): HypothesesValidation!
+}

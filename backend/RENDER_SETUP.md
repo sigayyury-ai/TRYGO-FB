@@ -37,8 +37,8 @@ npm run render-build
 
 2. В разделе **Build & Deploy** укажите:
    - **Root Directory**: `backend`
-   - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm start`
+   - **Build Command**: `npm install && npm run build` ⚠️ **ВАЖНО**: Не просто `build`, а полная команда!
+   - **Start Command**: `npm start` ✅ (уже правильно настроено)
 
 3. В разделе **Environment** добавьте переменные:
 

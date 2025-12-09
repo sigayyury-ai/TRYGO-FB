@@ -10,6 +10,7 @@ export interface SeoBacklogIdeaAttrs {
   description: string;
   category: "pain" | "goal" | "trigger" | "feature" | "benefit" | "faq" | "info";
   status: BacklogIdeaStatus;
+  scheduledDate?: Date;
   createdBy: string;
   updatedBy: string;
 }
@@ -33,10 +34,11 @@ const SeoBacklogIdeaSchema = new Schema<SeoBacklogIdeaDoc>(
     },
     status: {
       type: String,
-      enum: ["backlog", "scheduled", "archived"],
+      enum: ["backlog", "scheduled", "archived", "pending", "in_progress", "completed"],
       default: "backlog",
       index: true
     },
+    scheduledDate: { type: Date },
     createdBy: { type: String, required: true },
     updatedBy: { type: String, required: true }
   },

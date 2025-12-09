@@ -22,6 +22,8 @@ export interface SeoContentItemAttrs {
   reviewerId?: string;
   channel?: string;
   outline?: string;
+  content?: string; // Full generated article content
+  imageUrl?: string; // Generated image URL
   status: ContentStatus;
   createdBy: string;
   updatedBy: string;
@@ -54,6 +56,8 @@ const SeoContentItemSchema = new Schema<SeoContentItemDoc>(
     reviewerId: { type: String },
     channel: { type: String },
     outline: { type: String },
+    content: { type: String }, // Full generated article content
+    imageUrl: { type: String }, // Generated image URL
     status: {
       type: String,
       enum: ["draft", "review", "ready", "published"],

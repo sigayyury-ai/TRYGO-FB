@@ -1,0 +1,74 @@
+scalar Date
+
+enum UserRole {
+    ADMIN
+    USER
+}
+
+type ResetPassword {
+    resetCode: Int
+    expire: Date
+}
+
+type User {
+    id: ID!
+    email: String!
+    passwordHash: String
+    role: UserRole!
+    resetPassword: ResetPassword
+    timeZoneOffset: Int!
+    isProjectGenerationStarted: Boolean!
+    isProjectGenerated: Boolean!
+    freeTrialDueTo: Date
+}
+
+type UserDTO {
+    id: ID!
+    email: String
+    role: UserRole!
+    freeTrialDueTo: Date
+}
+
+type AuthResponse {
+    user: UserDTO
+    token: String
+}
+
+input RegisterInput {
+    email: String!
+    password: String!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input ChangePasswordInput {
+    newPassword: String!
+    resetCode: Int!
+    email: String!
+}
+
+input GenerateTokenThrowEmailInput {
+    email: String!
+    jwtSecret: String!
+}
+
+input AuthThrowThirdPartyInput {
+    googleIdToken: String!
+}
+
+type Mutation {
+    register(input: RegisterInput!): AuthResponse!
+    authThrowThirdParty(input: AuthThrowThirdPartyInput!): AuthResponse!
+    login(input: LoginInput): AuthResponse!
+    forgotPassword(email: String!): String!
+    changePassword(input: ChangePasswordInput!): AuthResponse!
+    generateTokenThrowEmail(input: GenerateTokenThrowEmailInput!): String!
+}
+
+type Query {
+    getUserByToken: AuthResponse!
+    test: String!
+}

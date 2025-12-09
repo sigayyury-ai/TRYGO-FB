@@ -1,0 +1,76 @@
+enum SubscriptionStatus {
+    ACTIVE
+    PAST_DUE
+    UNPAID
+    CANCELED
+    INCOMPLETE
+    INCOMPLETE_EXPIRED
+    TRIALING
+    OPEN
+    INACTIVE
+}
+
+enum SubscriptionType {
+    STARTER
+    PRO
+}
+
+type Subscription {
+    id: ID!
+    userId: ID!
+    price: Float!
+    status: SubscriptionStatus!
+    endDate: Date!
+    stripeSubscriptionId: String!
+    customerId: String!
+    startDate: Date!
+    type: SubscriptionType!
+}
+
+type PromoCodeInfo {
+    code: String!
+    subscriptionType: SubscriptionType!
+    durationMonths: Int!
+    isValid: Boolean!
+    message: String
+}
+
+type PromoCode {
+    id: ID!
+    code: String!
+    subscriptionType: SubscriptionType!
+    durationMonths: Int!
+    maxUses: Int!
+    usedCount: Int!
+    isActive: Boolean!
+    expiresAt: Date
+    description: String
+    createdAt: Date!
+    updatedAt: Date!
+}
+
+type ActivatePromoCodeResponse {
+    success: Boolean!
+    message: String!
+}
+
+type Query {
+    getSubscription: Subscription
+    getSubscriptionStripeSession: String
+    getPromoCodeInfo(code: String!): PromoCodeInfo!
+    getAllPromoCodes: [PromoCode!]!
+}
+
+type Mutation {
+    createSubscriptionCheckout(type: SubscriptionType): String
+    changeSubscription(type: SubscriptionType): String
+    activatePromoCode(code: String!): ActivatePromoCodeResponse!
+    createPromoCode(
+        code: String!
+        subscriptionType: SubscriptionType!
+        durationMonths: Int
+        maxUses: Int
+        expiresAt: Date
+        description: String
+    ): PromoCode!
+}

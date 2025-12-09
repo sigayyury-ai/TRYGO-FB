@@ -1,0 +1,70 @@
+type HypothesesGtm {
+    id: ID!
+    userId: ID!
+    threadId: String!
+    projectHypothesisId: ID!
+    stageValidate: HypothesesGtmStage!
+    stageBuildAudience: HypothesesGtmStage!
+    stageScale: HypothesesGtmStage!
+}
+
+type HypothesesGtmStage {
+    name: String!
+    channels: [HypothesesGtmChannel!]!
+}
+
+type HypothesesGtmChannel {
+    id: ID!
+    name: String!
+    type: HypothesesGtmChannelType!
+    description: String!
+    kpis: String!
+    status: HypothesesGtmChannelStatus!
+    strategy: String
+}
+
+enum HypothesesGtmChannelType {
+    ORGANIC_SEARCH
+    PAID_SEARCH
+    ORGANIC_SOCIAL_MEDIA
+    PAID_SOCIAL_MEDIA
+    PARTNERS
+}
+
+enum HypothesesGtmChannelStatus {
+    PLANNED
+    IN_PROGRESS
+    COMPLETED
+}
+
+type Query {
+    getHypothesesGtm(projectHypothesisId: ID!): HypothesesGtm
+}
+
+input ChangeHypothesesGtmInput {
+    id: ID!
+    stageValidate: HypothesesGtmStageInput
+    stageBuildAudience: HypothesesGtmStageInput
+    stageScale: HypothesesGtmStageInput
+}
+
+input HypothesesGtmStageInput {
+    name: String
+    channels: [HypothesesGtmChannelInput!]
+}
+
+input HypothesesGtmChannelInput {
+    id: ID!
+    name: String
+    type: HypothesesGtmChannelType
+    description: String
+    kpis: String
+    status: HypothesesGtmChannelStatus
+    strategy: String
+}
+
+type Mutation {
+    createHypothesesGtm(projectHypothesisId: ID!): HypothesesGtm!
+    changeHypothesesGtm(input: ChangeHypothesesGtmInput!): HypothesesGtm!
+    regenerateHypothesesGtm(input: ProjectHypothesisIdPromptPartInput!): HypothesesGtm!
+}

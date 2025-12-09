@@ -1,24 +1,79 @@
-## TRYGO + Spec Kit
+# TRYGO Platform
 
-This repository is initialized with [GitHub Spec Kit](https://github.com/github/spec-kit) release `v0.0.79` using the `cursor-agent` template.
+TRYGO - платформа для управления маркетинговыми гипотезами и SEO-контентом с AI-ассистентом.
 
-- Generated assets live under `.specify/` (project memory, reusable scripts, and spec templates) and `.cursor/commands/` (slash-command definitions for Cursor).
-- Spec Kit created an initial git history; run `git status` before committing further changes.
-- The CLI is available via `~/Library/Python/3.9/bin/uvx`; add that directory to your `PATH` for convenience.
+## Основные возможности
 
-### Recommended Next Steps
+- 📊 Управление проектами и гипотезами
+- 🤖 AI-ассистент для маркетинга
+- 🔍 SEO Agent для генерации контента
+- 📈 Аналитика и метрики
+- 💳 Система подписок и промокодов
 
-- `/speckit.constitution` – capture guiding principles for TRYGO.
-- `/speckit.specify` – draft the baseline product spec.
-- `/speckit.plan` – produce implementation plans from the spec.
-- `/speckit.tasks` – break the plan into actionable tasks.
-- `/speckit.implement` – execute tasks via the Spec Kit workflow.
+---
 
-If you need to rerun the initializer or update templates, execute:
+## Документация
 
+### Основные фичи
+
+- **Система промокодов**: `docs/features/promo-codes.md` - полная документация по промокодам
+- **Подписки**: `TRYGO-Backend/ADD_PRO_SUBSCRIPTION.md` - управление подписками
+- **SEO Agent**: `specs/001-seo-agent/spec.md` - спецификация SEO Agent
+
+---
+
+## Установка и запуск
+
+### Backend
+
+```bash
+cd TRYGO-Backend
+npm install
+npm run dev
 ```
-~/Library/Python/3.9/bin/uvx --from git+https://github.com/github/spec-kit.git specify update
+
+### Frontend
+
+```bash
+cd TRYGO-Front
+npm install
+npm run dev
 ```
 
+---
 
+## Технологии
+
+### Backend
+- Node.js
+- TypeScript
+- GraphQL (Apollo Server)
+- MongoDB
+- Stripe (для платежей)
+
+### Frontend
+- React
+- TypeScript
+- Vite
+- GraphQL (Apollo Client)
+- Tailwind CSS
+- shadcn/ui
+
+---
+
+## Дополнительная документация
+
+📚 **Полная документация**: [`docs/README.md`](docs/README.md)
+
+### Основные разделы
+
+- **Промокоды**: [`docs/features/promo-codes.md`](docs/features/promo-codes.md) - полная документация по системе промокодов
+- **Подписки**: `TRYGO-Backend/ADD_PRO_SUBSCRIPTION.md` - управление подписками
+- **SEO Agent**: `specs/001-seo-agent/spec.md` - спецификация SEO Agent
+
+---
+
+## Лицензия
+
+[Укажите лицензию]
 

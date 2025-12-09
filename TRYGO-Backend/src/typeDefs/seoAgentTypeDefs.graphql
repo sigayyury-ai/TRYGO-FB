@@ -1,0 +1,111 @@
+# SEO Agent GraphQL Schema
+
+enum SeoAgentClusterIntent {
+  INFORMATIONAL
+  NAVIGATIONAL
+  TRANSACTIONAL
+  COMMERCIAL
+}
+
+enum SeoAgentBacklogContentType {
+  ARTICLE
+  COMMERCIAL_PAGE
+  LANDING_PAGE
+}
+
+enum SeoAgentBacklogStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+type SeoAgentCluster {
+  id: ID!
+  projectId: ID!
+  hypothesisId: ID
+  title: String!
+  intent: SeoAgentClusterIntent!
+  keywords: [String!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SeoAgentBacklogIdea {
+  id: ID!
+  projectId: ID!
+  hypothesisId: ID
+  title: String!
+  description: String
+  contentType: SeoAgentBacklogContentType!
+  clusterId: ID
+  status: SeoAgentBacklogStatus!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SeoAgentPostingSettings {
+  id: ID!
+  projectId: ID!
+  hypothesisId: ID
+  weeklyPublishCount: Int!
+  preferredDays: [String!]!
+  autoPublishEnabled: Boolean!
+  updatedAt: String!
+}
+
+input SeoAgentClusterInput {
+  title: String!
+  intent: SeoAgentClusterIntent!
+  keywords: [String!]!
+}
+
+input SeoAgentPostingSettingsInput {
+  weeklyPublishCount: Int!
+  preferredDays: [String!]!
+  autoPublishEnabled: Boolean!
+}
+
+input SeoAgentBacklogIdeaInput {
+  title: String!
+  description: String
+  contentType: SeoAgentBacklogContentType!
+  status: SeoAgentBacklogStatus!
+  clusterId: ID
+}
+
+extend type Query {
+  seoAgentClusters(projectId: ID!, hypothesisId: ID): [SeoAgentCluster!]!
+  seoAgentBacklog(projectId: ID!, hypothesisId: ID): [SeoAgentBacklogIdea!]!
+  seoAgentPostingSettings(projectId: ID!): SeoAgentPostingSettings
+}
+
+extend type Mutation {
+  createSeoAgentCluster(
+    projectId: ID!
+    hypothesisId: ID
+    input: SeoAgentClusterInput!
+  ): SeoAgentCluster!
+  updateSeoAgentCluster(
+    id: ID!
+    input: SeoAgentClusterInput!
+  ): SeoAgentCluster!
+  deleteSeoAgentCluster(id: ID!): Boolean!
+  updateSeoAgentPostingSettings(
+    projectId: ID!
+    hypothesisId: ID
+    input: SeoAgentPostingSettingsInput!
+  ): SeoAgentPostingSettings!
+  createSeoAgentBacklogIdea(
+    projectId: ID!
+    hypothesisId: ID
+    input: SeoAgentBacklogIdeaInput!
+  ): SeoAgentBacklogIdea!
+  updateSeoAgentBacklogIdea(
+    id: ID!
+    input: SeoAgentBacklogIdeaInput!
+  ): SeoAgentBacklogIdea!
+  deleteSeoAgentBacklogIdea(id: ID!): Boolean!
+}
+

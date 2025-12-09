@@ -1,0 +1,135 @@
+import Cookies from "js-cookie";
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import { getUserByTokenQuery } from "@/api/getUserByToken";
+
+export interface UserDataType {
+  id: string;
+  email: string;
+  role: "ADMIN" | "USER";
+  freeTrialDueTo?: string;
+}
+
+interface UseUserStoreType {
+  userData: UserDataType | null;
+  isAuthenticated: boolean;
+  hasInitializedProject: boolean;
+  setHasInitializedProject: (value: boolean) => void;
+  token: string | null;
+  isLoading: boolean;
+  showJoyride: boolean;
+  setShowJoyride: (value: boolean) => void;
+  setUserData: (user?: UserDataType | null, token?: string | null) => void;
+  logout: () => void;
+  initializeAuth: () => Promise<void>;
+}
+
+export const useUserStore = create<UseUserStoreType>()(
+  persist(
+    devtools(
+      (set, get) => ({
+        userData: null,
+        isAuthenticated: false,
+        hasInitializedProject: false,
+        setHasInitializedProject: (value) =>
+          set({ hasInitializedProject: value }),
+        token: Cookies.get("token") || null,
+        isLoading: false,
+        showJoyride: false,
+        setShowJoyride: (value) => set({ showJoyride: value }),
+        setUserData: (user, token) => {
+          set({
+            userData: user ?? null,
+            isAuthenticated: !!user,
+            token: token ?? null,
+          });
+          if (token) {
+            Cookies.set("token", token, {
+              expires: 30,
+              secure: true,
+              sameSite: "strict",
+            });
+          } else {
+            Cookies.remove("token");
+          }
+        },
+        logout: () => {
+          Cookies.remove("token");
+          set({ userData: null, isAuthenticated: false, token: null, showJoyride: false });
+        },
+  
+        initializeAuth: async () => {
+          set({ isLoading: true });
+          const currentToken = get().token;
+  
+          try {
+            if (currentToken) {
+              const { user, token } = await getUserByTokenQuery();
+              set({ userData: user, isAuthenticated: true, token });
+            }
+          } catch (error: unknown) {
+            // Only logout on authentication errors (401, 403), not on network errors
+            const isAuthError = error && typeof error === 'object' && (
+              ('networkError' in error && (error as any).networkError?.statusCode === 401) ||
+              ('graphQLErrors' in error && (error as any).graphQLErrors?.some((e: any) => e?.extensions?.code === 'UNAUTHENTICATED')) ||
+              (error instanceof Error && (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')))
+            );
+            
+            // If it's a network error (connection refused, etc.), keep the token and don't logout
+            const isNetworkError = error && typeof error === 'object' && (
+              ('networkError' in error && (error as any).networkError?.message?.includes('CONNECTION_REFUSED')) ||
+              (error instanceof Error && error.message.includes('CONNECTION_REFUSED'))
+            );
+            
+            if (isAuthError) {
+              // Token is invalid, logout
+              get().logout();
+              window.location.href = '/auth';
+            } else if (!isNetworkError) {
+              // Other errors - keep token but don't set user as authenticated
+              console.warn('Auth initialization error (non-auth):', error);
+              set({ userData: null, isAuthenticated: false });
+            } else {
+              // Network error - keep everything, backend might be starting
+              console.warn('Backend connection error, keeping auth state:', error);
+            }
+          } finally {
+            set({ isLoading: false });
+          }
+        },
+      }),
+      { name: "useUserStore" }
+    ),
+    {
+      name: "useUserStore",
+      partialize: (state) => ({
+        userData: state.userData,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+        hasInitializedProject: state.hasInitializedProject,
+        showJoyride: state.showJoyride,
+      }),
+    }
+  )
+);
+
+export const setUserData = (
+  user?: UserDataType | null,
+  token?: string | null
+) => {
+  useUserStore.getState().setUserData(user, token);
+};
+
+export const setUserToken = (token?: string | null) => {
+  if (token) {
+    Cookies.set("token", token, {
+      expires: 30,
+      secure: true,
+      sameSite: "strict",
+    });
+    useUserStore.setState({ token });
+  } else {
+    Cookies.remove("token");
+    useUserStore.setState({ token: null });
+  }
+};
