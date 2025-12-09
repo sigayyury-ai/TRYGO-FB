@@ -100,9 +100,20 @@ BACKLOG IDEA
 - Description: ${idea.description}
 
 ###
+TITLE REQUIREMENTS (CRITICAL):
+- Length: 50-70 characters (optimal: 50-60)
+- Word count: 5-9 words (optimal)
+- MUST include at least ONE of the following:
+  * Question format: "Как...", "Почему...", "Что такое...", "Когда..."
+  * Power words: "лучший", "проверенный", "эффективный", "секрет", "гайд", "руководство"
+  * Numbers: "5 способов", "10 советов", "за 30 дней", "3 шага"
+- MUST include SEO keywords from the idea/topic
+- Avoid generic words: "статья", "информация", "материал"
+- Make it specific and valuable to the reader
+
 OUTPUT FORMAT (return JSON only):
 {
-  "title": "Title under 90 characters",
+  "title": "Title 50-70 characters with question/power word/number + SEO keywords",
   "summary": "Lead paragraph under 280 characters",
   "outline": [
     {
@@ -212,6 +223,66 @@ ${typeSpecificInstructions}
 Return ONLY the JSON object.`;
 }
 
+function generateProductSynonyms(projectTitle: string): string[] {
+  const titleLower = projectTitle.toLowerCase();
+  const synonyms: string[] = [];
+  
+  // Extract potential brand name (first word if it's a single capitalized word)
+  const words = projectTitle.split(/\s+/);
+  const firstWord = words[0];
+  const isBrandName = firstWord.length > 0 && 
+                      firstWord[0] === firstWord[0].toUpperCase() && 
+                      words.length > 1;
+  
+  // Universal synonyms generation
+  // 1. Original title
+  synonyms.push(projectTitle);
+  
+  // 2. Brand name (if detected) or first word as brand
+  if (isBrandName) {
+    synonyms.push(firstWord);
+    synonyms.push(`платформа ${firstWord}`);
+  }
+  
+  // 3. Descriptive variations
+  synonyms.push(`${projectTitle} (платформа)`);
+  synonyms.push(`инструмент ${projectTitle}`);
+  synonyms.push(`сервис ${projectTitle}`);
+  
+  // 4. Shortened versions (if title is long)
+  if (words.length > 2) {
+    // Take first 2-3 words
+    const shortVersion = words.slice(0, 2).join(" ");
+    if (shortVersion.length < projectTitle.length * 0.7) {
+      synonyms.push(shortVersion);
+    }
+  }
+  
+  // 5. Alternative formats
+  // Replace common connectors with alternatives
+  const altFormats = [
+    projectTitle.replace(/\s+/g, "-"), // hyphenated
+    projectTitle.replace(/\s+/g, ""),    // no spaces (if short)
+  ].filter(f => f !== projectTitle && f.length > 0 && f.length < 50);
+  
+  synonyms.push(...altFormats);
+  
+  // 6. Language-specific variations (if contains English, add Russian equivalent concepts)
+  const hasEnglish = /[a-z]/i.test(projectTitle);
+  if (hasEnglish) {
+    // Try to create Russian descriptive equivalent
+    const russianDescriptions = [
+      `платформа ${projectTitle}`,
+      `инструмент ${projectTitle}`,
+    ];
+    synonyms.push(...russianDescriptions);
+  }
+  
+  // Remove duplicates and limit to 8-10 most relevant
+  const unique = Array.from(new Set(synonyms));
+  return unique.slice(0, 10);
+}
+
 function getBaseWritingRules(
   language: string,
   projectTitle: string,
@@ -219,13 +290,30 @@ function getBaseWritingRules(
   leanUnfairAdvantages: string[],
   pains: string[]
 ): string {
+  const productSynonyms = generateProductSynonyms(projectTitle);
+  
   return `- Use ${language}.
 - ГЛАВНОЕ: Раскрывай тему статьи глубоко и полно. Тема статьи - это центр внимания, не продукт.
-- UVP и продукт (${projectTitle}) упоминай МИНИМАЛЬНО - только в конце как естественное завершение, не более 1-2 раз за весь текст.
+- Продукт упоминай 2-3 раза в конце статьи, используя РАЗНЫЕ синонимы для избежания переспама:
+  ${productSynonyms.slice(0, 5).map(s => `  • ${s}`).join("\n")}
+- КРИТИЧНО: Никогда не используй один и тот же синоним дважды в одной статье.
+- Создавай плавные переходы перед упоминанием продукта: сначала проблема → общие решения → конкретный инструмент.
 - Общий объём текста — не менее 4000-5000 слов.
 - Генерируй выразительные и уникальные заголовки H2; избегай шаблонов вроде "Introduction", "Conclusion".
 - В каждом outline.body используй валидный HTML: <p>, <ul>/<ol> с <li>, <strong>, <h3> для подзаголовков.
-- Фокус на ценности для читателя, а не на продаже продукта.`;
+- Фокус на ценности для читателя, а не на продаже продукта.
+- Избегай продающих слов: "купите", "закажите", "только сегодня", "не упустите" и т.п.
+
+TONE OF VOICE REQUIREMENTS:
+- Формальность: Полуформальный тон (не слишком формальный, не слишком неформальный)
+- Обращение к читателю: Используй "вы" минимум 3-5 раз для создания вовлеченности
+- Эмпатия: Проявляй понимание проблем читателя - используй слова "понимаю", "знаю", "многие сталкиваются", "обычно", "часто"
+- Вопросы: Включай вопросы в текст (2-4 вопроса) для вовлечения читателя
+- Длина предложений: Средняя длина 12-18 слов, варьируй длину (короткие и длинные предложения)
+- Действенность: Используй призывы к действию естественно: "попробуйте", "начните", "используйте" (2-3 раза)
+- Баланс: Сбалансированный тон - профессиональный, но дружелюбный
+- Позитивность: Баланс позитивных и негативных слов (40-60% позитивных)
+- Признание проблем: Явно признавай проблемы читателя перед предложением решений`;
 }
 
 function buildTriggerPrompt(params: {
@@ -282,9 +370,12 @@ function buildPainPointPrompt(params: {
 }): string {
   const { idea, selectedPain, selectedTrigger, baseInstructions, projectTitle, leanUVP } = params;
 
+  // Generate product synonyms to avoid repetition
+  const productSynonyms = generateProductSynonyms(projectTitle);
+
   return `You are writing a PAIN POINT article. Your MAIN GOAL is to deeply explore ONE specific pain.
 
-PRIMARY FOCUS (90% of content):
+PRIMARY FOCUS (85% of content):
 - Deep dive into ONE pain: ${selectedPain || "the main pain point"}
 - Explain what this pain means in real terms - detailed exploration
 - Show how it affects daily work/life - real scenarios and examples
@@ -294,10 +385,27 @@ PRIMARY FOCUS (90% of content):
 - Provide insights, patterns, and recognition signs
 - Help readers understand and validate their experience
 
-SECONDARY FOCUS (10% of content - ONLY at the end):
+SECONDARY FOCUS (15% of content - ONLY at the end):
 - Brief overview of solution approaches (general, not product-specific)
-- Natural mention of ${projectTitle} as ONE option${leanUVP ? ` (UVP: ${leanUVP})` : ""}
-- CTA: Low-pressure offer
+- Natural, smooth transition to product mention using synonyms
+- Product mention: 2-3 times using DIFFERENT synonyms to avoid repetition
+- CTA: Low-pressure, informative offer
+
+PRODUCT SYNONYMS (use DIFFERENT ones each time, avoid repetition):
+${productSynonyms.map((syn, idx) => `${idx + 1}. ${syn}`).join("\n")}
+
+CRITICAL SYNONYM RULES:
+- NEVER use the same synonym twice in one article
+- Use 2-3 different synonyms across the article (one per mention)
+- Mix brand name (TRYGO) with descriptive terms (marketing co-pilot, AI-копилот)
+- Vary between full names and shortened versions
+
+NATURAL TRANSITION REQUIREMENTS:
+Before mentioning the product, you MUST create a smooth bridge:
+1. First, acknowledge the problem: "Как мы видели, эта проблема требует решения..."
+2. Then, mention general solution approaches: "Существует несколько подходов к решению..."
+3. Then, introduce the product naturally: "Одним из инструментов, который может помочь в этом, является [SYNONYM 1]..."
+4. Use transition phrases: "В качестве решения можно рассмотреть...", "Естественным продолжением этого подхода является...", "Одним из вариантов может стать..."
 
 STRUCTURE:
 1. Introduction: Define the pain clearly with real examples
@@ -306,11 +414,30 @@ STRUCTURE:
 4. The Cost: Quantify the impact (time, money, stress, opportunities lost)
 5. Why It Persists: What makes this pain hard to solve? Root causes
 6. Recognizing the Pattern: How to identify this pain early
-7. Solution Approaches: General ways to address this (brief overview)
-8. Natural Transition: ${projectTitle} as one solution path${leanUVP ? ` (${leanUVP})` : ""}
-9. CTA: Informative offer to explore solutions
+7. Solution Approaches: General ways to address this (brief overview, 1-2 paragraphs)
+8. Natural Bridge: Create smooth transition from problem to solutions (1 paragraph)
+   - Acknowledge the problem needs solving
+   - Mention that various tools/approaches exist
+   - Set context for product mention
+9. Product Introduction (First mention): Use [SYNONYM 1] naturally in context of solutions
+   - Example: "Одним из инструментов, который решает эту задачу, является [SYNONYM 1]"
+   - Explain briefly how it addresses the pain (1-2 sentences)
+   - ${leanUVP ? `Mention UVP naturally: ${leanUVP}` : ""}
+10. Product Context (Second mention, if needed): Use [SYNONYM 2] in different context
+    - Example: "Такие платформы, как [SYNONYM 2], позволяют..."
+    - Keep it contextual and natural
+11. CTA: Informative, low-pressure offer to explore solutions
+    - Use [SYNONYM 3] or repeat one of previous synonyms
+    - Example: "Изучите возможности [SYNONYM 3] для решения этой проблемы"
 
-CRITICAL: Focus 90% on exploring the pain itself. Product mention should be minimal and natural.
+CRITICAL RULES:
+- Focus 85% on exploring the pain itself
+- Product mentions: 2-3 times total, using DIFFERENT synonyms
+- Each mention must be in different section/context
+- Create smooth, natural transitions - never abrupt jumps
+- Avoid sales language: no "купите", "закажите", "только сегодня"
+- Use informative, helpful tone throughout
+- Product should feel like a natural part of the solution landscape, not a sales pitch
 
 ${baseInstructions}
 
