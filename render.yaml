@@ -1,5 +1,25 @@
+# ============================================
+# TRYGO Platform - Render Deployment Configuration
+# ============================================
+# 
+# ВАЖНО:
+# - semantics-service и images-service закомментированы (их нет в проекте)
+# - Если вы создадите эти сервисы, раскомментируйте соответствующие блоки
+# - SEMANTICS_SERVICE_URL и IMAGES_SERVICE_URL нужно установить вручную в Render Dashboard
+#
+# Для деплоя:
+# 1. Подключите репозиторий в Render Dashboard
+# 2. Выберите "New Blueprint" и укажите этот файл
+# 3. Установите все переменные окружения с sync: false
+#
+# Подробная инструкция: см. DEPLOY_RENDER.md
+# ============================================
+
 services:
-  # Backend (GraphQL API)
+  # ============================================
+  # SEO Agent Backend (GraphQL API)
+  # Основной бэкенд для SEO Agent функциональности
+  # ============================================
   - type: web
     name: seo-agent-backend
     env: node
@@ -12,25 +32,21 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        sync: false
+        sync: false  # Установить вручную в Render Dashboard
       - key: OPENAI_API_KEY
-        sync: false
+        sync: false  # Установить вручную в Render Dashboard
       - key: OPENAI_MODEL
         value: gpt-4o-mini
-      - key: OPENAI_IMAGE_MODEL
-        value: dall-e-2
       - key: FRONTEND_URL
-        sync: false
+        fromService:
+          type: static_site
+          name: trygo-frontend
+          property: host
+      # Если semantics-service и images-service не развернуты, установите URL вручную в Render Dashboard
       - key: SEMANTICS_SERVICE_URL
-        fromService:
-          type: web
-          name: semantics-service
-          property: host
+        sync: false  # Установить вручную: http://localhost:4200 или URL вашего сервиса
       - key: IMAGES_SERVICE_URL
-        fromService:
-          type: web
-          name: images-service
-          property: host
+        sync: false  # Установить вручную: http://localhost:4300 или URL вашего сервиса
       - key: WEBSITE_PAGES_SERVICE_URL
         fromService:
           type: web
@@ -39,34 +55,88 @@ services:
       - key: IMAGE_PROVIDER
         value: openai
       - key: WORDPRESS_BASE_URL
-        sync: false
+        sync: false  # Опционально
       - key: WORDPRESS_USERNAME
-        sync: false
+        sync: false  # Опционально
       - key: WORDPRESS_APP_PASSWORD
-        sync: false
+        sync: false  # Опционально
+      - key: GOOGLE_API_KEY
+        sync: false  # Опционально
+      - key: GEMINI_API_KEY
+        sync: false  # Опционально
 
-  # Frontend (React SPA) - Static Site
+  # ============================================
+  # Main Backend (TRYGO-Backend)
+  # Основной бэкенд для авторизации, проектов, гипотез
+  # ============================================
+  - type: web
+    name: trygo-main-backend
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: TRYGO-Backend
+    buildCommand: npm install && npm run build && npm run codegen
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false  # Установить вручную в Render Dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # Установить вручную в Render Dashboard
+      - key: JWT_SECRET
+        sync: false  # Установить вручную в Render Dashboard
+      - key: STRIPE_SECRET_KEY
+        sync: false  # Опционально, для подписок
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false  # Опционально, для подписок
+      - key: FRONTEND_URL
+        fromService:
+          type: static_site
+          name: trygo-frontend
+          property: host
+      - key: GOOGLE_CLIENT_ID
+        sync: false  # Опционально, для OAuth
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false  # Опционально, для OAuth
+
+  # ============================================
+  # Frontend (React SPA)
+  # Статический сайт, собранный через Vite
+  # ============================================
   - type: static_site
-    name: seo-agent-frontend
+    name: trygo-frontend
     region: frankfurt
     rootDir: TRYGO-Front
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
+      # URL основного бэкенда (TRYGO-Backend)
       - key: VITE_SERVER_URL
         fromService:
           type: web
-          name: seo-agent-backend
+          name: trygo-main-backend
           property: host
-      - key: VITE_WS_SERVER_URL
+      # URL SEO Agent бэкенда
+      - key: VITE_SEO_AGENT_URL
         fromService:
           type: web
           name: seo-agent-backend
           property: host
+      # WebSocket URL (используется для Socket.IO)
+      - key: VITE_WS_SERVER_URL
+        fromService:
+          type: web
+          name: trygo-main-backend
+          property: host
+      # Google OAuth Client ID
       - key: VITE_GOOGLE_CLIENT_ID
-        sync: false
+        sync: false  # Установить вручную в Render Dashboard
 
-  # Website Pages Service (Content Generation)
+  # ============================================
+  # Website Pages Service
+  # Микросервис для генерации веб-страниц
+  # ============================================
   - type: web
     name: website-pages-service
     env: node
@@ -81,43 +151,50 @@ services:
       - key: PORT
         value: 4400
       - key: OPENAI_API_KEY
-        sync: false
+        sync: false  # Установить вручную в Render Dashboard
 
-  # Images Service (Image Generation)
-  - type: web
-    name: images-service
-    env: node
-    region: frankfurt
-    plan: starter
-    rootDir: images-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 4300
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: OPENAI_IMAGE_MODEL
-        value: dall-e-2
-
+  # ============================================
   # Semantics Service
-  - type: web
-    name: semantics-service
-    env: node
-    region: frankfurt
-    plan: starter
-    rootDir: semantics-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 4200
-      - key: MONGODB_URI
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
+  # Микросервис для работы с семантическими кластерами
+  # ⚠️ ВАЖНО: Если сервис не существует, закомментируйте этот блок
+  # ============================================
+  # - type: web
+  #   name: semantics-service
+  #   env: node
+  #   region: frankfurt
+  #   plan: starter
+  #   rootDir: semantics-service
+  #   buildCommand: npm install && npm run build
+  #   startCommand: npm start
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: PORT
+  #       value: 4200
+  #     - key: MONGODB_URI
+  #       sync: false
+  #     - key: OPENAI_API_KEY
+  #       sync: false
 
+  # ============================================
+  # Images Service
+  # Микросервис для генерации изображений
+  # ⚠️ ВАЖНО: Если сервис не существует, закомментируйте этот блок
+  # ============================================
+  # - type: web
+  #   name: images-service
+  #   env: node
+  #   region: frankfurt
+  #   plan: starter
+  #   rootDir: images-service
+  #   buildCommand: npm install && npm run build
+  #   startCommand: npm start
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: PORT
+  #       value: 4300
+  #     - key: OPENAI_API_KEY
+  #       sync: false
+  #     - key: OPENAI_IMAGE_MODEL
+  #       value: dall-e-2
