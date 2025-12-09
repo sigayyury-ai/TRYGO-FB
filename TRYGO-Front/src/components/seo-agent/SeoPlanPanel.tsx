@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSeoAgentBacklogStore } from "@/store/useSeoAgentBacklogStore";
-import { useSeoAgentPostingSettingsStore } from "@/store/useSeoAgentPostingSettingsStore";
 import { MonthlySchedule } from "./plan/MonthlySchedule";
 import { BacklogPanel } from "./plan/BacklogPanel";
 import LoaderSpinner from "@/components/LoaderSpinner";
-import { BacklogStatus, BacklogIdeaDto } from "@/api/getSeoAgentBacklog";
+import { BacklogStatus, BacklogIdeaDto, getSeoAgentBacklogQuery } from "@/api/getSeoAgentBacklog";
+import { getSeoAgentPostingSettingsQuery, PostingSettingsDto } from "@/api/getSeoAgentPostingSettings";
 
 interface SeoPlanPanelProps {
   projectId: string;
@@ -13,43 +12,64 @@ interface SeoPlanPanelProps {
 }
 
 export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => {
-  const { 
-    backlogItems, 
-    loading: backlogLoading,
-    error: backlogError,
-    getBacklog 
-  } = useSeoAgentBacklogStore();
-  
-  const { 
-    settings, 
-    loading: settingsLoading,
-    error: settingsError,
-    getSettings 
-  } = useSeoAgentPostingSettingsStore();
+  const [backlogItems, setBacklogItems] = useState<BacklogIdeaDto[]>([]);
+  const [settings, setSettings] = useState<PostingSettingsDto | null>(null);
+  const [backlogLoading, setBacklogLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [backlogError, setBacklogError] = useState<string | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   
   // Ref to MonthlySchedule to trigger schedule dialog
   const scheduleRef = useRef<{ openScheduleDialog: (item: BacklogIdeaDto) => void } | null>(null);
 
+  // Load backlog from API
+  const loadBacklog = async () => {
+    if (!projectId) return;
+    
+    setBacklogLoading(true);
+    setBacklogError(null);
+    try {
+      const { data } = await getSeoAgentBacklogQuery(projectId, hypothesisId);
+      setBacklogItems(data?.seoAgentBacklog || []);
+    } catch (error: unknown) {
+      console.error("Error loading backlog:", error);
+      let errorMessage = "Failed to load backlog";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setBacklogError(errorMessage);
+    } finally {
+      setBacklogLoading(false);
+    }
+  };
+
+  // Load settings from API
+  const loadSettings = async () => {
+    if (!projectId) return;
+    
+    setSettingsLoading(true);
+    setSettingsError(null);
+    try {
+      const { data } = await getSeoAgentPostingSettingsQuery(projectId);
+      setSettings(data?.seoAgentPostingSettings || null);
+    } catch (error: unknown) {
+      console.error("Error loading settings:", error);
+      let errorMessage = "Failed to load settings";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setSettingsError(errorMessage);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
-      // Load real data from API
-      console.log("SeoPlanPanel: Loading backlog for projectId:", projectId, "hypothesisId:", hypothesisId);
-      getBacklog(projectId, hypothesisId);
-      getSettings(projectId);
+      loadBacklog();
+      loadSettings();
     }
-  }, [projectId, hypothesisId, getBacklog, getSettings]);
-
-  // Log current backlog state for debugging
-  useEffect(() => {
-    const scheduledCount = backlogItems.filter(item => item.status === BacklogStatus.SCHEDULED).length;
-    const pendingCount = backlogItems.filter(item => item.status === BacklogStatus.PENDING).length;
-    console.log('[SeoPlanPanel] Backlog state:', {
-      total: backlogItems.length,
-      scheduled: scheduledCount,
-      pending: pendingCount,
-      items: backlogItems.map(i => ({ id: i.id, title: i.title, status: i.status })),
-    });
-  }, [backlogItems]);
+  }, [projectId, hypothesisId]);
 
   if (backlogLoading || settingsLoading) {
     return (
@@ -141,6 +161,7 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
                 scheduleRef.current.openScheduleDialog(item);
               }
             }}
+            onBacklogUpdated={loadBacklog}
           />
         </CardContent>
       </Card>

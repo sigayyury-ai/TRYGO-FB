@@ -17,6 +17,7 @@ interface SeoAgentPostingSettingsState {
     weeklyPublishCount: number;
     preferredDays: string[];
     autoPublishEnabled: boolean;
+    language: string | null;
   } | null;
   
   // Actions
@@ -26,12 +27,14 @@ interface SeoAgentPostingSettingsState {
     hypothesisId: string | undefined,
     weeklyPublishCount: number,
     preferredDays: string[],
-    autoPublishEnabled: boolean
+    autoPublishEnabled: boolean,
+    language?: string | null
   ) => Promise<void>;
   setDraftSettings: (
     weeklyPublishCount: number,
     preferredDays: string[],
-    autoPublishEnabled: boolean
+    autoPublishEnabled: boolean,
+    language?: string | null
   ) => void;
   clearDraftSettings: () => void;
   clearError: () => void;
@@ -42,6 +45,7 @@ const defaultSettings = {
   weeklyPublishCount: 2,
   preferredDays: ["Tuesday", "Thursday"],
   autoPublishEnabled: false,
+  language: "Russian" as string | null,
 };
 
 export const useSeoAgentPostingSettingsStore =
@@ -80,6 +84,7 @@ export const useSeoAgentPostingSettingsStore =
                     weeklyPublishCount: settings.weeklyPublishCount,
                     preferredDays: settings.preferredDays,
                     autoPublishEnabled: settings.autoPublishEnabled,
+                    language: settings.language || "Russian",
                   }
                 : defaultSettings,
             });
@@ -125,7 +130,8 @@ export const useSeoAgentPostingSettingsStore =
           hypothesisId: string | undefined,
           weeklyPublishCount: number,
           preferredDays: string[],
-          autoPublishEnabled: boolean
+          autoPublishEnabled: boolean,
+          language?: string | null
         ) => {
           set({ loading: true, error: null });
           try {
@@ -135,6 +141,7 @@ export const useSeoAgentPostingSettingsStore =
               weeklyPublishCount,
               preferredDays,
               autoPublishEnabled,
+              language,
             });
 
             const updatedSettings = data.updateSeoAgentPostingSettings;
@@ -144,6 +151,7 @@ export const useSeoAgentPostingSettingsStore =
                 weeklyPublishCount: updatedSettings.weeklyPublishCount,
                 preferredDays: updatedSettings.preferredDays,
                 autoPublishEnabled: updatedSettings.autoPublishEnabled,
+                language: updatedSettings.language || "Russian",
               },
               loading: false,
             });
@@ -162,13 +170,15 @@ export const useSeoAgentPostingSettingsStore =
         setDraftSettings: (
           weeklyPublishCount: number,
           preferredDays: string[],
-          autoPublishEnabled: boolean
+          autoPublishEnabled: boolean,
+          language?: string | null
         ) => {
           set({
             draftSettings: {
               weeklyPublishCount,
               preferredDays,
               autoPublishEnabled,
+              language: language !== undefined ? language : get().draftSettings?.language || "Russian",
             },
           });
         },
@@ -181,6 +191,7 @@ export const useSeoAgentPostingSettingsStore =
                   weeklyPublishCount: currentSettings.weeklyPublishCount,
                   preferredDays: currentSettings.preferredDays,
                   autoPublishEnabled: currentSettings.autoPublishEnabled,
+                  language: currentSettings.language || "Russian",
                 }
               : defaultSettings,
           });

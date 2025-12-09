@@ -9,7 +9,12 @@ const {
   WEBSITE_PAGES_SERVICE_URL = "http://localhost:4400",
   FRONTEND_URL = "http://localhost:8080",
   GOOGLE_API_KEY,
-  GEMINI_API_KEY
+  GEMINI_API_KEY,
+  OPENAI_API_KEY,
+  OPENAI_MODEL = "gpt-4o-mini",
+  WORDPRESS_BASE_URL,
+  WORDPRESS_USERNAME,
+  WORDPRESS_APP_PASSWORD
 } = process.env;
 
 if (!MONGODB_URI) {
@@ -29,6 +34,11 @@ export const env = {
   websitePagesServiceUrl: WEBSITE_PAGES_SERVICE_URL.replace(/\/$/, ""),
   frontendUrl: FRONTEND_URL,
   googleApiKey: GOOGLE_API_KEY,
-  geminiApiKey: GEMINI_API_KEY
+  geminiApiKey: GEMINI_API_KEY,
+  openAiApiKey: OPENAI_API_KEY,
+  openAiModel: OPENAI_MODEL,
+  wordpressBaseUrl: WORDPRESS_BASE_URL,
+  wordpressUsername: WORDPRESS_USERNAME,
+  wordpressAppPassword: WORDPRESS_APP_PASSWORD
 };
 

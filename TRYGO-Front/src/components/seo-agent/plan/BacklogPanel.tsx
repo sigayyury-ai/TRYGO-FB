@@ -6,11 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useSeoAgentBacklogStore } from "@/store/useSeoAgentBacklogStore";
 import { useToast } from "@/hooks/use-toast";
 import { generateContentForBacklogIdeaMutation } from "@/api/generateContentForBacklogIdea";
 import { getContentItemByBacklogIdeaQuery } from "@/api/getContentItemByBacklogIdea";
 import { ContentEditor } from "./ContentEditor";
+import { updateSeoAgentBacklogItemMutation } from "@/api/updateSeoAgentBacklogItem";
+import { deleteSeoAgentBacklogItemMutation } from "@/api/deleteSeoAgentBacklogItem";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ interface BacklogPanelProps {
   hypothesisId?: string;
   backlogItems: BacklogIdeaDto[];
   onScheduleItem?: (item: BacklogIdeaDto) => void;
+  onBacklogUpdated?: () => void;
 }
 
 interface ContentItem {
@@ -39,9 +41,9 @@ interface ContentItem {
 type SortOption = "newest" | "oldest" | "title";
 type FilterOption = "all" | BacklogContentType;
 
-export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onScheduleItem }: BacklogPanelProps) => {
-  const { updateBacklogItem, deleteBacklogItem, loading } = useSeoAgentBacklogStore();
+export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onScheduleItem, onBacklogUpdated }: BacklogPanelProps) => {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -130,26 +132,33 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
       return;
     }
 
+    setLoading(true);
     try {
-      await updateBacklogItem(
-        item.id,
-        editTitle,
-        editDescription || undefined,
-        item.contentType,
-        item.status,
-        item.clusterId
-      );
+      await updateSeoAgentBacklogItemMutation(item.id, {
+        title: editTitle,
+        description: editDescription || undefined,
+        contentType: item.contentType,
+        status: item.status,
+        clusterId: item.clusterId,
+        scheduledDate: item.scheduledDate,
+      });
       setEditingId(null);
       toast({
         title: "Success",
         description: "Backlog item updated",
       });
+      // Reload backlog from API
+      if (onBacklogUpdated) {
+        onBacklogUpdated();
+      }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update item",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -176,13 +185,18 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
     // Save scroll position before deletion
     scrollPositionRef.current = window.scrollY || document.documentElement.scrollTop;
 
+    setLoading(true);
     try {
-      await deleteBacklogItem(itemId);
+      await deleteSeoAgentBacklogItemMutation(itemId);
       
       toast({
         title: "Success",
         description: "Backlog item deleted",
       });
+      // Reload backlog from API
+      if (onBacklogUpdated) {
+        onBacklogUpdated();
+      }
     } catch (error) {
       scrollPositionRef.current = null; // Clear on error
       toast({
@@ -190,6 +204,8 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
         description: "Failed to delete item",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -208,6 +224,13 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
   }, [backlogItems]);
 
   const handleGenerateContent = async (item: BacklogIdeaDto) => {
+    console.log("[BacklogPanel] Starting content generation:", {
+      backlogIdeaId: item.id,
+      projectId,
+      hypothesisId,
+      itemTitle: item.title
+    });
+    
     setGeneratingId(item.id);
     try {
       const { data } = await generateContentForBacklogIdeaMutation({
@@ -215,6 +238,8 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
         projectId,
         hypothesisId,
       });
+      
+      console.log("[BacklogPanel] Content generation response:", data);
 
       if (data?.generateContentForBacklogIdea) {
         const contentItem = data.generateContentForBacklogIdea;
@@ -238,6 +263,14 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
         });
       }
     } catch (error: any) {
+      console.error("[BacklogPanel] Content generation error:", error);
+      console.error("[BacklogPanel] Error details:", {
+        message: error.message,
+        stack: error.stack,
+        graphQLErrors: error.graphQLErrors,
+        networkError: error.networkError
+      });
+      
       toast({
         title: "Error",
         description: error.message || "Failed to generate content",

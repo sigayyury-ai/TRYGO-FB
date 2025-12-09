@@ -71,8 +71,6 @@ export const getSeoAgentContentIdeasQuery = (
     variables.hypothesisId = hypothesisId;
   }
   
-  console.log("Fetching content ideas with variables:", variables);
-  
   return SEO_AGENT_QUERY<GetSeoAgentContentIdeasResponse>({
     query: GET_SEO_AGENT_CONTENT_IDEAS,
     variables,

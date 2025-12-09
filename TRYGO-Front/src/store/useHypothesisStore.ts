@@ -66,15 +66,41 @@ export const useHypothesisStore = create<HypothesisState>()(
             loading: false,
           });
 
-          // Always select the first hypothesis when loading hypotheses for a project
-          // This ensures that when switching projects, the first hypothesis is auto-selected
+          // Validate activeHypothesis - check if it exists in fresh data and belongs to current project
+          const validActiveHypothesis = get().activeHypothesis;
+          if (validActiveHypothesis && validActiveHypothesis.id) {
+            const freshHypothesis = hypotheses.find(h => h.id === validActiveHypothesis.id);
+            if (!freshHypothesis) {
+              // Hypothesis from store doesn't exist in fresh data - clear it
+              set({ activeHypothesis: null });
+              // Также очищаем из persist storage
+              try {
+                const persistStorage = localStorage.getItem('hypothesis-store');
+                if (persistStorage) {
+                  const parsed = JSON.parse(persistStorage);
+                  if (parsed.state?.activeHypothesis?.id === validActiveHypothesis.id) {
+                    parsed.state.activeHypothesis = null;
+                    localStorage.setItem('hypothesis-store', JSON.stringify(parsed));
+                  }
+                }
+              } catch (e) {
+                // Silent fail
+              }
+            } else if (freshHypothesis.title !== validActiveHypothesis.title || 
+                       freshHypothesis.projectId !== projectId) {
+              // Hypothesis title changed or belongs to different project - update it
+              set({ activeHypothesis: freshHypothesis });
+            }
+          }
+
+          // Select hypothesis: prioritize saved activeHypothesis if it belongs to current project
+          // Otherwise select the first hypothesis
           if (hypotheses.length > 0) {
-            const currentActiveHypothesis = get().activeHypothesis;
             const isActiveHypothesisInCurrentProject = currentActiveHypothesis && 
-              hypotheses.some(h => h.id === currentActiveHypothesis.id);
+              hypotheses.some(h => h.id === currentActiveHypothesis.id && h.projectId === projectId);
             
-            // If no active hypothesis or active hypothesis doesn't belong to current project,
-            // select the first hypothesis
+            // If active hypothesis exists and belongs to current project, keep it
+            // Otherwise, select the first hypothesis
             if (!currentActiveHypothesis || !isActiveHypothesisInCurrentProject) {
               set({ activeHypothesis: hypotheses[0] });
             }
@@ -95,10 +121,23 @@ export const useHypothesisStore = create<HypothesisState>()(
       },
 
       setActiveHypothesis: (hypothesisId) => {
+        // Валидация: не позволяем установить удаленную гипотезу
+        if (hypothesisId === DELETED_HYPOTHESIS_ID) {
+          set({ activeHypothesis: null });
+          return;
+        }
+        
+        // Если пустая строка, просто очищаем
+        if (!hypothesisId || hypothesisId.trim() === "") {
+          set({ activeHypothesis: null });
+          return;
+        }
+        
         const hypothesis = get().hypotheses.find((h) => h.id === hypothesisId);
         if (hypothesis) {
           set({ activeHypothesis: hypothesis });
         }
+        // Не логируем если не найдено - это нормально при инициализации
       },
 
       changeHypothesis: async (input) => {
@@ -165,9 +204,9 @@ export const useHypothesisStore = create<HypothesisState>()(
       },
     }),
     {
-      name: "hypothesis-storage",
+      name: "hypothesis-store",
+      // Сохраняем только activeHypothesis, не сохраняем hypotheses (они загружаются из API)
       partialize: (state) => ({
-        hypotheses: state.hypotheses,
         activeHypothesis: state.activeHypothesis,
       }),
     }

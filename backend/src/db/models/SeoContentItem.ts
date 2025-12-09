@@ -1,6 +1,6 @@
 import { Schema, model, type Document, type Model } from "mongoose";
 
-export type ContentStatus = "draft" | "review" | "ready" | "published";
+export type ContentStatus = "draft" | "review" | "ready" | "published" | "archived";
 
 export type ContentCategory =
   | "pain"
@@ -60,7 +60,7 @@ const SeoContentItemSchema = new Schema<SeoContentItemDoc>(
     imageUrl: { type: String }, // Generated image URL
     status: {
       type: String,
-      enum: ["draft", "review", "ready", "published"],
+      enum: ["draft", "review", "ready", "published", "archived"],
       default: "draft",
       index: true
     },

@@ -20,6 +20,7 @@ export interface ContentGenerationRequest {
   backlogIdeaId?: string;
   projectId?: string;
   hypothesisId?: string;
+  userId?: string; // ⭐ Добавлено для проверки принадлежности проекта
 }
 
 export interface ContentGenerationResponse {
@@ -102,29 +103,50 @@ ${faq.answer}`).join("\n\n")}` : ""}`;
 
     // For blog articles, use new prompt system if backlogIdeaId is provided
     if (request.backlogIdeaId && request.projectId && request.hypothesisId) {
-      // Use new prompt system with content type detection
-      const backlogIdea = await SeoBacklogIdea.findById(request.backlogIdeaId).exec();
-      if (!backlogIdea) {
-        throw new Error("Backlog idea not found");
-      }
+      try {
+        console.log("[generateContent] Using new prompt system:", {
+          backlogIdeaId: request.backlogIdeaId,
+          projectId: request.projectId,
+          hypothesisId: request.hypothesisId,
+          title: request.title
+        });
 
-      // Load SEO context
-      const seoContext = await loadSeoContext(request.projectId, request.hypothesisId);
+        // Use new prompt system with content type detection
+        const backlogIdea = await SeoBacklogIdea.findById(request.backlogIdeaId).exec();
+        if (!backlogIdea) {
+          throw new Error(`Backlog idea not found: ${request.backlogIdeaId}`);
+        }
 
-      // Build prompt using new system
-      const { prompt } = buildDraftPrompt({
-        context: seoContext,
-        idea: backlogIdea,
-        contentType: "article",
-        language: seoContext.language
-      });
+        // Load SEO context
+        const seoContext = await loadSeoContext(request.projectId, request.hypothesisId, request.userId);
+        console.log("[generateContent] SEO context loaded for:", {
+          project: seoContext.project?.title || "NOT FOUND",
+          hypothesis: seoContext.hypothesis?.title || "NOT FOUND",
+          hasICP: !!seoContext.icp,
+          hasLeanCanvas: !!seoContext.leanCanvas,
+          clustersCount: seoContext.clusters?.length || 0,
+          language: seoContext.language
+        });
 
-      const OpenAI = (await import("openai")).default;
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error("OPENAI_API_KEY is not set in environment variables");
-      }
-      const client = new OpenAI({ apiKey });
+        // Build prompt using new system
+        console.log("[generateContent] Building draft prompt...");
+        const { prompt, detectedType } = buildDraftPrompt({
+          context: seoContext,
+          idea: backlogIdea,
+          contentType: "article",
+          language: seoContext.language
+        });
+        console.log("[generateContent] Prompt built, detected type:", detectedType);
+        console.log("[generateContent] Prompt length:", prompt.length);
+
+        const OpenAI = (await import("openai")).default;
+        const apiKey = process.env.OPENAI_API_KEY || env.openAiApiKey;
+        if (!apiKey) {
+          console.error("[generateContent] OPENAI_API_KEY is not set!");
+          throw new Error("OPENAI_API_KEY is not set in environment variables");
+        }
+        console.log("[generateContent] OpenAI API key found, creating client...");
+        const client = new OpenAI({ apiKey });
 
       const response = await client.chat.completions.create({
         model: "gpt-4o-mini",
@@ -152,10 +174,15 @@ ${faq.answer}`).join("\n\n")}` : ""}`;
       const parsed = JSON.parse(jsonContent);
       const markdownContent = convertJsonToMarkdown(parsed, request.title);
 
-      return {
-        content: markdownContent,
-        outline: parsed.summary || request.description || ""
-      };
+        return {
+          content: markdownContent,
+          outline: parsed.summary || request.description || ""
+        };
+      } catch (error: any) {
+        console.error("[generateContent] Error in new prompt system:", error);
+        // Re-throw to be caught by outer catch block
+        throw error;
+      }
     }
 
     // Fallback to old prompt system for backward compatibility

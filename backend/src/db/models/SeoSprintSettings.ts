@@ -6,6 +6,7 @@ export interface SeoSprintSettingsDocument extends mongoose.Document {
   weeklyCadence: number;
   publishDays: number[];
   timezone?: string | null;
+  language?: string | null;
   updatedBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +27,7 @@ const SeoSprintSettingsSchema = new Schema<SeoSprintSettingsDocument>(
       }
     },
     timezone: { type: String, default: "UTC" },
+    language: { type: String, default: null },
     updatedBy: { type: String, default: null }
   },
   {

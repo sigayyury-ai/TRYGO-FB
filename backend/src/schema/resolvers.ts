@@ -265,18 +265,127 @@ export const resolvers = {
     },
     seoAgentContentIdeas: async (
       _: unknown,
-      args: { projectId: string; hypothesisId?: string }
+      args: { projectId: string; hypothesisId?: string },
+      context: any
     ) => {
-      console.log("Fetching seoAgentContentIdeas for projectId:", args.projectId, "hypothesisId:", args.hypothesisId);
-      const query: Record<string, unknown> = { projectId: args.projectId };
-      if (args.hypothesisId) {
-        query.hypothesisId = args.hypothesisId;
+      console.log("[seoAgentContentIdeas] 📥 Request:", {
+        projectId: args.projectId,
+        hypothesisId: args.hypothesisId || "NOT PROVIDED",
+        contextUserId: context?.userId || "NOT PROVIDED"
+      });
+      
+      if (!args.hypothesisId) {
+        console.log("[seoAgentContentIdeas] ⚠️ No hypothesisId provided, returning empty array");
+        return [];
       }
-      const docs = await SeoContentItem.find(query)
+
+      // Check for existing content ideas (exclude archived/dismissed ones)
+      const query: Record<string, unknown> = { 
+        projectId: args.projectId,
+        hypothesisId: args.hypothesisId,
+        status: { $ne: "archived" } // archived status means dismissed
+      };
+      const existingDocs = await SeoContentItem.find(query)
         .sort({ updatedAt: -1 })
         .exec();
-      console.log(`Found ${docs.length} content items`);
-      return docs.map(mapContentIdea);
+      
+      console.log(`[seoAgentContentIdeas] ✅ Found ${existingDocs.length} existing content items`);
+      if (existingDocs.length > 0) {
+        console.log(`[seoAgentContentIdeas] Sample titles:`, existingDocs.slice(0, 3).map(d => d.title));
+      }
+
+      // Return existing ideas only - generation should be done via mutation
+      return existingDocs.map(mapContentIdea);
+      try {
+        const { loadSeoContext } = await import("../services/context/seoContext.js");
+        const { generateIdeasFromOpenAI } = await import("../services/contentIdeas/generator.js");
+        
+        const userId = context?.userId || "system";
+        const seoContext = await loadSeoContext(args.projectId, args.hypothesisId, userId);
+
+        // Get language from settings or context
+        let language = seoContext.language;
+        if (!language) {
+          // Try to get from SeoSprintSettings
+          const settings = await SeoSprintSettings.findOne({
+            projectId: args.projectId,
+            hypothesisId: args.hypothesisId
+          }).exec();
+          language = settings?.language || null;
+        }
+        // Fallback to Russian if still no language
+        if (!language) {
+          language = "Russian";
+        }
+
+        // Categories to generate ideas for
+        const categories = [
+          { name: "PAIN", count: 3 },
+          { name: "GOAL", count: 3 },
+          { name: "TRIGGER", count: 3 },
+          { name: "FEATURE", count: 3 },
+          { name: "BENEFIT", count: 3 },
+          { name: "FAQ", count: 3 },
+          { name: "INFO", count: 3 }
+        ];
+
+        const allGeneratedIdeas: any[] = [];
+
+        // Generate ideas for each category
+        for (const { name, count } of categories) {
+          try {
+            const generated = await generateIdeasFromOpenAI({
+              context: seoContext,
+              category: name,
+              count,
+              language: language
+            });
+
+            // Map generated ideas to SeoContentItem format
+            for (const idea of generated) {
+              // Determine format and category
+              let format: "blog" | "commercial" | "faq" = "blog";
+              let category: string = name.toLowerCase();
+              
+              if (name === "FEATURE" || name === "BENEFIT") {
+                format = "commercial";
+                category = name === "FEATURE" ? "feature" : "benefit";
+              } else if (name === "FAQ") {
+                format = "faq";
+                category = "faq";
+              } else {
+                format = "blog";
+                category = name.toLowerCase();
+              }
+
+              // Create SeoContentItem
+              const contentItem = await SeoContentItem.create({
+                projectId: args.projectId,
+                hypothesisId: args.hypothesisId,
+                title: idea.title,
+                category: category as any,
+                format: format,
+                status: "draft",
+                outline: idea.summary,
+                createdBy: userId,
+                updatedBy: userId
+              });
+
+              allGeneratedIdeas.push(contentItem);
+            }
+          } catch (error) {
+            console.error(`Error generating ideas for category ${name}:`, error);
+            // Continue with other categories
+          }
+        }
+
+        console.log(`Generated ${allGeneratedIdeas.length} new content ideas`);
+        return allGeneratedIdeas.map(mapContentIdea);
+      } catch (error) {
+        console.error("Error generating content ideas:", error);
+        // Return empty array if generation fails
+        return [];
+      }
     },
     seoAgentPostingSettings: async (
       _: unknown,
@@ -290,7 +399,7 @@ export const resolvers = {
       if (settings) {
         // Map publishDays (numbers 0-6) to day names
         const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        const preferredDays = settings.publishDays.map(day => dayNames[day] || `Day ${day}`);
+        const preferredDays = settings.publishDays.map((day: number) => dayNames[day] || `Day ${day}`);
         
         return {
           id: settings.id,
@@ -298,6 +407,7 @@ export const resolvers = {
           hypothesisId: settings.hypothesisId || null,
           weeklyPublishCount: settings.weeklyCadence,
           preferredDays,
+          language: settings.language || null,
           autoPublishEnabled: false, // Not in SeoSprintSettings model yet
           createdAt: settings.createdAt,
           updatedAt: settings.updatedAt
@@ -308,6 +418,7 @@ export const resolvers = {
       return {
         id: `posting-settings-${args.projectId}`,
         projectId: args.projectId,
+        language: null,
         hypothesisId: null,
         weeklyPublishCount: 2,
         preferredDays: ["Tuesday", "Thursday"],
@@ -653,18 +764,25 @@ export const resolvers = {
       });
       
       // Use existing SeoSprintSettings model
+      const updateData: any = {
+        projectId: input.projectId,
+        hypothesisId: input.hypothesisId || "",
+        weeklyCadence: input.weeklyPublishCount,
+        publishDays,
+        updatedBy: userId
+      };
+      
+      // Add language if provided
+      if (input.language !== undefined && input.language !== null) {
+        updateData.language = input.language;
+      }
+      
       const settings = await SeoSprintSettings.findOneAndUpdate(
         { 
           projectId: input.projectId,
           hypothesisId: input.hypothesisId || ""
         },
-        {
-          projectId: input.projectId,
-          hypothesisId: input.hypothesisId || "",
-          weeklyCadence: input.weeklyPublishCount,
-          publishDays,
-          updatedBy: userId
-        },
+        updateData,
         { 
           upsert: true, 
           new: true 
@@ -676,7 +794,7 @@ export const resolvers = {
       }
       
       // Map back to PostingSettings format
-      const preferredDays = settings.publishDays.map(day => dayNames[day] || `Day ${day}`);
+      const preferredDays = settings.publishDays.map((day: number) => dayNames[day] || `Day ${day}`);
       
       return {
         id: settings.id,
@@ -685,6 +803,7 @@ export const resolvers = {
         weeklyPublishCount: settings.weeklyCadence,
         preferredDays,
         autoPublishEnabled: input.autoPublishEnabled || false, // Not stored in SeoSprintSettings yet
+        language: settings.language || null,
         createdAt: settings.createdAt,
         updatedAt: settings.updatedAt
       };
@@ -762,10 +881,21 @@ export const resolvers = {
       const { backlogIdeaId, projectId, hypothesisId } = input;
       const userId = context?.userId || "system";
 
-      // Get backlog idea
+      // Get backlog idea first to get project/hypothesis info
       const backlogIdea = await SeoBacklogIdea.findById(backlogIdeaId).exec();
       if (!backlogIdea) {
+        console.error("[generateContentForBacklogIdea] Backlog idea not found:", backlogIdeaId);
         throw new Error("Backlog idea not found");
+      }
+
+      // Ensure hypothesisId is available
+      const finalHypothesisId = hypothesisId || backlogIdea.hypothesisId;
+      if (!finalHypothesisId) {
+        console.error("[generateContentForBacklogIdea] hypothesisId is missing:", {
+          providedHypothesisId: hypothesisId,
+          backlogIdeaHypothesisId: backlogIdea.hypothesisId
+        });
+        throw new Error("hypothesisId is required for content generation");
       }
 
       // Import generation service
@@ -784,70 +914,102 @@ export const resolvers = {
         }
       }
 
-      // Generate content using new prompt system
-      const generated = await generateContent({
-        title: backlogIdea.title,
-        description: backlogIdea.description || undefined,
-        category: backlogIdea.category || "info",
-        contentType: "ARTICLE", // Default to ARTICLE, can be extended
-        projectContext: {}, // Fallback for old system
-        hypothesisContext: {}, // Fallback for old system
-        clusterContext,
-        // New: use new prompt system
-        backlogIdeaId: backlogIdea.id,
-        projectId,
-        hypothesisId: hypothesisId || backlogIdea.hypothesisId
-      });
+      try {
+        // Load SEO context first to get project and hypothesis titles for logging
+        const { loadSeoContext } = await import("../services/context/seoContext.js");
+        const userId = context?.userId || "system";
+        const seoContext = await loadSeoContext(projectId, finalHypothesisId, userId);
+        
+        console.log("[generateContentForBacklogIdea] ===== CONTENT GENERATION START =====");
+        console.log("[generateContentForBacklogIdea] Project:", seoContext.project?.title || "NOT FOUND", `(ID: ${projectId})`);
+        console.log("[generateContentForBacklogIdea] Hypothesis:", seoContext.hypothesis?.title || "NOT FOUND", `(ID: ${finalHypothesisId})`);
+        console.log("[generateContentForBacklogIdea] Backlog Idea:", backlogIdea.title, `(ID: ${backlogIdeaId})`);
+        console.log("[generateContentForBacklogIdea] Category:", backlogIdea.category || "info");
 
-      // Map category
-      const categoryMap: Record<string, ContentCategory> = {
-        PAIN: "pain",
-        GOAL: "goal",
-        TRIGGER: "trigger",
-        FEATURE: "feature",
-        BENEFIT: "benefit",
-        FAQ: "faq",
-        INFO: "info"
-      };
-      const category = categoryMap[backlogIdea.category?.toUpperCase() || "INFO"] || "info";
+        // Generate content using new prompt system
+        const generated = await generateContent({
+          title: backlogIdea.title,
+          description: backlogIdea.description || undefined,
+          category: backlogIdea.category || "info",
+          userId,
+          contentType: "ARTICLE", // Default to ARTICLE, can be extended
+          projectContext: {}, // Fallback for old system
+          hypothesisContext: {}, // Fallback for old system
+          clusterContext,
+          // New: use new prompt system
+          backlogIdeaId: backlogIdea.id,
+          projectId,
+          hypothesisId: finalHypothesisId
+        });
 
-      // Create or update content item
-      const existingItem = await SeoContentItem.findOne({ backlogIdeaId }).exec();
-      
-      let doc: SeoContentItemDoc;
-      if (existingItem) {
-        doc = await SeoContentItem.findByIdAndUpdate(
-          existingItem.id,
-          {
+        // Map category
+        const categoryMap: Record<string, ContentCategory> = {
+          PAIN: "pain",
+          GOAL: "goal",
+          TRIGGER: "trigger",
+          FEATURE: "feature",
+          BENEFIT: "benefit",
+          FAQ: "faq",
+          INFO: "info"
+        };
+        const category = categoryMap[backlogIdea.category?.toUpperCase() || "INFO"] || "info";
+
+        // Create or update content item
+        const existingItem = await SeoContentItem.findOne({ backlogIdeaId }).exec();
+        
+        let doc: SeoContentItemDoc;
+        if (existingItem) {
+          doc = await SeoContentItem.findByIdAndUpdate(
+            existingItem.id,
+            {
+              title: backlogIdea.title,
+              outline: generated.outline || backlogIdea.description || "",
+              content: generated.content,
+              status: "draft" as SeoContentItemDoc["status"],
+              updatedBy: userId
+            },
+            { new: true }
+          ).exec() as SeoContentItemDoc;
+        } else {
+          doc = await SeoContentItem.create({
+            projectId,
+            hypothesisId: finalHypothesisId,
+            backlogIdeaId,
             title: backlogIdea.title,
+            category: category as ContentCategory,
+            format: "blog" as SeoContentItemDoc["format"],
             outline: generated.outline || backlogIdea.description || "",
             content: generated.content,
             status: "draft" as SeoContentItemDoc["status"],
+            createdBy: userId,
             updatedBy: userId
-          },
-          { new: true }
-        ).exec() as SeoContentItemDoc;
-      } else {
-        doc = await SeoContentItem.create({
-          projectId,
-          hypothesisId: hypothesisId || backlogIdea.hypothesisId || "",
-          backlogIdeaId,
-          title: backlogIdea.title,
-          category: category as ContentCategory,
-          format: "blog" as SeoContentItemDoc["format"],
-          outline: generated.outline || backlogIdea.description || "",
-          content: generated.content,
-          status: "draft" as SeoContentItemDoc["status"],
-          createdBy: userId,
-          updatedBy: userId
+          });
+        }
+
+        if (!doc) {
+          throw new Error("Failed to create content item");
+        }
+
+        console.log("[generateContentForBacklogIdea] Content item created/updated:", {
+          id: doc.id,
+          title: doc.title,
+          status: doc.status,
+          contentLength: doc.content?.length || 0
         });
-      }
 
-      if (!doc) {
-        throw new Error("Failed to create content item");
+        return mapContentItem(doc);
+      } catch (error: any) {
+        console.error("[generateContentForBacklogIdea] Error:", error);
+        console.error("[generateContentForBacklogIdea] Details:", {
+          backlogIdeaId,
+          projectId,
+          hypothesisId: finalHypothesisId,
+          backlogIdeaTitle: backlogIdea.title,
+          errorMessage: error?.message,
+          errorStack: error?.stack
+        });
+        throw error;
       }
-
-      return mapContentItem(doc);
     },
     generateImageForContent: async (
       _: unknown,
@@ -897,7 +1059,7 @@ export const resolvers = {
       const userId = context?.userId || "system";
 
       // Get content item
-      const { contentItemId } = input;
+      const contentItemId = id;
       const contentItem = await SeoContentItem.findById(contentItemId).exec();
       if (!contentItem) {
         throw new Error("Content item not found");
@@ -929,6 +1091,7 @@ export const resolvers = {
       const basePrompt = promptPart || `Regenerate the content for "${contentItem.title}" with improvements and better structure.`;
 
       // Generate new content
+      const userIdForGeneration = context?.userId || "system";
       const generated = await generateContent({
         title: contentItem.title,
         description: contentItem.outline || undefined,
@@ -936,7 +1099,8 @@ export const resolvers = {
         contentType: contentItem.format === "commercial" ? "COMMERCIAL_PAGE" : "ARTICLE",
         projectContext: {}, // TODO: Load from main backend
         hypothesisContext: {}, // TODO: Load from main backend
-        clusterContext
+        clusterContext,
+        userId: userIdForGeneration
       });
 
       // Update content item with regenerated content
@@ -945,7 +1109,7 @@ export const resolvers = {
         {
           content: generated.content,
           outline: generated.outline || contentItem.outline,
-          updatedBy: userId
+          updatedBy: userIdForGenerationForGeneration
         },
         { new: true }
       ).exec();
@@ -965,7 +1129,7 @@ export const resolvers = {
 
       // Update status to "ready" (approved and ready for publishing)
       const updated = await SeoContentItem.findByIdAndUpdate(
-        id,
+        input.contentItemId,
         {
           status: "ready" as SeoContentItemDoc["status"],
           updatedBy: userId
@@ -978,6 +1142,163 @@ export const resolvers = {
       }
 
       return mapContentItem(updated);
+    },
+    generateContentIdeas: async (
+      _: unknown,
+      args: { projectId: string; hypothesisId: string; category?: string },
+      context: any
+    ) => {
+      // Валидация входных параметров
+      if (!args.projectId || !args.projectId.trim()) {
+        throw new Error("projectId is required");
+      }
+      if (!args.hypothesisId || !args.hypothesisId.trim()) {
+        throw new Error("hypothesisId is required");
+      }
+      
+      console.log("[generateContentIdeas] Request:", { projectId: args.projectId, hypothesisId: args.hypothesisId, category: args.category || "ALL" });
+      
+      try {
+        const { loadSeoContext } = await import("../services/context/seoContext.js");
+        const { generateIdeasFromOpenAI, checkDuplicateIdea } = await import("../services/contentIdeas/generator.js");
+        
+        // Загружаем SEO контекст с проверкой принадлежности гипотезы к проекту
+        const userId = context?.userId || "system";
+        const seoContext = await loadSeoContext(args.projectId, args.hypothesisId, userId);
+        console.log("[generateContentIdeas] Context:", seoContext.project?.title, "|", seoContext.hypothesis?.title);
+
+        // Get language from settings or context
+        let language = seoContext.language;
+        if (!language) {
+          const settings = await SeoSprintSettings.findOne({
+            projectId: args.projectId,
+            hypothesisId: args.hypothesisId
+          }).exec();
+          language = settings?.language || null;
+        }
+        if (!language) {
+          language = "Russian";
+        }
+
+        // Map category from ContentCategory enum to generator category names
+        const categoryMap: Record<string, string> = {
+          "PAINS": "PAIN",
+          "GOALS": "GOAL",
+          "TRIGGERS": "TRIGGER",
+          "PRODUCT_FEATURES": "FEATURE",
+          "BENEFITS": "BENEFIT",
+          "FAQS": "FAQ",
+          "INFORMATIONAL": "INFO"
+        };
+
+        // If specific category requested, generate only for that category
+        let categories: Array<{ name: string; count: number }>;
+        if (args.category && categoryMap[args.category]) {
+          categories = [{ name: categoryMap[args.category], count: 3 }];
+        } else {
+          // Generate for all categories
+          categories = [
+            { name: "PAIN", count: 3 },
+            { name: "GOAL", count: 3 },
+            { name: "TRIGGER", count: 3 },
+            { name: "FEATURE", count: 3 },
+            { name: "BENEFIT", count: 3 },
+            { name: "FAQ", count: 3 },
+            { name: "INFO", count: 3 }
+          ];
+        }
+
+        const allGeneratedIdeas: any[] = [];
+        let duplicatesSkipped = 0;
+
+        // Generate ideas for each category
+        for (const { name, count } of categories) {
+          try {
+            console.log(`[generateContentIdeas] Generating ${count} ideas for category: ${name}`);
+            const generated = await generateIdeasFromOpenAI({
+              context: seoContext,
+              category: name,
+              count,
+              language: language
+            });
+            console.log(`[generateContentIdeas] Generated ${generated.length} ideas for category: ${name}`);
+
+            // Map generated ideas to SeoContentItem format and check for duplicates
+            for (const idea of generated) {
+              // Check for duplicates before saving
+              const isDuplicate = await checkDuplicateIdea(
+                args.projectId,
+                args.hypothesisId,
+                idea.title,
+                idea.summary
+              );
+              
+              if (isDuplicate) {
+                console.log(`[generateContentIdeas] Skipping duplicate idea: "${idea.title}"`);
+                duplicatesSkipped++;
+                continue;
+              }
+
+              // Determine format and category
+              let format: "blog" | "commercial" | "faq" = "blog";
+              let category: string = name.toLowerCase();
+              
+              if (name === "FEATURE" || name === "BENEFIT") {
+                format = "commercial";
+                category = name === "FEATURE" ? "feature" : "benefit";
+              } else if (name === "FAQ") {
+                format = "faq";
+                category = "faq";
+              } else {
+                format = "blog";
+                category = name.toLowerCase();
+              }
+
+              // Create SeoContentItem
+              try {
+                console.log(`[generateContentIdeas] Saving idea: "${idea.title}"`);
+                const contentItem = await SeoContentItem.create({
+                  projectId: args.projectId,
+                  hypothesisId: args.hypothesisId,
+                  title: idea.title,
+                  category: category as any,
+                  format: format,
+                  status: "draft",
+                  outline: idea.summary,
+                  createdBy: userId,
+                  updatedBy: userId
+                });
+
+                console.log(`[generateContentIdeas] ✅ Saved idea: "${idea.title}" (ID: ${contentItem.id}, category: ${category})`);
+                allGeneratedIdeas.push(contentItem);
+              } catch (saveError: any) {
+                console.error(`[generateContentIdeas] ❌ Failed to save idea "${idea.title}":`, saveError?.message || saveError);
+                console.error(`[generateContentIdeas] Save error details:`, {
+                  projectId: args.projectId,
+                  hypothesisId: args.hypothesisId,
+                  category: category,
+                  format: format,
+                  userId: userId
+                });
+                // Продолжаем, даже если одна идея не сохранилась
+              }
+            }
+          } catch (error) {
+            console.error(`[generateContentIdeas] Error generating ideas for category ${name}:`, error);
+            if (error instanceof Error) {
+              console.error(`[generateContentIdeas] Error message: ${error.message}`);
+              console.error(`[generateContentIdeas] Error stack: ${error.stack}`);
+            }
+            // Continue with other categories - не прерываем генерацию для остальных категорий
+          }
+        }
+
+        console.log(`Generated ${allGeneratedIdeas.length} new content ideas, skipped ${duplicatesSkipped} duplicates`);
+        return allGeneratedIdeas.map(mapContentIdea);
+      } catch (error) {
+        console.error("Error generating content ideas:", error);
+        throw error;
+      }
     }
   }
 };

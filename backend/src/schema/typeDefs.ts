@@ -144,6 +144,7 @@ export const typeDefs = gql`
     weeklyPublishCount: Int!
     preferredDays: [String!]!
     autoPublishEnabled: Boolean!
+    language: String
     createdAt: DateTime!
     updatedAt: DateTime!
   }
@@ -205,6 +206,7 @@ export const typeDefs = gql`
     weeklyPublishCount: Int!
     preferredDays: [String!]!
     autoPublishEnabled: Boolean!
+    language: String
   }
 
   input ContentItemInput {
@@ -280,6 +282,7 @@ export const typeDefs = gql`
     generateImageForContent(input: GenerateImageInput!): ContentItem!
     regenerateContent(id: ID!, promptPart: String): ContentItem!
     approveContentItem(input: ApproveContentItemInput!): ContentItem!
+    generateContentIdeas(projectId: ID!, hypothesisId: ID!, category: String): [ContentIdea!]!
   }
 `;
 

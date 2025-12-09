@@ -52,6 +52,26 @@ const App = () => {
   const { isTrialExpired, needsUpgrade, subscription, isSubscriptionActive, isLoading: subscriptionLoading } = useSubscription();
   const { initSocket } = useSocketStore();
 
+  // Очищаем несуществующие данные из localStorage при загрузке приложения
+  useEffect(() => {
+    clearInvalidStoredData();
+  }, []);
+
+  // Expose stores to window for debugging in browser console
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__DEBUG_STORES__ = {
+        project: useProjectStore.getState(),
+        hypothesis: useHypothesisStore.getState(),
+        user: useUserStore.getState(),
+        // Helper functions to get fresh state
+        getProjectStore: () => useProjectStore.getState(),
+        getHypothesisStore: () => useHypothesisStore.getState(),
+        getUserStore: () => useUserStore.getState(),
+      };
+    }
+  }, [activeProject]); // Update when activeProject changes
+
   // Initialize auth on mount
   useEffect(() => {
     initializeAuth();

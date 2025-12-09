@@ -61,12 +61,10 @@ export const getSeoAgentBacklogQuery = (
     variables.hypothesisId = hypothesisId;
   }
   
-  console.log("Fetching backlog with variables:", variables);
-  
   return SEO_AGENT_QUERY<GetSeoAgentBacklogResponse>({
     query: GET_SEO_AGENT_BACKLOG,
     variables,
-    fetchPolicy: "network-only",
+    fetchPolicy: "network-only", // Always fetch fresh data from API, not cache
   });
 };
 

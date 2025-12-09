@@ -27,7 +27,12 @@ class ProjectService {
 
     async getProjects(userId: string): Promise<IProject[]> {
         try {
-            return await this.model.find({ userId });
+            const projects = await this.model.find({ userId });
+            console.log(`[ProjectService] getProjects for userId: ${userId}, found ${projects.length} projects`);
+            projects.forEach((p, i) => {
+                console.log(`[ProjectService]   ${i + 1}. ${p.title} (ID: ${p._id})`);
+            });
+            return projects;
         } catch (error) {
             console.error(error);
             throw error;

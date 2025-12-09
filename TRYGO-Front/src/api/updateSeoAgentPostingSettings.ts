@@ -11,6 +11,7 @@ export const UPDATE_SEO_AGENT_POSTING_SETTINGS = gql`
       weeklyPublishCount
       preferredDays
       autoPublishEnabled
+      language
       updatedAt
     }
   }
@@ -22,6 +23,7 @@ export interface PostingSettingsInput {
   weeklyPublishCount: number;
   preferredDays: string[];
   autoPublishEnabled: boolean;
+  language?: string | null;
 }
 
 export interface UpdateSeoAgentPostingSettingsResponse {

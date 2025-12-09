@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSeoAgentPostingSettingsStore } from "@/store/useSeoAgentPostingSettingsStore";
 import LoaderSpinner from "@/components/LoaderSpinner";
 import { Save } from "lucide-react";
@@ -22,6 +23,14 @@ const DAYS_OF_WEEK = [
   "Friday",
   "Saturday",
 ];
+
+const LANGUAGES = [
+  { value: "Russian", label: "Русский" },
+  { value: "English", label: "English" },
+  { value: "Spanish", label: "Español" },
+  { value: "Portuguese", label: "Português" },
+  { value: "Polish", label: "Polski" },
+] as const;
 
 export const SeoPostingSettingsPanel = ({
   projectId,
@@ -51,6 +60,7 @@ export const SeoPostingSettingsPanel = ({
     weeklyPublishCount: settings?.weeklyPublishCount || 2,
     preferredDays: settings?.preferredDays || ["Tuesday", "Thursday"],
     autoPublishEnabled: settings?.autoPublishEnabled || false,
+    language: settings?.language || "Russian",
   };
 
   const handleWeeklyCountChange = (value: string) => {
@@ -59,7 +69,8 @@ export const SeoPostingSettingsPanel = ({
       setDraftSettings(
         count,
         currentSettings.preferredDays.slice(0, count),
-        currentSettings.autoPublishEnabled
+        currentSettings.autoPublishEnabled,
+        currentSettings.language
       );
     }
   };
@@ -73,7 +84,8 @@ export const SeoPostingSettingsPanel = ({
     setDraftSettings(
       currentSettings.weeklyPublishCount,
       newDays,
-      currentSettings.autoPublishEnabled
+      currentSettings.autoPublishEnabled,
+      currentSettings.language
     );
   };
 
@@ -81,7 +93,17 @@ export const SeoPostingSettingsPanel = ({
     setDraftSettings(
       currentSettings.weeklyPublishCount,
       currentSettings.preferredDays,
-      enabled
+      enabled,
+      currentSettings.language
+    );
+  };
+
+  const handleLanguageChange = (language: string) => {
+    setDraftSettings(
+      currentSettings.weeklyPublishCount,
+      currentSettings.preferredDays,
+      currentSettings.autoPublishEnabled,
+      language
     );
   };
 
@@ -93,7 +115,8 @@ export const SeoPostingSettingsPanel = ({
         hypothesisId,
         currentSettings.weeklyPublishCount,
         currentSettings.preferredDays,
-        currentSettings.autoPublishEnabled
+        currentSettings.autoPublishEnabled,
+        currentSettings.language
       );
     } finally {
       setIsSaving(false);
@@ -117,7 +140,8 @@ export const SeoPostingSettingsPanel = ({
     settings.weeklyPublishCount !== currentSettings.weeklyPublishCount ||
     JSON.stringify(settings.preferredDays) !==
       JSON.stringify(currentSettings.preferredDays) ||
-    settings.autoPublishEnabled !== currentSettings.autoPublishEnabled;
+    settings.autoPublishEnabled !== currentSettings.autoPublishEnabled ||
+    (settings.language || "Russian") !== (currentSettings.language || "Russian");
 
   return (
     <div className="space-y-6">
@@ -197,6 +221,31 @@ export const SeoPostingSettingsPanel = ({
                 );
               })}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="language">Content Language</Label>
+            <p className="text-sm text-gray-500 mb-2">
+              Select the language for content generation
+            </p>
+            <Select
+              value={currentSettings.language || "Russian"}
+              onValueChange={handleLanguageChange}
+            >
+              <SelectTrigger id="language" className="w-full max-w-xs">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-400 mt-1">
+              This language will be used for generating content ideas and articles
+            </p>
           </div>
 
           <div className="space-y-2">

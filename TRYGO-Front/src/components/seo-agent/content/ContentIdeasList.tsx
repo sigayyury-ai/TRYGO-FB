@@ -6,7 +6,9 @@ interface ContentIdeasListProps {
   ideas: ContentIdeaDto[];
   onAddToBacklog: (idea: ContentIdeaDto) => void;
   onDismiss: (idea: ContentIdeaDto) => void;
+  onGenerateForCategory?: (category: ContentCategory) => void;
   loading?: boolean;
+  generatingCategory?: ContentCategory | null;
 }
 
 // Category labels matching the prototype
@@ -35,7 +37,9 @@ export const ContentIdeasList = ({
   ideas,
   onAddToBacklog,
   onDismiss,
+  onGenerateForCategory,
   loading = false,
+  generatingCategory = null,
 }: ContentIdeasListProps) => {
   const groupedIdeas = useMemo(() => {
     const grouped: Record<ContentCategory, ContentIdeaDto[]> = {
@@ -57,52 +61,56 @@ export const ContentIdeasList = ({
     return grouped;
   }, [ideas]);
 
-  const hasAnyIdeas = useMemo(() => {
-    return Object.values(groupedIdeas).some(categoryIdeas => categoryIdeas.length > 0);
-  }, [groupedIdeas]);
-
-  if (!hasAnyIdeas) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <p className="text-sm font-medium mb-2">No content ideas available</p>
-        <p className="text-xs">Ideas will be generated based on your clusters and project context</p>
-      </div>
-    );
-  }
-
   return (
     <div className="content-ideas flex flex-col gap-4">
       {categoryOrder.map((category) => {
         const categoryIdeas = groupedIdeas[category];
-        if (categoryIdeas.length === 0) return null;
+        const isGenerating = generatingCategory === category;
 
         return (
           <div
             key={category}
-            className="idea-section rounded-xl border border-blue-100 bg-blue-50/30 p-4 flex flex-col gap-4"
+            className="idea-section rounded-[14px] border border-[#d7e4f1] bg-[#f8fbff] p-[18px] flex flex-col gap-4"
             data-category={category}
           >
             {/* Section Header */}
             <div className="idea-header flex justify-between items-center gap-3 flex-wrap">
-              <h4 className="text-base font-semibold text-gray-900 m-0">
+              <h4 className="text-base font-semibold text-[#0b1f33] m-0">
                 {categoryLabels[category]}
               </h4>
-              <span className="text-sm text-gray-600">
-                {categoryIdeas.length} {categoryIdeas.length === 1 ? "suggestion" : "suggestions"}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#576b82]">
+                  {categoryIdeas.length} {categoryIdeas.length === 1 ? "suggestion" : "suggestions"}
+                </span>
+                {onGenerateForCategory && (
+                  <button
+                    onClick={() => onGenerateForCategory(category)}
+                    disabled={isGenerating || loading}
+                    className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isGenerating ? "Generating..." : "Generate"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Ideas List */}
             <div className="idea-list flex flex-col gap-3">
-              {categoryIdeas.map((idea) => (
-                <ContentIdeaCard
-                  key={idea.id}
-                  idea={idea}
-                  onAddToBacklog={onAddToBacklog}
-                  onDismiss={onDismiss}
-                  loading={loading}
-                />
-              ))}
+              {categoryIdeas.length === 0 ? (
+                <div className="text-center py-6 text-gray-400 text-sm">
+                  No ideas yet. Click "Generate" to create ideas for this category.
+                </div>
+              ) : (
+                categoryIdeas.map((idea) => (
+                  <ContentIdeaCard
+                    key={idea.id}
+                    idea={idea}
+                    onAddToBacklog={onAddToBacklog}
+                    onDismiss={onDismiss}
+                    loading={loading}
+                  />
+                ))
+              )}
             </div>
           </div>
         );

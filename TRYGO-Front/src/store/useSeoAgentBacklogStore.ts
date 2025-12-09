@@ -14,6 +14,8 @@ interface SeoAgentBacklogState {
   loading: boolean;
   error: string | null;
   apiUnavailable: boolean; // Track if API is not available to avoid repeated requests
+  lastProjectId: string | null; // Track last loaded projectId
+  lastHypothesisId: string | null; // Track last loaded hypothesisId
   
   // Actions
   getBacklog: (projectId: string, hypothesisId?: string) => Promise<void>;
@@ -38,12 +40,23 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
       loading: false,
       error: null,
       apiUnavailable: false,
+      lastProjectId: null,
+      lastHypothesisId: null,
 
       getBacklog: async (projectId: string, hypothesisId?: string) => {
         // Skip if we already know API is unavailable
         if (get().apiUnavailable) {
-          console.log("Skipping backlog request - API known to be unavailable");
           return;
+        }
+        
+        // Clear old data if projectId or hypothesisId changed
+        const currentProjectId = get().lastProjectId;
+        const currentHypothesisId = get().lastHypothesisId;
+        const normalizedHypothesisId = hypothesisId && hypothesisId.trim() !== "" ? hypothesisId : null;
+        
+        if (currentProjectId !== projectId || currentHypothesisId !== normalizedHypothesisId) {
+          // Different project/hypothesis - clear old data
+          set({ backlogItems: [] });
         }
         
         set({ loading: true, error: null });
@@ -51,16 +64,15 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
           // Only pass hypothesisId if it's defined and not empty
           const { data } = await getSeoAgentBacklogQuery(
             projectId,
-            hypothesisId && hypothesisId.trim() !== "" ? hypothesisId : undefined
+            normalizedHypothesisId || undefined
           );
           const backlogItems = data?.seoAgentBacklog || [];
-          
-          console.log("Backlog loaded:", backlogItems.length, "items");
-          console.log("Backlog data:", backlogItems);
 
           set({
             backlogItems,
             loading: false,
+            lastProjectId: projectId,
+            lastHypothesisId: normalizedHypothesisId,
           });
         } catch (error: unknown) {
           console.error("Error loading backlog:", error);
@@ -151,7 +163,6 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
           const { data } = await updateSeoAgentBacklogItemMutation(id, input);
 
           const updatedItem = data.updateSeoAgentBacklogIdea;
-          console.log('[useSeoAgentBacklogStore] Updated backlog item:', updatedItem);
           
           // Save projectId and hypothesisId for refresh before updating state
           const projectIdForRefresh = currentItem.projectId;
@@ -161,8 +172,6 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
             const newItems = state.backlogItems.map(item =>
               item.id === id ? updatedItem : item
             );
-            console.log('[useSeoAgentBacklogStore] Updated backlog items:', newItems.length);
-            console.log('[useSeoAgentBacklogStore] Scheduled items:', newItems.filter(i => i.status === BacklogStatus.SCHEDULED).length);
             
             return {
               backlogItems: newItems,
@@ -172,7 +181,6 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
           
           // Refresh backlog to ensure we have latest data from server
           if (projectIdForRefresh) {
-            console.log('[useSeoAgentBacklogStore] Refreshing backlog after update...');
             await get().getBacklog(projectIdForRefresh, hypothesisIdForRefresh);
           }
         } catch (error: unknown) {

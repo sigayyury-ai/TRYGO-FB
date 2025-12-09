@@ -8,6 +8,7 @@ import {
 import { addContentIdeaToBacklogMutation } from "@/api/addContentIdeaToBacklog";
 import { dismissContentIdeaMutation } from "@/api/dismissContentIdea";
 import { createCustomContentIdeaMutation, CreateCustomContentIdeaInput } from "@/api/createCustomContentIdea";
+import { generateContentIdeasMutation } from "@/api/generateContentIdeas";
 import { BacklogContentType } from "@/api/getSeoAgentBacklog";
 
 interface SeoAgentContentIdeasState {
@@ -15,9 +16,12 @@ interface SeoAgentContentIdeasState {
   loading: boolean;
   error: string | null;
   apiUnavailable: boolean;
+  lastProjectId: string | null; // Track last loaded projectId
+  lastHypothesisId: string | null; // Track last loaded hypothesisId
   
   // Actions
   getContentIdeas: (projectId: string, hypothesisId?: string) => Promise<void>;
+  generateContentIdeas: (projectId: string, hypothesisId: string, category?: string) => Promise<void>;
   addToBacklog: (
     contentIdeaId: string,
     title: string,
@@ -38,26 +42,70 @@ export const useSeoAgentContentIdeasStore = create<SeoAgentContentIdeasState>()(
       loading: false,
       error: null,
       apiUnavailable: false,
+      lastProjectId: null,
+      lastHypothesisId: null,
+
+      generateContentIdeas: async (projectId: string, hypothesisId: string, category?: string) => {
+        if (!hypothesisId) {
+          throw new Error("hypothesisId is required for generating content ideas");
+        }
+        
+        console.log("[generateContentIdeas] Request:", { projectId, hypothesisId, category: category || "ALL" });
+        
+        set({ loading: true, error: null });
+        try {
+          const newIdeas = await generateContentIdeasMutation({
+            projectId,
+            hypothesisId,
+            category
+          });
+          
+          // Add new ideas to existing list
+          set((state) => ({
+            contentIdeas: [...state.contentIdeas, ...newIdeas],
+            loading: false,
+          }));
+        } catch (error: unknown) {
+          let errorMessage = "Failed to generate content ideas";
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          set({
+            error: errorMessage,
+            loading: false,
+          });
+          throw error;
+        }
+      },
 
       getContentIdeas: async (projectId: string, hypothesisId?: string) => {
         if (get().apiUnavailable) {
-          console.log("Skipping content ideas request - API known to be unavailable");
           return;
+        }
+        
+        // Clear old data if projectId or hypothesisId changed
+        const currentProjectId = get().lastProjectId;
+        const currentHypothesisId = get().lastHypothesisId;
+        const normalizedHypothesisId = hypothesisId && hypothesisId.trim() !== "" ? hypothesisId : null;
+        
+        if (currentProjectId !== projectId || currentHypothesisId !== normalizedHypothesisId) {
+          // Different project/hypothesis - clear old data
+          set({ contentIdeas: [] });
         }
         
         set({ loading: true, error: null });
         try {
           const { data } = await getSeoAgentContentIdeasQuery(
             projectId,
-            hypothesisId && hypothesisId.trim() !== "" ? hypothesisId : undefined
+            normalizedHypothesisId || undefined
           );
           const contentIdeas = data?.seoAgentContentIdeas || [];
-          
-          console.log("Content ideas loaded:", contentIdeas.length, "items");
 
           set({
             contentIdeas,
             loading: false,
+            lastProjectId: projectId,
+            lastHypothesisId: normalizedHypothesisId,
           });
         } catch (error: unknown) {
           console.error("Error loading content ideas:", error);

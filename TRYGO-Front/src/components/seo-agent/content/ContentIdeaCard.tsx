@@ -1,7 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { ContentIdeaDto, ContentIdeaStatus, ContentCategory } from "@/api/getSeoAgentContentIdeas";
 import { cn } from "@/lib/utils";
 
@@ -42,57 +41,55 @@ export const ContentIdeaCard = ({
     ? "Commercial page"
     : "Landing page";
 
-  // Category chip color classes matching prototype
+  // Category chip color classes matching prototype exactly
   const categoryChipClass = {
-    [ContentCategory.PAINS]: "bg-red-50 text-red-800",
-    [ContentCategory.GOALS]: "bg-green-50 text-green-800",
-    [ContentCategory.TRIGGERS]: "bg-yellow-50 text-yellow-800",
-    [ContentCategory.PRODUCT_FEATURES]: "bg-blue-50 text-blue-800",
-    [ContentCategory.BENEFITS]: "bg-blue-50 text-blue-800",
-    [ContentCategory.FAQS]: "bg-gray-50 text-gray-800",
-    [ContentCategory.INFORMATIONAL]: "bg-gray-50 text-gray-800",
-  }[idea.category] || "bg-gray-50 text-gray-800";
+    [ContentCategory.PAINS]: "bg-[#ffecec] text-[#b43838]",
+    [ContentCategory.GOALS]: "bg-[#e9f7ef] text-[#1b7d4a]",
+    [ContentCategory.TRIGGERS]: "bg-[#fff3df] text-[#a56205]",
+    [ContentCategory.PRODUCT_FEATURES]: "bg-[#eef3ff] text-[#1f3d7a]",
+    [ContentCategory.BENEFITS]: "bg-[#eef3ff] text-[#1f3d7a]",
+    [ContentCategory.FAQS]: "bg-[#f1f5fb] text-[#3c4f6c]",
+    [ContentCategory.INFORMATIONAL]: "bg-[#f1f5fb] text-[#3c4f6c]",
+  }[idea.category] || "bg-[#f1f5fb] text-[#3c4f6c]";
 
   return (
     <div
       className={cn(
-        "idea-card bg-white rounded-xl p-4 shadow-sm border border-gray-100",
-        "flex flex-col gap-2 relative transition-all",
+        "idea-card bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(14,35,64,0.05)] border border-gray-100",
+        "flex flex-col gap-[10px] relative transition-all",
         isAdded && "bg-green-50 border-green-200"
       )}
       data-category={idea.category}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="idea-title text-[15px] font-semibold text-gray-900 mb-1">
+          <div className="idea-title text-[15px] font-semibold text-[#0b1f33] mb-1">
             {idea.title}
           </div>
           {idea.description && (
-            <div className="idea-desc text-[13px] text-gray-600 mb-2">
+            <div className="idea-desc text-[13px] text-[#465b73] mb-2">
               {idea.description}
             </div>
           )}
-          <div className="idea-tags flex gap-2 flex-wrap text-[11px] uppercase tracking-wide">
-            <span className="format-chip px-2.5 py-1.5 rounded-full bg-blue-50 text-blue-800">
+          <div className="idea-tags flex gap-2 flex-wrap text-[11px] uppercase tracking-[0.08em]">
+            <span className="format-chip px-[10px] py-[6px] rounded-full bg-[#eef3ff] text-[#1f3d7a]">
               {formatLabel}
             </span>
-            <span className={cn("category-chip px-2.5 py-1.5 rounded-full", categoryChipClass)}>
+            <span className={cn("category-chip px-[10px] py-[6px] rounded-full", categoryChipClass)}>
               {categoryLabels[idea.category] || idea.category}
             </span>
           </div>
         </div>
         <div className="idea-actions flex gap-2 items-center flex-shrink-0">
           {!isAdded && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => onAddToBacklog(idea)}
               disabled={loading}
-              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              className="icon-button publish h-[30px] w-[30px] rounded-lg border border-[#d2deeb] bg-[rgba(255,255,255,0.92)] text-[#355b85] hover:bg-[#0b59ff] hover:border-[#0b59ff] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[13px] transition-all duration-150"
               title="Add to backlog"
             >
-              <Plus className="h-4 w-4" />
-            </Button>
+              ↗
+            </button>
           )}
           {isAdded && (
             <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
@@ -101,16 +98,14 @@ export const ContentIdeaCard = ({
             </Badge>
           )}
           {!isAdded && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => onDismiss(idea)}
               disabled={loading}
-              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+              className="icon-button delete h-[30px] w-[30px] rounded-lg border border-[#d2deeb] bg-[rgba(255,255,255,0.92)] text-[#b13434] hover:bg-[#f55e5e] hover:border-[#f55e5e] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[13px] transition-all duration-150"
               title="Dismiss idea"
             >
-              <X className="h-4 w-4" />
-            </Button>
+              ✕
+            </button>
           )}
         </div>
       </div>

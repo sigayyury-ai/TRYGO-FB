@@ -14,7 +14,24 @@ class ProjectHypothesesService {
 
     async getProjectHypotheses(projectId: string, userId: string) {
         try {
-            return await this.model.find({ projectId, userId });
+            // Try both string and ObjectId for projectId (MongoDB might store it as ObjectId)
+            const mongoose = require('mongoose');
+            let query: any = { userId };
+            
+            // Try to convert projectId to ObjectId, if it fails, use as string
+            try {
+                const projectObjectId = new mongoose.Types.ObjectId(projectId);
+                query.projectId = { $in: [projectId, projectObjectId] };
+            } catch {
+                query.projectId = projectId;
+            }
+            
+            const hypotheses = await this.model.find(query);
+            console.log(`[ProjectHypothesesService] getProjectHypotheses for projectId: ${projectId}, userId: ${userId}, found ${hypotheses.length} hypotheses`);
+            hypotheses.forEach((h, i) => {
+                console.log(`[ProjectHypothesesService]   ${i + 1}. ${h.title} (ID: ${h._id})`);
+            });
+            return hypotheses;
         } catch (error) {
             console.error(error);
             throw error;

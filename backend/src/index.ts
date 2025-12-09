@@ -44,24 +44,23 @@ async function bootstrap() {
       console.error("GraphQL Error:", {
         message: error.message,
         path: error.path,
-        extensions: error.extensions,
-        originalError: error.originalError
+        extensions: error.extensions
       });
       return error;
     },
     plugins: [
       {
-        requestDidStart() {
+        async requestDidStart() {
           return {
-            didResolveOperation(requestContext) {
+            async didResolveOperation(requestContext: any) {
               // Log the operation
               if (requestContext.operationName) {
                 console.log(`GraphQL Operation: ${requestContext.operationName}`);
               }
             },
-            didEncounterErrors(requestContext) {
+            async didEncounterErrors(requestContext: any) {
               // Log errors
-              requestContext.errors.forEach((error) => {
+              requestContext.errors.forEach((error: any) => {
                 console.error("GraphQL Request Error:", {
                   message: error.message,
                   path: error.path,
@@ -102,17 +101,57 @@ async function bootstrap() {
           ? authHeader.slice("Bearer ".length)
           : authHeader || null;
 
+        const projectId = req.headers["x-project-id"] as string | undefined;
+        const hypothesisId = req.headers["x-hypothesis-id"] as string | undefined;
+        const userIdFromHeader = req.headers["x-user-id"] as string | undefined;
+
+        // ⭐ ДЕКОДИРУЕМ userId ИЗ JWT ТОКЕНА
+        let userId: string | undefined = userIdFromHeader;
+        if (token && !userId) {
+          try {
+            // Используем динамический импорт для jsonwebtoken
+            const jwt = await import("jsonwebtoken");
+            const jwtSecret = process.env.JWT_SECRET;
+            if (jwtSecret) {
+              const decoded = jwt.verify(token, jwtSecret) as { id?: string };
+              if (decoded?.id) {
+                userId = decoded.id;
+                console.log("[GraphQL Context] ✅ Extracted userId from JWT token:", userId);
+              }
+            } else {
+              console.warn("[GraphQL Context] ⚠️ JWT_SECRET not configured");
+            }
+          } catch (err: any) {
+            // Если jsonwebtoken не установлен, просто логируем предупреждение
+            if (err?.code === "MODULE_NOT_FOUND") {
+              console.warn("[GraphQL Context] ⚠️ jsonwebtoken not installed, using userId from header only");
+            } else {
+              console.warn("[GraphQL Context] ⚠️ Failed to decode JWT token:", err?.message || err);
+            }
+          }
+        }
+
+        // Логирование заголовков для отладки
+        if (projectId || hypothesisId) {
+          console.log("[GraphQL Context] Headers:", {
+            projectId: projectId || "not provided",
+            hypothesisId: hypothesisId || "not provided",
+            userId: userId || "not provided",
+            userIdSource: userIdFromHeader ? "header" : (token ? "JWT" : "none")
+          });
+        }
+
         return {
           token,
-          projectId: req.headers["x-project-id"] as string | undefined,
-          hypothesisId: req.headers["x-hypothesis-id"] as string | undefined,
-          userId: req.headers["x-user-id"] as string | undefined
+          projectId,
+          hypothesisId,
+          userId
         };
       }
     }) as any
   );
 
-  const port = process.env.PORT || env.port;
+  const port = Number(process.env.PORT || env.port);
   app.listen(port, "0.0.0.0", () => {
     // eslint-disable-next-line no-console
     console.log(`🚀 SEO Agent server ready on port ${port}`);

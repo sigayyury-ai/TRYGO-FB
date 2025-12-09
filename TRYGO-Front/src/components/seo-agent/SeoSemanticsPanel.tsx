@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Save, X } from "lucide-react";
-import { useSeoAgentClustersStore } from "@/store/useSeoAgentClustersStore";
-import { ClusterIntent } from "@/api/getSeoAgentClusters";
+import { ClusterIntent, SeoClusterDto, getSeoAgentClustersQuery } from "@/api/getSeoAgentClusters";
+import { createSeoAgentClusterMutation } from "@/api/createSeoAgentCluster";
+import { updateSeoAgentClusterMutation } from "@/api/updateSeoAgentCluster";
+import { deleteSeoAgentClusterMutation } from "@/api/deleteSeoAgentCluster";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -28,25 +30,39 @@ interface EditingCluster {
 }
 
 export const SeoSemanticsPanel = ({ projectId, hypothesisId }: SeoSemanticsPanelProps) => {
-  const {
-    clusters,
-    loading,
-    error,
-    getClusters,
-    createCluster,
-    updateCluster,
-    deleteCluster,
-  } = useSeoAgentClustersStore();
+  const [clusters, setClusters] = useState<SeoClusterDto[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [isCreating, setIsCreating] = useState(false);
   const [editingCluster, setEditingCluster] = useState<EditingCluster | null>(null);
 
+  // Load clusters from API
+  const loadClusters = async () => {
+    if (!projectId) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await getSeoAgentClustersQuery(projectId, hypothesisId);
+      setClusters(data?.seoAgentClusters || []);
+    } catch (error: unknown) {
+      console.error("Error loading clusters:", error);
+      let errorMessage = "Failed to load clusters";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
-      // Load real data from API
-      getClusters(projectId, hypothesisId);
+      loadClusters();
     }
-  }, [projectId, hypothesisId, getClusters]);
+  }, [projectId, hypothesisId]);
 
   const handleCreate = () => {
     setEditingCluster({
@@ -80,25 +96,40 @@ export const SeoSemanticsPanel = ({ projectId, hypothesisId }: SeoSemanticsPanel
       .map(k => k.trim())
       .filter(k => k.length > 0);
 
-    if (editingCluster.id) {
-      await updateCluster(
-        editingCluster.id,
-        editingCluster.title,
-        editingCluster.intent,
-        keywordsArray
-      );
-    } else {
-      await createCluster(
-        projectId,
-        hypothesisId,
-        editingCluster.title,
-        editingCluster.intent,
-        keywordsArray
-      );
-    }
+    setLoading(true);
+    try {
+      if (editingCluster.id) {
+        const { data } = await updateSeoAgentClusterMutation(editingCluster.id, {
+          title: editingCluster.title,
+          intent: editingCluster.intent,
+          keywords: keywordsArray,
+        });
+        
+        // Update local state
+        setClusters(prev => prev.map(c => 
+          c.id === editingCluster.id ? data.updateSeoAgentCluster : c
+        ));
+      } else {
+        const { data } = await createSeoAgentClusterMutation({
+          projectId,
+          hypothesisId,
+          title: editingCluster.title,
+          intent: editingCluster.intent,
+          keywords: keywordsArray,
+        });
+        
+        // Add new cluster to local state
+        setClusters(prev => [...prev, data.createSeoAgentCluster]);
+      }
 
-    setEditingCluster(null);
-    setIsCreating(false);
+      setEditingCluster(null);
+      setIsCreating(false);
+    } catch (error) {
+      console.error("Error saving cluster:", error);
+      setError(error instanceof Error ? error.message : "Failed to save cluster");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -108,7 +139,18 @@ export const SeoSemanticsPanel = ({ projectId, hypothesisId }: SeoSemanticsPanel
 
   const handleDelete = async (clusterId: string) => {
     if (confirm("Are you sure you want to delete this cluster?")) {
-      await deleteCluster(clusterId);
+      setLoading(true);
+      try {
+        await deleteSeoAgentClusterMutation(clusterId);
+        
+        // Remove from local state
+        setClusters(prev => prev.filter(c => c.id !== clusterId));
+      } catch (error) {
+        console.error("Error deleting cluster:", error);
+        setError(error instanceof Error ? error.message : "Failed to delete cluster");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

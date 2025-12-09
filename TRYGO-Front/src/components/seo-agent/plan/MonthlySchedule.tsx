@@ -163,18 +163,11 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
   
   // Convert scheduled backlog items to ScheduledItem format
   useEffect(() => {
-    console.log('[MonthlySchedule] Scheduled backlog items:', scheduledBacklogItems.length);
-    console.log('[MonthlySchedule] Scheduled backlog items data:', scheduledBacklogItems);
-    console.log('[MonthlySchedule] Weeks:', weeks.map(w => ({ start: w[0].toISOString(), end: w[6].toISOString() })));
-    console.log('[MonthlySchedule] Preferred days:', preferredDays);
-    console.log('[MonthlySchedule] Weekly publish count:', weeklyPublishCount);
-    
     const items: ScheduledItem[] = scheduledBacklogItems
       .map((item, index) => {
         let scheduledDate: Date;
         if (item.scheduledDate) {
           scheduledDate = new Date(item.scheduledDate);
-          console.log(`[MonthlySchedule] Item ${item.title} has explicit scheduledDate:`, scheduledDate.toISOString());
         } else {
           // Assign to next available preferred day slot
           // Distribute items across weeks, starting from first week
@@ -183,19 +176,14 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
           const week = weeks[weekIndex];
           const preferredDaysInWeek = getPreferredDaysInWeek(week);
           
-          console.log(`[MonthlySchedule] Item ${item.title} - weekIndex: ${weekIndex}, slotIndex: ${slotIndex}, preferredDaysInWeek:`, preferredDaysInWeek.map(d => d.toISOString()));
-          
           if (preferredDaysInWeek[slotIndex]) {
             scheduledDate = preferredDaysInWeek[slotIndex];
           } else {
             // Fallback: assign to first available preferred day in the first week
             const today = new Date();
             scheduledDate = findNextPreferredDay(today, preferredDayNumbers);
-            console.log(`[MonthlySchedule] Item ${item.title} - using fallback date:`, scheduledDate.toISOString());
           }
         }
-        
-        console.log(`[MonthlySchedule] Item ${item.title} final scheduled date:`, scheduledDate.toISOString());
         
         return {
           id: item.id,
@@ -208,10 +196,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       })
       .sort((a, b) => a.date.getTime() - b.date.getTime());
     
-    console.log('[MonthlySchedule] Converted scheduled items:', items.length);
-    items.forEach(item => {
-      console.log(`  - ${item.title}: ${item.date.toISOString()}`);
-    });
     setScheduledItems(items);
   }, [scheduledBacklogItems, preferredDayNumbers, weeks, weeklyPublishCount, preferredDays]);
 
@@ -247,27 +231,9 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       const itemTime = item.date.getTime();
       const matches = itemTime >= itemWeekStart && itemTime < itemWeekEnd && isSameDay(item.date, slotDate);
       
-      if (matches) {
-        console.log('[MonthlySchedule] Found item for slot:', {
-          slotDate: slotDate.toISOString(),
-          itemDate: item.date.toISOString(),
-          itemTitle: item.title,
-          weekStart: new Date(itemWeekStart).toISOString(),
-          weekEnd: new Date(itemWeekEnd).toISOString(),
-        });
-      }
-      
       return matches;
     });
     
-    if (!item && scheduledItems.length > 0) {
-      console.log('[MonthlySchedule] No item found for slot:', {
-        slotDate: slotDate.toISOString(),
-        weekStart: week[0].toISOString(),
-        weekEnd: week[6].toISOString(),
-        scheduledItems: scheduledItems.map(i => ({ title: i.title, date: i.date.toISOString() })),
-      });
-    }
     
     return item;
   };
