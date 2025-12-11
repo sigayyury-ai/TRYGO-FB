@@ -14,6 +14,8 @@
 # 1. Подключите репозиторий в Render Dashboard
 # 2. Выберите "New Blueprint" и укажите этот файл
 # 3. Установите все переменные окружения с sync: false
+# 4. После деплоя trygo-main-backend, обновите VITE_SERVER_URL, VITE_SEO_AGENT_URL и VITE_WS_SERVER_URL
+#    в trygo-frontend на реальные URL из Render Dashboard
 #
 # Подробная инструкция: см. DEPLOY_RENDER.md
 # ============================================
@@ -51,17 +53,17 @@ services:
         sync: false
       - key: FRONTEND_URL
         fromService:
-          type: web
+          type: static_site
           name: trygo-frontend
           property: host
       - key: DEVELOPMENT_FRONTEND_URL
         fromService:
-          type: web
+          type: static_site
           name: trygo-frontend
           property: host
       - key: PRODUCTION_FRONTEND_URL
         fromService:
-          type: web
+          type: static_site
           name: trygo-frontend
           property: host
       - key: CORS_ENABLED
@@ -117,8 +119,13 @@ services:
         value: imagen-4.0-generate-001
       - key: GEMINI_API_BASE_URL
         value: https://generativelanguage.googleapis.com/v1beta
+      # PUBLIC_URL будет автоматически установлен Render (URL сервиса trygo-main-backend)
+      # Используется для доступа к статическим файлам (/media)
       - key: PUBLIC_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-main-backend
+          property: host
       - key: STORAGE_ROOT
         value: ./storage
 
@@ -126,28 +133,20 @@ services:
   # Frontend (React SPA)
   # Статический сайт (БЕСПЛАТНО на Render)
   # ============================================
-  - type: web
+  - type: static_site
     name: trygo-frontend
-    runtime: static
     rootDir: TRYGO-Front
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
+      # ВАЖНО: После деплоя trygo-main-backend, обновите эти URL вручную в Render Dashboard
+      # Замените <trygo-main-backend-url> на реальный URL (например: https://trygo-main-backend.onrender.com)
       - key: VITE_SERVER_URL
-        fromService:
-          type: web
-          name: trygo-main-backend
-          property: host
+        value: https://trygo-main-backend.onrender.com/graphql
       - key: VITE_SEO_AGENT_URL
-        fromService:
-          type: web
-          name: trygo-main-backend
-          property: host
+        value: https://trygo-main-backend.onrender.com/graphql
       - key: VITE_WS_SERVER_URL
-        fromService:
-          type: web
-          name: trygo-main-backend
-          property: host
+        value: wss://trygo-main-backend.onrender.com
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
       - key: VITE_SEO_AGENT_ENABLED
