@@ -77,23 +77,14 @@ app.post(
 
 app.use(bodyParser.json());
 
-const httpServer = createServer(app);
-
-const typeDefs = loadGraphQLFiles();
-
-const schema = makeExecutableSchema({
-    typeDefs,
-    resolvers: {
-        Query: { ...resolversArray.Query },
-        Mutation: { ...resolversArray.Mutation },
-    },
-});
-
+// CORS must be set up early, before other middleware
 const corsOptions = {
     origin: config.isCorsEnabled ? config.PRODUCTION_PORTS : '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-project-id', 'x-hypothesis-id', 'x-user-id'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 };
 
 if (config.isCorsEnabled) {
@@ -106,7 +97,24 @@ if (config.isCorsEnabled) {
     console.log('🌐 CORS enabled for all origins (*)');
 }
 
+// Apply CORS middleware early
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+const httpServer = createServer(app);
+
+const typeDefs = loadGraphQLFiles();
+
+const schema = makeExecutableSchema({
+    typeDefs,
+    resolvers: {
+        Query: { ...resolversArray.Query },
+        Mutation: { ...resolversArray.Mutation },
+    },
+});
+
 
 // Static file serving for generated images (before GraphQL middleware)
 app.use('/media', express.static('./storage'));
