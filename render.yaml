@@ -53,17 +53,17 @@ services:
         sync: false
       - key: FRONTEND_URL
         fromService:
-          type: static_site
+          type: static
           name: trygo-frontend
           property: host
       - key: DEVELOPMENT_FRONTEND_URL
         fromService:
-          type: static_site
+          type: static
           name: trygo-frontend
           property: host
       - key: PRODUCTION_FRONTEND_URL
         fromService:
-          type: static_site
+          type: static
           name: trygo-frontend
           property: host
       - key: CORS_ENABLED
@@ -133,7 +133,7 @@ services:
   # Frontend (React SPA)
   # Статический сайт (БЕСПЛАТНО на Render)
   # ============================================
-  - type: static_site
+  - type: static
     name: trygo-frontend
     rootDir: TRYGO-Front
     buildCommand: npm install && npm run build
