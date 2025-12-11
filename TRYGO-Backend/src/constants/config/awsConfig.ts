@@ -1,32 +1,9 @@
-import { S3Client } from '@aws-sdk/client-s3';
-import { config } from './env';
+// AWS S3 client is not initialized - AWS functionality is disabled
+// This file exists to prevent import errors in files that reference it
+// Functions using AWS will throw errors at runtime if called
 
-const region = config.AWS_REGION;
-const accessKeyId = config.AWS_ACCESS_KEY_ID;
-const secretAccessKey = config.AWS_SECRET_ACCESS_KEY;
-
-if (!region) {
-    throw new Error('AWS region is not defined in the environment variables.');
+function getS3Client(): never {
+    throw new Error('AWS S3 is not configured. AWS functionality is disabled.');
 }
 
-if (!accessKeyId) {
-    throw new Error(
-        'AWS access key id is not defined in the environment variables.'
-    );
-}
-
-if (!secretAccessKey) {
-    throw new Error(
-        'AWS secret access key is not defined in the environment variables.'
-    );
-}
-
-const s3Client = new S3Client({
-    region: config.AWS_REGION,
-    credentials: {
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-    },
-} as any);
-
-export default s3Client;
+export default getS3Client;

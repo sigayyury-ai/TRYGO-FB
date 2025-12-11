@@ -1,46 +1,100 @@
 import authService from '../../services/AuthService';
 import { IContext } from '../../types/IContext';
-import { SeoAgentClusterModel, SeoAgentClusterIntent } from '../../models/SeoAgentClusterModel';
-import { SeoAgentBacklogIdeaModel, SeoAgentBacklogContentType, SeoAgentBacklogStatus } from '../../models/SeoAgentBacklogIdeaModel';
-import { SeoAgentPostingSettingsModel } from '../../models/SeoAgentPostingSettingsModel';
+import { SeoCluster, type SeoClusterDoc, type SeoClusterIntent } from '../../db/models/SeoCluster';
+import { SeoBacklogIdea, type SeoBacklogIdeaDoc } from '../../db/models/SeoBacklogIdea';
+import { SeoSprintSettings, type SeoSprintSettingsDocument } from '../../db/models/SeoSprintSettings';
+import { SeoContentItem, type SeoContentItemDoc } from '../../db/models/SeoContentItem';
 import projectService from '../../services/ProjectService';
 
-// Helper functions to convert old format to new format
-function mapOldIntentToNewIntent(intent: string): SeoAgentClusterIntent {
-    // Map old intent to new intent (they should be the same, but ensure uppercase)
-    // Old: commercial, transactional, informational, navigational (lowercase)
-    // New: COMMERCIAL, TRANSACTIONAL, INFORMATIONAL, NAVIGATIONAL (uppercase)
-    const intentUpper = intent?.toUpperCase();
-    if (Object.values(SeoAgentClusterIntent).includes(intentUpper as SeoAgentClusterIntent)) {
-        return intentUpper as SeoAgentClusterIntent;
-    }
-    return SeoAgentClusterIntent.INFORMATIONAL; // Default
-}
+// Helper functions to convert database format to GraphQL format
+const toUpperEnum = (value: string) => value.toUpperCase();
+const toLowerEnum = (value: string) => value.toLowerCase();
 
-function mapCategoryToContentType(category: string): SeoAgentBacklogContentType {
-    // Map old category to new contentType
-    // Old: pain, goal, trigger, feature, benefit, faq, info
-    // New: ARTICLE, COMMERCIAL_PAGE, LANDING_PAGE
-    if (['feature', 'benefit'].includes(category)) {
-        return SeoAgentBacklogContentType.COMMERCIAL_PAGE;
-    }
-    if (['pain', 'goal'].includes(category)) {
-        return SeoAgentBacklogContentType.LANDING_PAGE;
-    }
-    return SeoAgentBacklogContentType.ARTICLE; // Default for trigger, faq, info
-}
+const mapCluster = (doc: SeoClusterDoc) => ({
+    id: doc._id.toString(),
+    projectId: doc.projectId,
+    hypothesisId: doc.hypothesisId,
+    title: doc.title,
+    intent: toUpperEnum(doc.intent) as any,
+    keywords: doc.keywords,
+    createdBy: doc.createdBy || null,
+    updatedBy: doc.updatedBy || null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+});
 
-function mapOldStatusToNewStatus(status: string): SeoAgentBacklogStatus {
-    // Map old status to new status
-    // Old: backlog, scheduled, archived
-    // New: PENDING, SCHEDULED, IN_PROGRESS, COMPLETED, ARCHIVED
-    const statusMap: Record<string, SeoAgentBacklogStatus> = {
-        'backlog': SeoAgentBacklogStatus.PENDING,
-        'scheduled': SeoAgentBacklogStatus.SCHEDULED,
-        'archived': SeoAgentBacklogStatus.ARCHIVED,
+const mapBacklogIdea = (doc: SeoBacklogIdeaDoc) => ({
+    id: doc._id.toString(),
+    projectId: doc.projectId,
+    hypothesisId: doc.hypothesisId ?? null,
+    clusterId: doc.clusterId ?? null,
+    title: doc.title,
+    description: doc.description ?? null,
+    contentType: "ARTICLE" as const, // Default, can be extended later
+    category: doc.category ? toUpperEnum(doc.category) : null,
+    status: mapBacklogStatus(doc.status),
+    scheduledDate: (doc as any).scheduledDate ?? null,
+    createdBy: doc.createdBy ?? null,
+    updatedBy: doc.updatedBy ?? null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+});
+
+const mapBacklogStatus = (status: string): string => {
+    const statusMap: Record<string, string> = {
+        backlog: "PENDING",
+        scheduled: "SCHEDULED",
+        archived: "ARCHIVED",
+        pending: "PENDING",
+        in_progress: "IN_PROGRESS",
+        completed: "COMPLETED",
+        published: "PUBLISHED"
     };
-    return statusMap[status] || SeoAgentBacklogStatus.PENDING;
-}
+    return statusMap[status.toLowerCase()] || toUpperEnum(status);
+};
+
+const mapContentCategory = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+        pain: "PAINS",
+        goal: "GOALS",
+        trigger: "TRIGGERS",
+        feature: "PRODUCT_FEATURES",
+        benefit: "BENEFITS",
+        faq: "FAQS",
+        info: "INFORMATIONAL"
+    };
+    return categoryMap[category.toLowerCase()] || toUpperEnum(category);
+};
+
+const mapContentType = (format: string): string => {
+    const formatMap: Record<string, string> = {
+        blog: "ARTICLE",
+        commercial: "COMMERCIAL_PAGE",
+        faq: "ARTICLE"
+    };
+    return formatMap[format.toLowerCase()] || "ARTICLE";
+};
+
+const mapContentIdea = (doc: SeoContentItemDoc) => {
+    const isDismissed = false; // TODO: Add dismissed field to SeoContentItem model if needed
+    return {
+        id: doc._id.toString(),
+        projectId: doc.projectId,
+        hypothesisId: doc.hypothesisId,
+        backlogIdeaId: doc.backlogIdeaId || null,
+        title: doc.title,
+        description: doc.outline || null, // Use outline as description
+        category: mapContentCategory(doc.category) as any,
+        contentType: mapContentType(doc.format) as any,
+        clusterId: null, // TODO: Add clusterId field to SeoContentItem model if needed
+        status: toUpperEnum(doc.status),
+        dismissed: isDismissed, // Alias for isDismissed for frontend compatibility
+        isDismissed: isDismissed,
+        isAddedToBacklog: !!doc.backlogIdeaId,
+        createdAt: doc.createdAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString()
+    };
+};
 
 const seoAgentQueryResolver = {
     Query: {
@@ -66,44 +120,14 @@ const seoAgentQueryResolver = {
 
                 console.log(`[seoAgentClusters] Query:`, JSON.stringify(query));
                 
-                // Try new collection first
-                let clusters = await SeoAgentClusterModel.find(query)
-                    .sort({ updatedAt: -1 });
-                console.log(`[seoAgentClusters] Found ${clusters.length} clusters in seoAgentClusters`);
-                
-                // If no items found, try old collection (seoclusters)
-                if (clusters.length === 0) {
-                    const mongoose = require('mongoose');
-                    const oldCollection = mongoose.connection.db.collection('seoclusters');
-                    const oldItems = await oldCollection.find(query).toArray();
-                    console.log(`[seoAgentClusters] Found ${oldItems.length} clusters in old collection (seoclusters)`);
-                    
-                    // Convert old format to new format
-                    clusters = oldItems.map((item: any) => ({
-                        _id: item._id,
-                        projectId: item.projectId,
-                        hypothesisId: item.hypothesisId,
-                        title: item.title,
-                        intent: mapOldIntentToNewIntent(item.intent),
-                        keywords: item.keywords || [],
-                        createdAt: item.createdAt,
-                        updatedAt: item.updatedAt,
-                    }));
-                }
-                
-                console.log(`[seoAgentClusters] Total clusters after merge: ${clusters.length}`);
+                // Use new integrated model
+                const clusters = await SeoCluster.find(query)
+                    .sort({ updatedAt: -1 })
+                    .exec();
+                console.log(`[seoAgentClusters] Found ${clusters.length} clusters`);
 
                 // Always return an array, never null
-                return clusters.map((cluster) => ({
-                    id: cluster._id.toString(),
-                    projectId: cluster.projectId,
-                    hypothesisId: cluster.hypothesisId || null,
-                    title: cluster.title,
-                    intent: cluster.intent,
-                    keywords: cluster.keywords,
-                    createdAt: (cluster as any).createdAt?.toISOString() || new Date().toISOString(),
-                    updatedAt: (cluster as any).updatedAt?.toISOString() || new Date().toISOString(),
-                })) || [];
+                return clusters.map(mapCluster) || [];
             } catch (err) {
                 console.error('Error in seoAgentClusters:', err);
                 // Return empty array on error to satisfy GraphQL non-null requirement
@@ -134,48 +158,14 @@ const seoAgentQueryResolver = {
 
                 console.log(`[seoAgentBacklog] Query:`, JSON.stringify(query));
                 
-                // Try new collection first
-                let backlogItems = await SeoAgentBacklogIdeaModel.find(query)
-                    .sort({ updatedAt: -1 });
-                console.log(`[seoAgentBacklog] Found ${backlogItems.length} items in seoAgentBacklogIdeas`);
-                
-                // If no items found, try old collection (seobacklogideas)
-                if (backlogItems.length === 0) {
-                    const mongoose = require('mongoose');
-                    const oldCollection = mongoose.connection.db.collection('seobacklogideas');
-                    const oldItems = await oldCollection.find(query).toArray();
-                    console.log(`[seoAgentBacklog] Found ${oldItems.length} items in old collection (seobacklogideas)`);
-                    
-                    // Convert old format to new format
-                    backlogItems = oldItems.map((item: any) => ({
-                        _id: item._id,
-                        projectId: item.projectId,
-                        hypothesisId: item.hypothesisId,
-                        title: item.title,
-                        description: item.description,
-                        contentType: mapCategoryToContentType(item.category),
-                        clusterId: item.clusterId || null,
-                        status: mapOldStatusToNewStatus(item.status),
-                        createdAt: item.createdAt,
-                        updatedAt: item.updatedAt,
-                    }));
-                }
-                
-                console.log(`[seoAgentBacklog] Total items after merge: ${backlogItems.length}`);
+                // Use new integrated model
+                const backlogItems = await SeoBacklogIdea.find(query)
+                    .sort({ updatedAt: -1 })
+                    .exec();
+                console.log(`[seoAgentBacklog] Found ${backlogItems.length} items`);
 
                 // Always return an array, never null or undefined
-                return backlogItems.map((item) => ({
-                    id: item._id.toString(),
-                    projectId: item.projectId,
-                    hypothesisId: item.hypothesisId || null,
-                    title: item.title,
-                    description: item.description || null,
-                    contentType: item.contentType,
-                    clusterId: item.clusterId || null,
-                    status: item.status,
-                    createdAt: (item as any).createdAt?.toISOString() || new Date().toISOString(),
-                    updatedAt: (item as any).updatedAt?.toISOString() || new Date().toISOString(),
-                })) || [];
+                return backlogItems.map(mapBacklogIdea) || [];
             } catch (err) {
                 console.error('Error in seoAgentBacklog:', err);
                 // Return empty array on error to satisfy GraphQL non-null requirement
@@ -195,9 +185,9 @@ const seoAgentQueryResolver = {
                 // Verify user has access to this project
                 await projectService.getProjectById(args.projectId, userId);
 
-                let settings = await SeoAgentPostingSettingsModel.findOne({
+                let settings = await SeoSprintSettings.findOne({
                     projectId: args.projectId,
-                });
+                }).exec();
 
                 // Return default settings if none exist
                 if (!settings) {
@@ -208,6 +198,7 @@ const seoAgentQueryResolver = {
                         weeklyPublishCount: 2,
                         preferredDays: ['Tuesday', 'Thursday'],
                         autoPublishEnabled: false,
+                        wordpressConnected: false,
                         updatedAt: new Date().toISOString(),
                     };
                 }
@@ -216,10 +207,14 @@ const seoAgentQueryResolver = {
                     id: settings._id.toString(),
                     projectId: settings.projectId,
                     hypothesisId: settings.hypothesisId || null,
-                    weeklyPublishCount: settings.weeklyPublishCount,
-                    preferredDays: settings.preferredDays,
-                    autoPublishEnabled: settings.autoPublishEnabled,
-                    updatedAt: (settings as any).updatedAt?.toISOString() || new Date().toISOString(),
+                    weeklyPublishCount: settings.weeklyCadence,
+                    preferredDays: settings.publishDays.map((d: number) => {
+                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        return days[d] || 'Monday';
+                    }),
+                    autoPublishEnabled: false, // TODO: Add to model if needed
+                    wordpressConnected: false, // Default to false, can be checked via testWordPressConnection mutation
+                    updatedAt: settings.updatedAt?.toISOString() || new Date().toISOString(),
                 };
             } catch (err) {
                 console.error('Error in seoAgentPostingSettings:', err);
@@ -231,8 +226,49 @@ const seoAgentQueryResolver = {
                     weeklyPublishCount: 2,
                     preferredDays: ['Tuesday', 'Thursday'],
                     autoPublishEnabled: false,
+                    wordpressConnected: false,
                     updatedAt: new Date().toISOString(),
                 };
+            }
+        },
+
+        async seoAgentContentIdeas(
+            _: never,
+            args: { projectId: string; hypothesisId?: string },
+            context: IContext
+        ) {
+            try {
+                const userId = authService.getUserIdFromToken(context.token);
+                console.log(`[seoAgentContentIdeas] projectId: ${args.projectId}, hypothesisId: ${args.hypothesisId}, userId: ${userId}`);
+                
+                // Verify user has access to this project
+                await projectService.getProjectById(args.projectId, userId);
+
+                const query: { projectId: string; hypothesisId?: string } = {
+                    projectId: args.projectId,
+                };
+
+                if (args.hypothesisId) {
+                    query.hypothesisId = args.hypothesisId;
+                }
+
+                console.log(`[seoAgentContentIdeas] Query:`, JSON.stringify(query));
+                
+                // Query SeoContentItem for content ideas
+                // Content ideas are typically items with status "draft" or items that haven't been fully developed
+                const contentItems = await SeoContentItem.find(query)
+                    .sort({ updatedAt: -1 })
+                    .exec();
+                console.log(`[seoAgentContentIdeas] Found ${contentItems.length} content items`);
+
+                // Map to ContentIdea format
+                // Always return an array, never null
+                return contentItems.map(mapContentIdea) || [];
+            } catch (err) {
+                console.error('Error in seoAgentContentIdeas:', err);
+                // Return empty array on error to satisfy GraphQL non-null requirement
+                // Don't use elevateError here as it throws and prevents return
+                return [];
             }
         },
     },

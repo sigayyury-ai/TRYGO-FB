@@ -1,37 +1,26 @@
 import authService from '../../services/AuthService';
 import { elevateError } from '../../errors/elevateError';
 import { IContext } from '../../types/IContext';
-import { SeoAgentClusterModel } from '../../models/SeoAgentClusterModel';
-import { SeoAgentPostingSettingsModel } from '../../models/SeoAgentPostingSettingsModel';
-import { SeoAgentBacklogIdeaModel, SeoAgentBacklogContentType, SeoAgentBacklogStatus } from '../../models/SeoAgentBacklogIdeaModel';
+import { SeoCluster, type SeoClusterDoc, type SeoClusterIntent } from '../../db/models/SeoCluster';
+import { SeoBacklogIdea, type SeoBacklogIdeaDoc } from '../../db/models/SeoBacklogIdea';
+import { SeoSprintSettings, type SeoSprintSettingsDocument } from '../../db/models/SeoSprintSettings';
 import projectService from '../../services/ProjectService';
-import { SeoAgentClusterIntent } from '../../models/SeoAgentClusterModel';
 
-// Helper functions to convert old format to new format
-function mapCategoryToContentType(category: string): SeoAgentBacklogContentType {
-    // Map old category to new contentType
-    // Old: pain, goal, trigger, feature, benefit, faq, info
-    // New: ARTICLE, COMMERCIAL_PAGE, LANDING_PAGE
-    if (['feature', 'benefit'].includes(category)) {
-        return SeoAgentBacklogContentType.COMMERCIAL_PAGE;
-    }
-    if (['pain', 'goal'].includes(category)) {
-        return SeoAgentBacklogContentType.LANDING_PAGE;
-    }
-    return SeoAgentBacklogContentType.ARTICLE; // Default for trigger, faq, info
-}
+const toUpperEnum = (value: string) => value.toUpperCase();
+const toLowerEnum = (value: string) => value.toLowerCase();
 
-function mapOldStatusToNewStatus(status: string): SeoAgentBacklogStatus {
-    // Map old status to new status
-    // Old: backlog, scheduled, archived
-    // New: PENDING, SCHEDULED, IN_PROGRESS, COMPLETED, ARCHIVED
-    const statusMap: Record<string, SeoAgentBacklogStatus> = {
-        'backlog': SeoAgentBacklogStatus.PENDING,
-        'scheduled': SeoAgentBacklogStatus.SCHEDULED,
-        'archived': SeoAgentBacklogStatus.ARCHIVED,
+const mapBacklogStatus = (status: string): string => {
+    const statusMap: Record<string, string> = {
+        backlog: "PENDING",
+        scheduled: "SCHEDULED",
+        archived: "ARCHIVED",
+        pending: "PENDING",
+        in_progress: "IN_PROGRESS",
+        completed: "COMPLETED",
+        published: "PUBLISHED"
     };
-    return statusMap[status] || SeoAgentBacklogStatus.PENDING;
-}
+    return statusMap[status.toLowerCase()] || toUpperEnum(status);
+};
 
 const seoAgentMutationResolver = {
     Mutation: {
@@ -55,15 +44,17 @@ const seoAgentMutationResolver = {
                 await projectService.getProjectById(args.projectId, userId);
 
                 // Validate intent
-                if (!Object.values(SeoAgentClusterIntent).includes(args.input.intent as SeoAgentClusterIntent)) {
+                const validIntents: SeoClusterIntent[] = ["commercial", "transactional", "informational", "navigational"];
+                const intentLower = args.input.intent.toLowerCase();
+                if (!validIntents.includes(intentLower as SeoClusterIntent)) {
                     throw new Error(`Invalid intent: ${args.input.intent}`);
                 }
 
-                const cluster = new SeoAgentClusterModel({
+                const cluster = new SeoCluster({
                     projectId: args.projectId,
-                    hypothesisId: args.hypothesisId,
+                    hypothesisId: args.hypothesisId || undefined,
                     title: args.input.title,
-                    intent: args.input.intent as SeoAgentClusterIntent,
+                    intent: intentLower as SeoClusterIntent,
                     keywords: args.input.keywords || [],
                     createdBy: userId,
                     updatedBy: userId,
@@ -76,10 +67,10 @@ const seoAgentMutationResolver = {
                     projectId: savedCluster.projectId,
                     hypothesisId: savedCluster.hypothesisId || null,
                     title: savedCluster.title,
-                    intent: savedCluster.intent,
+                    intent: toUpperEnum(savedCluster.intent),
                     keywords: savedCluster.keywords,
-                    createdAt: (savedCluster as any).createdAt?.toISOString() || new Date().toISOString(),
-                    updatedAt: (savedCluster as any).updatedAt?.toISOString() || new Date().toISOString(),
+                    createdAt: savedCluster.createdAt.toISOString(),
+                    updatedAt: savedCluster.updatedAt.toISOString(),
                 };
             } catch (err) {
                 elevateError(err);
@@ -102,7 +93,7 @@ const seoAgentMutationResolver = {
                 const userId = authService.getUserIdFromToken(context.token);
 
                 // Find cluster and verify user has access to its project
-                const cluster = await SeoAgentClusterModel.findById(args.id);
+                const cluster = await SeoCluster.findById(args.id).exec();
                 if (!cluster) {
                     throw new Error('Cluster not found');
                 }
@@ -110,12 +101,14 @@ const seoAgentMutationResolver = {
                 await projectService.getProjectById(cluster.projectId, userId);
 
                 // Validate intent
-                if (!Object.values(SeoAgentClusterIntent).includes(args.input.intent as SeoAgentClusterIntent)) {
+                const validIntents: SeoClusterIntent[] = ["commercial", "transactional", "informational", "navigational"];
+                const intentLower = args.input.intent.toLowerCase();
+                if (!validIntents.includes(intentLower as SeoClusterIntent)) {
                     throw new Error(`Invalid intent: ${args.input.intent}`);
                 }
 
                 cluster.title = args.input.title;
-                cluster.intent = args.input.intent as SeoAgentClusterIntent;
+                cluster.intent = intentLower as SeoClusterIntent;
                 cluster.keywords = args.input.keywords || [];
                 cluster.updatedBy = userId;
 
@@ -126,10 +119,10 @@ const seoAgentMutationResolver = {
                     projectId: updatedCluster.projectId,
                     hypothesisId: updatedCluster.hypothesisId || null,
                     title: updatedCluster.title,
-                    intent: updatedCluster.intent,
+                    intent: toUpperEnum(updatedCluster.intent),
                     keywords: updatedCluster.keywords,
-                    createdAt: (updatedCluster as any).createdAt?.toISOString() || new Date().toISOString(),
-                    updatedAt: (updatedCluster as any).updatedAt?.toISOString() || new Date().toISOString(),
+                    createdAt: updatedCluster.createdAt.toISOString(),
+                    updatedAt: updatedCluster.updatedAt.toISOString(),
                 };
             } catch (err) {
                 elevateError(err);
@@ -145,14 +138,14 @@ const seoAgentMutationResolver = {
                 const userId = authService.getUserIdFromToken(context.token);
 
                 // Find cluster and verify user has access to its project
-                const cluster = await SeoAgentClusterModel.findById(args.id);
+                const cluster = await SeoCluster.findById(args.id).exec();
                 if (!cluster) {
                     throw new Error('Cluster not found');
                 }
 
                 await projectService.getProjectById(cluster.projectId, userId);
 
-                await SeoAgentClusterModel.findByIdAndDelete(args.id);
+                await SeoCluster.findByIdAndDelete(args.id).exec();
 
                 return true;
             } catch (err) {
@@ -184,27 +177,37 @@ const seoAgentMutationResolver = {
                     throw new Error('weeklyPublishCount must be between 1 and 7');
                 }
 
-                const settings = await SeoAgentPostingSettingsModel.findOneAndUpdate(
-                    { projectId: args.projectId },
+                // Map preferredDays from day names to numbers
+                const dayMap: Record<string, number> = {
+                    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+                    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+                };
+                const publishDays = args.input.preferredDays.map((day: string) => dayMap[day] ?? 1);
+
+                const settings = await SeoSprintSettings.findOneAndUpdate(
+                    { projectId: args.projectId, hypothesisId: args.hypothesisId },
                     {
                         projectId: args.projectId,
-                        hypothesisId: args.hypothesisId,
-                        weeklyPublishCount: args.input.weeklyPublishCount,
-                        preferredDays: args.input.preferredDays,
-                        autoPublishEnabled: args.input.autoPublishEnabled,
+                        hypothesisId: args.hypothesisId || undefined,
+                        weeklyCadence: args.input.weeklyPublishCount,
+                        publishDays: publishDays,
                         updatedBy: userId,
                     },
                     { upsert: true, new: true }
-                );
+                ).exec();
 
                 return {
                     id: settings._id.toString(),
                     projectId: settings.projectId,
                     hypothesisId: settings.hypothesisId || null,
-                    weeklyPublishCount: settings.weeklyPublishCount,
-                    preferredDays: settings.preferredDays,
-                    autoPublishEnabled: settings.autoPublishEnabled,
-                    updatedAt: (settings as any).updatedAt?.toISOString() || new Date().toISOString(),
+                    weeklyPublishCount: settings.weeklyCadence,
+                    preferredDays: settings.publishDays.map((d: number) => {
+                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        return days[d] || 'Monday';
+                    }),
+                    autoPublishEnabled: false, // TODO: Add to model if needed
+                    wordpressConnected: false, // Default to false, can be checked via testWordPressConnection mutation
+                    updatedAt: settings.updatedAt?.toISOString() || new Date().toISOString(),
                 };
             } catch (err) {
                 elevateError(err);
@@ -232,23 +235,20 @@ const seoAgentMutationResolver = {
                 // Verify user has access to this project
                 await projectService.getProjectById(args.projectId, userId);
 
-                // Validate contentType
-                if (!Object.values(SeoAgentBacklogContentType).includes(args.input.contentType as SeoAgentBacklogContentType)) {
-                    throw new Error(`Invalid contentType: ${args.input.contentType}`);
-                }
-
-                // Validate status
-                if (!Object.values(SeoAgentBacklogStatus).includes(args.input.status as SeoAgentBacklogStatus)) {
+                // Map GraphQL status to database status
+                const statusLower = args.input.status.toLowerCase();
+                const validStatuses = ["backlog", "scheduled", "archived", "pending", "in_progress", "completed", "published"];
+                if (!validStatuses.includes(statusLower)) {
                     throw new Error(`Invalid status: ${args.input.status}`);
                 }
 
-                const backlogItem = new SeoAgentBacklogIdeaModel({
+                const backlogItem = new SeoBacklogIdea({
                     projectId: args.projectId,
-                    hypothesisId: args.hypothesisId,
+                    hypothesisId: args.hypothesisId || undefined,
                     title: args.input.title,
                     description: args.input.description || undefined,
-                    contentType: args.input.contentType as SeoAgentBacklogContentType,
-                    status: args.input.status as SeoAgentBacklogStatus,
+                    category: "info" as any, // Default category, can be extended
+                    status: statusLower as any,
                     clusterId: args.input.clusterId || undefined,
                     createdBy: userId,
                     updatedBy: userId,
@@ -262,11 +262,11 @@ const seoAgentMutationResolver = {
                     hypothesisId: savedItem.hypothesisId || null,
                     title: savedItem.title,
                     description: savedItem.description || null,
-                    contentType: savedItem.contentType,
+                    contentType: "ARTICLE" as const,
                     clusterId: savedItem.clusterId || null,
-                    status: savedItem.status,
-                    createdAt: (savedItem as any).createdAt?.toISOString() || new Date().toISOString(),
-                    updatedAt: (savedItem as any).updatedAt?.toISOString() || new Date().toISOString(),
+                    status: mapBacklogStatus(savedItem.status),
+                    createdAt: savedItem.createdAt.toISOString(),
+                    updatedAt: savedItem.updatedAt.toISOString(),
                 };
             } catch (err) {
                 elevateError(err);
@@ -291,30 +291,7 @@ const seoAgentMutationResolver = {
                 const userId = authService.getUserIdFromToken(context.token);
 
                 // Find backlog item and verify user has access to its project
-                let backlogItem = await SeoAgentBacklogIdeaModel.findById(args.id);
-                
-                // If not found in new collection, try old collection
-                if (!backlogItem) {
-                    const mongoose = require('mongoose');
-                    const oldCollection = mongoose.connection.db.collection('seobacklogideas');
-                    const oldItem = await oldCollection.findOne({ _id: new mongoose.Types.ObjectId(args.id) });
-                    
-                    if (oldItem) {
-                        // Migrate old item to new collection
-                        backlogItem = new SeoAgentBacklogIdeaModel({
-                            projectId: oldItem.projectId,
-                            hypothesisId: oldItem.hypothesisId,
-                            title: oldItem.title,
-                            description: oldItem.description,
-                            contentType: mapCategoryToContentType(oldItem.category),
-                            status: mapOldStatusToNewStatus(oldItem.status),
-                            clusterId: oldItem.clusterId || undefined,
-                            createdBy: userId,
-                            updatedBy: userId,
-                        });
-                        await backlogItem.save();
-                    }
-                }
+                const backlogItem = await SeoBacklogIdea.findById(args.id).exec();
                 
                 if (!backlogItem) {
                     throw new Error('Backlog item not found');
@@ -322,21 +299,17 @@ const seoAgentMutationResolver = {
 
                 await projectService.getProjectById(backlogItem.projectId, userId);
 
-                // Validate contentType
-                if (!Object.values(SeoAgentBacklogContentType).includes(args.input.contentType as SeoAgentBacklogContentType)) {
-                    throw new Error(`Invalid contentType: ${args.input.contentType}`);
-                }
-
-                // Validate status
-                if (!Object.values(SeoAgentBacklogStatus).includes(args.input.status as SeoAgentBacklogStatus)) {
+                // Map GraphQL status to database status
+                const statusLower = args.input.status.toLowerCase();
+                const validStatuses = ["backlog", "scheduled", "archived", "pending", "in_progress", "completed", "published"];
+                if (!validStatuses.includes(statusLower)) {
                     throw new Error(`Invalid status: ${args.input.status}`);
                 }
 
-                backlogItem.title = args.input.title;
-                backlogItem.description = args.input.description || undefined;
-                backlogItem.contentType = args.input.contentType as SeoAgentBacklogContentType;
-                backlogItem.status = args.input.status as SeoAgentBacklogStatus;
-                backlogItem.clusterId = args.input.clusterId || undefined;
+                backlogItem.title = args.input.title || backlogItem.title;
+                backlogItem.description = args.input.description !== undefined ? args.input.description : backlogItem.description;
+                backlogItem.status = statusLower as any;
+                backlogItem.clusterId = args.input.clusterId !== undefined ? args.input.clusterId : backlogItem.clusterId;
                 backlogItem.updatedBy = userId;
 
                 const updatedItem = await backlogItem.save();
@@ -347,11 +320,11 @@ const seoAgentMutationResolver = {
                     hypothesisId: updatedItem.hypothesisId || null,
                     title: updatedItem.title,
                     description: updatedItem.description || null,
-                    contentType: updatedItem.contentType,
+                    contentType: "ARTICLE" as const,
                     clusterId: updatedItem.clusterId || null,
-                    status: updatedItem.status,
-                    createdAt: (updatedItem as any).createdAt?.toISOString() || new Date().toISOString(),
-                    updatedAt: (updatedItem as any).updatedAt?.toISOString() || new Date().toISOString(),
+                    status: mapBacklogStatus(updatedItem.status),
+                    createdAt: updatedItem.createdAt.toISOString(),
+                    updatedAt: updatedItem.updatedAt.toISOString(),
                 };
             } catch (err) {
                 elevateError(err);
@@ -367,14 +340,14 @@ const seoAgentMutationResolver = {
                 const userId = authService.getUserIdFromToken(context.token);
 
                 // Find backlog item and verify user has access to its project
-                const backlogItem = await SeoAgentBacklogIdeaModel.findById(args.id);
+                const backlogItem = await SeoBacklogIdea.findById(args.id).exec();
                 if (!backlogItem) {
                     throw new Error('Backlog item not found');
                 }
 
                 await projectService.getProjectById(backlogItem.projectId, userId);
 
-                await SeoAgentBacklogIdeaModel.findByIdAndDelete(args.id);
+                await SeoBacklogIdea.findByIdAndDelete(args.id).exec();
 
                 return true;
             } catch (err) {

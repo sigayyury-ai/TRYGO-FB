@@ -39,4 +39,25 @@ export const config = {
         TOKEN: process.env.TG_TOKEN_STATISTICS!,
         ENABLED: process.env.TG_ENABLED!,
     },
+
+    IMAGE_CONFIG: {
+        provider: (process.env.IMAGE_PROVIDER || "gemini") as "gemini",
+        geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        geminiImageModel: process.env.GEMINI_IMAGE_MODEL || "imagen-4.0-generate-001",
+        geminiApiBaseUrl: process.env.GEMINI_API_BASE_URL || "https://generativelanguage.googleapis.com/v1beta",
+        publicUrl: (process.env.PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:5001").replace(/\/$/, ""),
+        storageRoot: process.env.STORAGE_ROOT || "./storage"
+    },
+
+    // SEO Agent configuration (integrated from backend service)
+    SEO_AGENT: {
+        openAiApiKey: process.env.OPENAI_API_KEY,
+        openAiModel: process.env.OPENAI_MODEL || "gpt-4o",
+        geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        googleApiKey: process.env.GOOGLE_API_KEY,
+        wordpressBaseUrl: process.env.WORDPRESS_BASE_URL,
+        wordpressUsername: process.env.WORDPRESS_USERNAME,
+        wordpressAppPassword: process.env.WORDPRESS_APP_PASSWORD
+        // websitePagesServiceUrl removed - service integrated into TRYGO-Backend
+    },
 };

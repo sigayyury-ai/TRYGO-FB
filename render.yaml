@@ -5,11 +5,10 @@
 # 
 # АРХИТЕКТУРА:
 # - trygo-main-backend: Единый API Gateway ($7/месяц) - все запросы идут через него
+#   Включает: авторизацию, проекты, гипотезы, SEO Agent, Images API, Clusters API, Website Pages API (все интегрировано)
 # - trygo-frontend: БЕСПЛАТНО (static site)
-# - Микросервисы (images, website-pages, semantics) можно объединить в trygo-main-backend
-#   или оставить как внутренние сервисы на free плане
 #
-# ИТОГО: $7-14/месяц вместо $42/месяц
+# ИТОГО: $7/месяц (images-service, semantics-service, SEO Agent backend, website-pages-service интегрированы в trygo-main-backend)
 #
 # Для деплоя:
 # 1. Подключите репозиторий в Render Dashboard
@@ -22,7 +21,7 @@
 services:
   # ============================================
   # Main Backend (TRYGO-Backend) - ЕДИНЫЙ API GATEWAY
-  # Объединяет: авторизацию, проекты, гипотезы, SEO Agent
+  # Объединяет: авторизацию, проекты, гипотезы, SEO Agent, Images API, Clusters API, Website Pages API
   # ============================================
   - type: web
     name: trygo-main-backend
@@ -95,19 +94,33 @@ services:
         sync: false
       - key: TG_ENABLED
         sync: false
-      # SEO Agent & микросервисы (если используются как внутренние сервисы)
-      - key: SEMANTICS_SERVICE_URL
-        sync: false
+      # SEO Agent integrated - no separate backend service needed
+      # Semantics service integrated - clusters API available at /api/clusters
       - key: IMAGES_SERVICE_URL
         sync: false
-      - key: WEBSITE_PAGES_SERVICE_URL
-        sync: false
+      # WEBSITE_PAGES_SERVICE_URL removed - service integrated into TRYGO-Backend
       - key: WORDPRESS_BASE_URL
         sync: false
       - key: WORDPRESS_USERNAME
         sync: false
       - key: WORDPRESS_APP_PASSWORD
         sync: false
+      # Image generation configuration (integrated into TRYGO-Backend)
+      # Uses Google Gemini/Imagen for image generation
+      - key: IMAGE_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_IMAGE_MODEL
+        value: imagen-4.0-generate-001
+      - key: GEMINI_API_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta
+      - key: PUBLIC_URL
+        sync: false
+      - key: STORAGE_ROOT
+        value: ./storage
 
   # ============================================
   # Frontend (React SPA)
@@ -145,83 +158,14 @@ services:
         value: "false"
 
   # ============================================
-  # Website Pages Service (опционально - можно объединить в trygo-main-backend)
-  # Микросервис для генерации веб-страниц
+  # Website Pages Service - ИНТЕГРИРОВАН в trygo-main-backend
+  # Website Pages API доступен через /api/website-pages/generate в trygo-main-backend
+  # Отдельный сервис больше не нужен
   # ============================================
-  - type: web
-    name: website-pages-service
-    runtime: node
-    region: frankfurt
-    plan: free
-    rootDir: website-pages-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "4400"
-      - key: OPENAI_API_KEY
-        sync: false
 
   # ============================================
-  # Semantics Service (опционально - можно объединить в trygo-main-backend)
-  # Микросервис для работы с семантическими кластерами
+  # Semantics Service - ИНТЕГРИРОВАН в trygo-main-backend
+  # Clusters API доступен через /api/clusters в trygo-main-backend
+  # Отдельный сервис больше не нужен
   # ============================================
-  - type: web
-    name: semantics-service
-    runtime: node
-    region: frankfurt
-    plan: free
-    rootDir: semantics-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "4200"
-      - key: MONGODB_URI
-        sync: false
-      - key: SEMANTICS_SERVICE_ORIGIN
-        fromService:
-          type: web
-          name: trygo-frontend
-          property: host
 
-  # ============================================
-  # Images Service (опционально - можно объединить в trygo-main-backend)
-  # Микросервис для генерации изображений
-  # ============================================
-  - type: web
-    name: images-service
-    runtime: node
-    region: frankfurt
-    plan: free
-    rootDir: images-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "4300"
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: IMAGE_PROVIDER
-        value: openai
-      - key: OPENAI_IMAGE_MODEL
-        value: dall-e-2
-      - key: GEMINI_IMAGE_MODEL
-        value: gemini-2.5-flash-image
-      - key: GEMINI_API_BASE_URL
-        value: https://generativelanguage.googleapis.com/v1beta
-      - key: PUBLIC_URL
-        sync: false
-      - key: STORAGE_ROOT
-        value: ./storage

@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2025-11-14
 
 ## Active Technologies
+- TypeScript 5.3.2, Node.js 20+ (001-backend-consolidation)
 
 - TypeScript 5.x + React 19 (Vite 7 toolchain) + React 19, custom TRYGO hooks (`useSeoData`, API client wrappers), Tiptap editor components, Vite 7 toolchain (001-seo-agent-integration)
 
@@ -22,6 +23,7 @@ npm test && npm run lint
 TypeScript 5.x + React 19 (Vite 7 toolchain): Follow standard conventions
 
 ## Recent Changes
+- 001-backend-consolidation: Added TypeScript 5.3.2, Node.js 20+
 
 - 001-seo-agent-integration: Added TypeScript 5.x + React 19 (Vite 7 toolchain) + React 19, custom TRYGO hooks (`useSeoData`, API client wrappers), Tiptap editor components, Vite 7 toolchain
 
