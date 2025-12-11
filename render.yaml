@@ -31,12 +31,15 @@ services:
     region: frankfurt
     plan: starter
     rootDir: TRYGO-Backend
-    buildCommand: npm install && npm run build && npm run codegen
+    buildCommand: npm ci && npm run codegen && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      # Явно указываем версию Node.js для совместимости
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
       - key: OPENAI_API_KEY
@@ -126,8 +129,11 @@ services:
     name: trygo-frontend
     runtime: static
     rootDir: TRYGO-Front
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
     envVars:
       # ВАЖНО: После деплоя trygo-main-backend, обновите эти URL вручную в Render Dashboard
       # Замените <trygo-main-backend-url> на реальный URL (например: https://trygo-main-backend.onrender.com)
