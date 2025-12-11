@@ -1,5 +1,3 @@
-import multer from 'multer';
-
 // AWS S3 upload functionality is disabled
 // This function exists to prevent import errors but will throw at runtime if called
 
