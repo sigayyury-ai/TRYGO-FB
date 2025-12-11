@@ -242,20 +242,55 @@ async function bootstrap() {
   // Setup cron job for auto-publishing scheduled content
   // Run once a day at 9:00 AM UTC
   cron.schedule("0 9 * * *", async () => {
+    const startTime = new Date();
+    console.log("[cron] ===== ЗАПУСК CRON JOB АВТОПУБЛИКАЦИИ =====");
+    console.log("[cron] 🔄 Запуск автопубликации по расписанию (9:00 AM UTC)...");
+    console.log("[cron] Время запуска:", startTime.toISOString());
+    
     try {
-      console.log("[cron] 🔄 Запуск автопубликации по расписанию (9:00 AM UTC)...");
       const { autoPublishScheduledContent } = await import("./services/wordpress/autoPublish.js");
       const result = await autoPublishScheduledContent();
+      
+      const endTime = new Date();
+      const duration = endTime.getTime() - startTime.getTime();
+      
+      console.log("[cron] ===== CRON JOB ЗАВЕРШЕН =====");
       console.log("[cron] ✅ Автопубликация завершена:", {
         published: result.published,
         failed: result.failed,
-        errors: result.errors.length
+        errors: result.errors.length,
+        duration: `${duration}ms`,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString()
       });
+      
       if (result.errors.length > 0) {
-        console.error("[cron] Ошибки автопубликации:", result.errors);
+        console.error("[cron] ⚠️ Ошибки автопубликации:", result.errors);
       }
+      
+      if (result.published > 0) {
+        console.log("[cron] ✅ Успешно опубликовано статей:", result.published);
+      }
+      
+      if (result.failed > 0) {
+        console.warn("[cron] ⚠️ Не удалось опубликовать статей:", result.failed);
+      }
+      
+      console.log("[cron] ===== КОНЕЦ CRON JOB =====");
     } catch (error: any) {
+      const endTime = new Date();
+      const duration = endTime.getTime() - startTime.getTime();
+      
+      console.error("[cron] ===== КРИТИЧЕСКАЯ ОШИБКА CRON JOB =====");
       console.error("[cron] ❌ Ошибка автопубликации:", error);
+      console.error("[cron] Детали ошибки:", {
+        message: error.message,
+        stack: error.stack,
+        duration: `${duration}ms`,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString()
+      });
+      console.error("[cron] ===== КОНЕЦ ОШИБКИ =====");
     }
   }, {
     scheduled: true,
