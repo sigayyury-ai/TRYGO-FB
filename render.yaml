@@ -22,7 +22,7 @@ services:
   # ============================================
   - type: web
     name: seo-agent-backend
-    env: node
+    runtime: node
     region: frankfurt
     plan: starter
     rootDir: backend
@@ -67,7 +67,7 @@ services:
   # ============================================
   - type: web
     name: trygo-main-backend
-    env: node
+    runtime: node
     region: frankfurt
     plan: starter
     rootDir: TRYGO-Backend
@@ -162,7 +162,7 @@ services:
   # ============================================
   - type: web
     name: website-pages-service
-    env: node
+    runtime: node
     region: frankfurt
     plan: starter
     rootDir: website-pages-service
@@ -183,7 +183,7 @@ services:
   # ============================================
   - type: web
     name: semantics-service
-    env: node
+    runtime: node
     region: frankfurt
     plan: starter
     rootDir: semantics-service
@@ -206,7 +206,7 @@ services:
   # ============================================
   - type: web
     name: images-service
-    env: node
+    runtime: node
     region: frankfurt
     plan: starter
     rootDir: images-service
