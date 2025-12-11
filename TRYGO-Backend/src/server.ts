@@ -185,12 +185,15 @@ async function startServer() {
         });
 
         console.log('⏰ Starting Agenda jobs...');
-        // Start agenda but don't wait for jobs to complete
-        agenda.start().catch((error) => {
+        // Start agenda asynchronously to not block server startup
+        agenda.start().then(() => {
+            console.log('✅ Agenda started');
+        }).catch((error) => {
             console.error('❌ Error starting Agenda:', error);
             // Don't block server startup if Agenda fails
         });
-        console.log('✅ Agenda started');
+        // Don't await - let server start immediately
+        console.log('✅ Agenda initialization started (non-blocking)');
 
         // Telegram инициализация опциональна
         if (config.TG_STATISTICS.TOKEN && config.TG_STATISTICS.ENABLED !== 'false') {
