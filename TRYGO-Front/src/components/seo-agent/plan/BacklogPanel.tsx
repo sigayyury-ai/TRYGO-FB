@@ -82,8 +82,13 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
             const { data } = await getContentItemByBacklogIdeaQuery(item.id);
             if (data?.contentItemByBacklogIdea) {
               const contentItem = data.contentItemByBacklogIdea;
-              // Only add to map if content actually exists (not just an empty draft)
-              if (contentItem.content && contentItem.content.trim().length > 0) {
+              // Add to map if content exists OR if there's an image or outline (content might have been generated)
+              // This ensures we show items that were previously generated even if content was cleared
+              const hasContent = contentItem.content && contentItem.content.trim().length > 0;
+              const hasImage = contentItem.imageUrl && contentItem.imageUrl.trim().length > 0;
+              const hasOutline = contentItem.outline && contentItem.outline.trim().length > 0;
+              
+              if (hasContent || hasImage || hasOutline) {
                 map.set(item.id, {
                   id: contentItem.id,
                   title: contentItem.title,
@@ -95,8 +100,25 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                 });
               }
             }
-          } catch (error) {
-            // Ignore errors - content item might not exist
+          } catch (error: any) {
+            // Log error for debugging but don't break the flow
+            const errorMessage = error?.message || 'Unknown error';
+            const isNetworkError = errorMessage.includes('Failed to fetch') || error?.networkError;
+            
+            if (isNetworkError) {
+              console.error(`[BacklogPanel] Network error fetching content for backlog item ${item.id}:`, {
+                message: errorMessage,
+                networkError: error?.networkError,
+                graphQLErrors: error?.graphQLErrors,
+                backlogIdeaId: item.id
+              });
+            } else {
+              console.warn(`[BacklogPanel] Error fetching content for backlog item ${item.id}:`, {
+                message: errorMessage,
+                graphQLErrors: error?.graphQLErrors,
+                backlogIdeaId: item.id
+              });
+            }
           }
         });
         

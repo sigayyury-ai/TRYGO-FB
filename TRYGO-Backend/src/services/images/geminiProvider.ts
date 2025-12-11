@@ -64,33 +64,44 @@ export class GeminiProvider implements ImageProvider {
 
       const data = await response.json();
       console.log(`[Gemini Provider] Response data keys:`, Object.keys(data));
+      console.log(`[Gemini Provider] Response structure:`, JSON.stringify(data).substring(0, 1000));
 
-      // Extract image from Imagen 4.0 response format
+      // Extract image from Imagen API response format
       let imageBase64: string | null = null;
 
-      // Format: candidates[0].content.parts[0].inlineData.data
-      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      // Primary format: predictions[0].bytesBase64Encoded (Imagen API format)
+      if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
+        imageBase64 = data.predictions[0].bytesBase64Encoded;
+        console.log(`[Gemini Provider] ✅ Found image in predictions[0].bytesBase64Encoded format`);
+      }
+      // Format: candidates[0].content.parts[0].inlineData.data (Gemini text models)
+      else if (data.candidates && data.candidates[0] && data.candidates[0].content) {
         const parts = data.candidates[0].content.parts;
         if (parts && parts[0] && parts[0].inlineData && parts[0].inlineData.data) {
           imageBase64 = parts[0].inlineData.data;
+          console.log(`[Gemini Provider] ✅ Found image in candidates format`);
         }
       }
       // Fallback formats
       else if (data.b64_json) {
         imageBase64 = data.b64_json;
+        console.log(`[Gemini Provider] ✅ Found image in b64_json format`);
       }
       else if (data.data && data.data[0] && data.data[0].b64_json) {
         imageBase64 = data.data[0].b64_json;
+        console.log(`[Gemini Provider] ✅ Found image in data[0].b64_json format`);
       }
       else if (data.imageBase64) {
         imageBase64 = data.imageBase64;
+        console.log(`[Gemini Provider] ✅ Found image in imageBase64 format`);
       }
       else if (data.generatedImages && data.generatedImages[0] && data.generatedImages[0].imageBase64) {
         imageBase64 = data.generatedImages[0].imageBase64;
+        console.log(`[Gemini Provider] ✅ Found image in generatedImages format`);
       }
 
       if (!imageBase64) {
-        console.error(`[Gemini Provider] Response structure:`, JSON.stringify(data).substring(0, 500));
+        console.error(`[Gemini Provider] ❌ Response structure:`, JSON.stringify(data, null, 2).substring(0, 2000));
         throw new Error("Google Gemini returned no image data in expected format");
       }
 

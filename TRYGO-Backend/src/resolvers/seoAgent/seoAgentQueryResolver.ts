@@ -96,6 +96,30 @@ const mapContentIdea = (doc: SeoContentItemDoc) => {
     };
 };
 
+const mapContentItem = (doc: SeoContentItemDoc) => {
+    return {
+        id: doc._id.toString(),
+        projectId: doc.projectId,
+        hypothesisId: doc.hypothesisId,
+        backlogIdeaId: doc.backlogIdeaId || null,
+        title: doc.title,
+        category: mapContentCategory(doc.category) as any,
+        format: mapContentType(doc.format) as any,
+        ownerId: doc.ownerId || null,
+        reviewerId: doc.reviewerId || null,
+        channel: doc.channel || null,
+        outline: doc.outline || null,
+        content: doc.content || null,
+        imageUrl: doc.imageUrl || null,
+        status: toUpperEnum(doc.status) as any,
+        dueDate: doc.dueDate ? doc.dueDate.toISOString() : null,
+        createdBy: doc.createdBy || null,
+        updatedBy: doc.updatedBy || null,
+        createdAt: doc.createdAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString()
+    };
+};
+
 const seoAgentQueryResolver = {
     Query: {
         async seoAgentClusters(
@@ -120,16 +144,65 @@ const seoAgentQueryResolver = {
 
                 console.log(`[seoAgentClusters] Query:`, JSON.stringify(query));
                 
-                // Use new integrated model
-                const clusters = await SeoCluster.find(query)
+                // First, try exact match
+                let clusters = await SeoCluster.find(query)
                     .sort({ updatedAt: -1 })
                     .exec();
-                console.log(`[seoAgentClusters] Found ${clusters.length} clusters`);
+                
+                console.log(`[seoAgentClusters] Found ${clusters.length} clusters with exact match`);
+                
+                // If no clusters found and hypothesisId is provided, try without hypothesisId filter
+                // This helps with migration scenarios where hypothesisId might have changed
+                if (clusters.length === 0 && args.hypothesisId) {
+                    console.log(`[seoAgentClusters] No clusters found with hypothesisId, trying without hypothesisId filter`);
+                    const queryWithoutHypothesis = { projectId: args.projectId };
+                    clusters = await SeoCluster.find(queryWithoutHypothesis)
+                        .sort({ updatedAt: -1 })
+                        .exec();
+                    console.log(`[seoAgentClusters] Found ${clusters.length} clusters without hypothesisId filter`);
+                }
+                
+                // Log sample cluster data for debugging migration issues
+                if (clusters.length > 0) {
+                    const sample = clusters[0];
+                    console.log(`[seoAgentClusters] Sample cluster:`, {
+                        id: sample._id.toString(),
+                        projectId: sample.projectId,
+                        projectIdType: typeof sample.projectId,
+                        hypothesisId: sample.hypothesisId,
+                        hypothesisIdType: typeof sample.hypothesisId,
+                        title: sample.title
+                    });
+                } else {
+                    // Check if any clusters exist for this project at all
+                    const totalClustersForProject = await SeoCluster.countDocuments({ projectId: args.projectId }).exec();
+                    console.log(`[seoAgentClusters] Total clusters for project ${args.projectId}: ${totalClustersForProject}`);
+                    
+                    if (totalClustersForProject > 0 && args.hypothesisId) {
+                        // Log sample clusters to see what hypothesisIds exist
+                        const sampleClusters = await SeoCluster.find({ projectId: args.projectId })
+                            .limit(3)
+                            .select('hypothesisId projectId')
+                            .exec();
+                        console.log(`[seoAgentClusters] Sample hypothesisIds in database:`, 
+                            sampleClusters.map(c => ({ 
+                                hypothesisId: c.hypothesisId, 
+                                projectId: c.projectId 
+                            }))
+                        );
+                    }
+                }
 
                 // Always return an array, never null
                 return clusters.map(mapCluster) || [];
             } catch (err) {
                 console.error('Error in seoAgentClusters:', err);
+                console.error('Error details:', {
+                    message: err instanceof Error ? err.message : String(err),
+                    stack: err instanceof Error ? err.stack : undefined,
+                    projectId: args.projectId,
+                    hypothesisId: args.hypothesisId
+                });
                 // Return empty array on error to satisfy GraphQL non-null requirement
                 // Don't use elevateError here as it throws and prevents return
                 return [];
@@ -269,6 +342,52 @@ const seoAgentQueryResolver = {
                 // Return empty array on error to satisfy GraphQL non-null requirement
                 // Don't use elevateError here as it throws and prevents return
                 return [];
+            }
+        },
+
+        async contentItemByBacklogIdea(
+            _: never,
+            args: { backlogIdeaId: string },
+            context: IContext
+        ) {
+            try {
+                if (!context.token) {
+                    console.error('[contentItemByBacklogIdea] Token is missing');
+                    throw new Error('Authentication required');
+                }
+
+                const userId = authService.getUserIdFromToken(context.token);
+                console.log(`[contentItemByBacklogIdea] backlogIdeaId: ${args.backlogIdeaId}, userId: ${userId}`);
+                
+                // Find content item by backlogIdeaId
+                const contentItem = await SeoContentItem.findOne({
+                    backlogIdeaId: args.backlogIdeaId
+                }).exec();
+
+                if (!contentItem) {
+                    console.log(`[contentItemByBacklogIdea] No content item found for backlogIdeaId: ${args.backlogIdeaId}`);
+                    return null;
+                }
+
+                // Verify user has access to this project
+                await projectService.getProjectById(contentItem.projectId, userId);
+
+                console.log(`[contentItemByBacklogIdea] Found content item: ${contentItem._id.toString()}`);
+                return mapContentItem(contentItem);
+            } catch (err: any) {
+                console.error('[contentItemByBacklogIdea] Error:', err);
+                console.error('[contentItemByBacklogIdea] Error details:', {
+                    message: err?.message,
+                    stack: err?.stack,
+                    backlogIdeaId: args.backlogIdeaId,
+                    hasToken: !!context.token
+                });
+                // Re-throw authentication errors so GraphQL can handle them properly
+                if (err?.message?.includes('Authentication') || err?.message?.includes('Invalid token') || err?.message?.includes('Token')) {
+                    throw err;
+                }
+                // Return null for other errors (GraphQL allows nullable return)
+                return null;
             }
         },
     },
