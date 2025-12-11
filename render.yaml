@@ -31,7 +31,7 @@ services:
     region: frankfurt
     plan: starter
     rootDir: TRYGO-Backend
-    buildCommand: npm ci && ./node_modules/.bin/graphql-codegen && npm run build
+    buildCommand: npm ci && node node_modules/.bin/graphql-codegen && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
