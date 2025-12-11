@@ -31,7 +31,7 @@ services:
     region: frankfurt
     plan: starter
     rootDir: TRYGO-Backend
-    buildCommand: npm install && npm run build && npm run codegen
+    buildCommand: npm install --include=dev && npm run build && npm run codegen
     startCommand: npm start
     healthCheckPath: /health
     envVars:
