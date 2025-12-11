@@ -17,8 +17,8 @@
     ]
   },
   "include": [
-    "src",
-    "src/types/declarations.d.ts",
+    "src/**/*",
+    "src/types/**/*.d.ts",
   ],
   "exclude": [
     "src/generated/graphql.ts",
