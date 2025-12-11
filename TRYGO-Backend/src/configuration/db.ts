@@ -7,9 +7,9 @@ const connectMainDB = async () => {
             return;
         }
 
-        const mongoUri = process.env.MONGO_URI;
+        const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
         if (!mongoUri) {
-            throw new Error('MONGO_URI environment variable is not set');
+            throw new Error('MONGODB_URI environment variable is not set');
         }
 
         // Log connection attempt (without exposing credentials)
@@ -37,8 +37,8 @@ const connectMainDB = async () => {
         console.error('❌ Failed to connect to MongoDB:');
         console.error(`   Error: ${error.message}`);
         
-        if (!process.env.MONGO_URI) {
-            console.error('   💡 Tip: Set MONGO_URI environment variable');
+        if (!process.env.MONGODB_URI && !process.env.MONGO_URI) {
+            console.error('   💡 Tip: Set MONGODB_URI environment variable');
         } else if (error.message.includes('ECONNREFUSED')) {
             console.error('   💡 Tip: Make sure MongoDB is running and the connection string is correct');
         } else if (error.message.includes('authentication failed')) {

@@ -29,7 +29,7 @@ export class SeoSyncService {
 
   constructor(mongoConnection: mongoose.Connection) {
     // Исправлено: используем правильный формат для Agenda
-    const mongoUri = process.env.MONGO_URI || '';
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || '';
     this.agenda = new Agenda({
       db: { address: mongoUri, collection: 'seo-sync-jobs' },
       processEvery: '30 seconds',
