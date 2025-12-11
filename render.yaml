@@ -130,14 +130,16 @@ services:
 
   # ============================================
   # Frontend (React SPA)
-  # Статический сайт, собранный через Vite
+  # Веб-сервис, запускающий Vite preview сервер
   # ============================================
   - type: web
     name: trygo-frontend
-    runtime: static
+    runtime: node
+    region: frankfurt
+    plan: starter
     rootDir: TRYGO-Front
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
     envVars:
       - key: VITE_SERVER_URL
         sync: false
