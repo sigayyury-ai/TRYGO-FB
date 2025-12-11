@@ -17,63 +17,6 @@
 
 services:
   # ============================================
-  # SEO Agent Backend (GraphQL API)
-  # Основной бэкенд для SEO Agent функциональности
-  # ============================================
-  - type: web
-    name: seo-agent-backend
-    runtime: node
-    region: frankfurt
-    plan: starter
-    rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: MONGODB_URI
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: OPENAI_MODEL
-        value: gpt-4o-mini
-      - key: OPENAI_IMAGE_MODEL
-        value: dall-e-2
-      - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: trygo-frontend
-          property: host
-      - key: SEMANTICS_SERVICE_URL
-        fromService:
-          type: web
-          name: semantics-service
-          property: host
-      - key: IMAGES_SERVICE_URL
-        fromService:
-          type: web
-          name: images-service
-          property: host
-      - key: WEBSITE_PAGES_SERVICE_URL
-        fromService:
-          type: web
-          name: website-pages-service
-          property: host
-      - key: IMAGE_PROVIDER
-        value: openai
-      - key: WORDPRESS_BASE_URL
-        sync: false
-      - key: WORDPRESS_USERNAME
-        sync: false
-      - key: WORDPRESS_APP_PASSWORD
-        sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-
-  # ============================================
   # Main Backend (TRYGO-Backend)
   # Основной бэкенд для авторизации, проектов, гипотез
   # ============================================
@@ -148,6 +91,22 @@ services:
         sync: false
       - key: TG_ENABLED
         sync: false
+      # SEO Agent variables (если функции генерации контента будут добавлены в TRYGO-Backend)
+      - key: SEMANTICS_SERVICE_URL
+        sync: false
+      - key: IMAGES_SERVICE_URL
+        sync: false
+      - key: WEBSITE_PAGES_SERVICE_URL
+        fromService:
+          type: web
+          name: website-pages-service
+          property: host
+      - key: WORDPRESS_BASE_URL
+        sync: false
+      - key: WORDPRESS_USERNAME
+        sync: false
+      - key: WORDPRESS_APP_PASSWORD
+        sync: false
 
   # ============================================
   # Frontend (React SPA)
@@ -168,7 +127,7 @@ services:
       - key: VITE_SEO_AGENT_URL
         fromService:
           type: web
-          name: seo-agent-backend
+          name: trygo-main-backend
           property: host
       - key: VITE_WS_SERVER_URL
         fromService:
