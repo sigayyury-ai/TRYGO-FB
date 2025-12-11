@@ -6,8 +6,16 @@ export const config = {
     isCorsEnabled: process.env.CORS_ENABLED === 'true',
 
     PRODUCTION_PORTS: [
-        process.env.DEVELOPMENT_FRONTEND_URL!,
-        process.env.PRODUCTION_FRONTEND_URL!,
+        process.env.DEVELOPMENT_FRONTEND_URL 
+            ? (process.env.DEVELOPMENT_FRONTEND_URL.startsWith('http') 
+                ? process.env.DEVELOPMENT_FRONTEND_URL 
+                : `https://${process.env.DEVELOPMENT_FRONTEND_URL}`) 
+            : '',
+        process.env.PRODUCTION_FRONTEND_URL 
+            ? (process.env.PRODUCTION_FRONTEND_URL.startsWith('http') 
+                ? process.env.PRODUCTION_FRONTEND_URL 
+                : `https://${process.env.PRODUCTION_FRONTEND_URL}`) 
+            : '',
     ],
 
     MAIL_TRAP: {
@@ -27,11 +35,16 @@ export const config = {
     AWS_REGION: process.env.AWS_REGION || '',
     AWS_BUCKET_NAME: process.env.AWS_BUCKET_NAME || '',
 
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
-    FRONTEND_URL: process.env.FRONTEND_URL!,
-    STRIPE_STARTER_MONTHLY_PRICE_ID: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID!,
-    STRIPE_PRO_MONTHLY_PRICE_ID: process.env.STRIPE_PRO_MONTHLY_PRICE_ID!,
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET!,
+    // Stripe опционально - не нужен пока
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
+    FRONTEND_URL: process.env.FRONTEND_URL 
+        ? (process.env.FRONTEND_URL.startsWith('http') 
+            ? process.env.FRONTEND_URL 
+            : `https://${process.env.FRONTEND_URL}`)
+        : '',
+    STRIPE_STARTER_MONTHLY_PRICE_ID: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || '',
+    STRIPE_PRO_MONTHLY_PRICE_ID: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || '',
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
 
     // Telegram отключен - не нужен пока
     TG_STATISTICS: {
@@ -46,7 +59,11 @@ export const config = {
         geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
         geminiImageModel: process.env.GEMINI_IMAGE_MODEL || "imagen-4.0-generate-001",
         geminiApiBaseUrl: process.env.GEMINI_API_BASE_URL || "https://generativelanguage.googleapis.com/v1beta",
-        publicUrl: (process.env.PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:5001").replace(/\/$/, ""),
+        publicUrl: (() => {
+            const url = process.env.PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:5001";
+            const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+            return fullUrl.replace(/\/$/, "");
+        })(),
         storageRoot: process.env.STORAGE_ROOT || "./storage"
     },
 
