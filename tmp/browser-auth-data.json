@@ -1,0 +1,116 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4Njc3M2I1NzczYjU5NDdmZWQ2MGE2OCIsImlhdCI6MTc2NTMxNjk2NiwiZXhwIjoxNzY3OTA4OTY2fQ.AjlwdAKOalLAhOAGkadAEKvinacxQ73QEpzM0h-HBl0",
+  "cookies": [
+    {
+      "name": "_ga",
+      "value": "GA1.1.1543185188.1765316927",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1799876927.440327,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_fbp",
+      "value": "fb.0.1765316927653.4017019227127272",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1773092966,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "muc_ads",
+      "value": "bac2df1a-d5a2-4061-9fa8-da2615831226",
+      "domain": ".t.co",
+      "path": "/",
+      "expires": 1799876928.148821,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "guest_id_marketing",
+      "value": "v1%3A176531692820385112",
+      "domain": ".twitter.com",
+      "path": "/",
+      "expires": 1799876928.178544,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "guest_id_ads",
+      "value": "v1%3A176531692820385112",
+      "domain": ".twitter.com",
+      "path": "/",
+      "expires": 1799876928.178588,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "guest_id",
+      "value": "v1%3A176531692820385112",
+      "domain": ".twitter.com",
+      "path": "/",
+      "expires": 1799876928.178604,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "personalization_id",
+      "value": "\"v1_C5cD8guUKabPkYj3q0RQpw==\"",
+      "domain": ".twitter.com",
+      "path": "/",
+      "expires": 1799876928.184636,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4Njc3M2I1NzczYjU5NDdmZWQ2MGE2OCIsImlhdCI6MTc2NTMxNjk2NiwiZXhwIjoxNzY3OTA4OTY2fQ.AjlwdAKOalLAhOAGkadAEKvinacxQ73QEpzM0h-HBl0",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1767908966,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "activeProjectId",
+      "value": "686774b6773b5947fed60a78",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1796852966,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "activeHypothesisId",
+      "value": "686774c1773b5947fed60a7a",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1796852966,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_LVFDXZRK7Z",
+      "value": "GS2.1.s1765316927$o1$g1$t1765316967$j20$l0$h0",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1799876967.601902,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "savedAt": "2025-12-09T21:49:28.119Z"
+}

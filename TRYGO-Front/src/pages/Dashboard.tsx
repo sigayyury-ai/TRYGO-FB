@@ -6,9 +6,9 @@ import Header from "@/components/Header";
 import AIAssistantChat from "@/components/AIAssistantChat";
 import { useUserStore } from "@/store/useUserStore";
 import LoaderSpinner from "@/components/LoaderSpinner";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjects } from "@/hooks/useProjects";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import { GenerateProjectModal } from "@/components/GenerateProjectModal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -17,17 +17,18 @@ const Dashboard: FC = () => {
   const navigate = useNavigate();
   const [showGenerateProject, setShowGenerateProject] = useState(false);
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
+  const [hasCheckedProjects, setHasCheckedProjects] = useState(false);
   const { isAuthenticated, initializeAuth, userData, isLoading } =
     useUserStore();
   const {
-    getProjects,
     activeProject,
     projects,
     loading: projectsLoading,
-  } = useProjectStore();
+    loadProjects,
+  } = useProjects();
 
   const { coreData } = useHypothesesCoreStore();
-  const { error: hypothesesError } = useHypothesisStore();
+  const { error: hypothesesError } = useHypotheses({ projectId: activeProject?.id, projects });
 
   useEffect(() => {
     const checkAuthAndProjects = async () => {
@@ -36,15 +37,8 @@ const Dashboard: FC = () => {
           await initializeAuth();
         }
 
-        await getProjects();
-
-        const currentProjects = useProjectStore.getState().projects;
+        await loadProjects();
         setHasLoadedProjects(true);
-        
-        // Если проектов нет, показываем модалку генерации проекта
-        if (currentProjects.length === 0) {
-          setShowGenerateProject(true);
-        }
       } catch (error) {
         navigate("/error");
       }
@@ -54,13 +48,31 @@ const Dashboard: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Виконується тільки один раз при монтуванні
 
-  // Дополнительная проверка при изменении списка проектов
-  // Показуємо модалку тільки після першого завантаження проектів
+  // Показуємо модалку тільки після першого завантаження проектів і тільки якщо немає проектів
+  // Використовуємо hasCheckedProjects, щоб перевірка виконувалась тільки один раз
   useEffect(() => {
-    if (hasLoadedProjects && !projectsLoading && projects.length === 0) {
-      setShowGenerateProject(true);
+    // Перевіряємо тільки якщо:
+    // 1. Проекти завантажені (hasLoadedProjects)
+    // 2. Завантаження завершено (!projectsLoading)
+    // 3. Ще не перевіряли (!hasCheckedProjects)
+    if (hasLoadedProjects && !projectsLoading && !hasCheckedProjects) {
+      setHasCheckedProjects(true);
+      // Показуємо модалку тільки якщо дійсно немає проектів
+      if (projects.length === 0) {
+        setShowGenerateProject(true);
+      } else {
+        // Якщо є проекти, закриваємо модалку (на випадок якщо вона була відкрита)
+        setShowGenerateProject(false);
+      }
     }
-  }, [projects.length, projectsLoading, hasLoadedProjects]); // Використовуємо projects.length замість projects
+  }, [projects.length, projectsLoading, hasLoadedProjects, hasCheckedProjects]);
+
+  // Закриваємо модалку, якщо з'явилися проекти
+  useEffect(() => {
+    if (hasCheckedProjects && projects.length > 0 && showGenerateProject) {
+      setShowGenerateProject(false);
+    }
+  }, [projects.length, hasCheckedProjects, showGenerateProject]);
 
   if (isLoading || projectsLoading) {
     return (

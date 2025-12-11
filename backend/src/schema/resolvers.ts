@@ -58,7 +58,11 @@ const mapBacklogStatus = (status: string): string => {
   const statusMap: Record<string, string> = {
     backlog: "PENDING",
     scheduled: "SCHEDULED",
-    archived: "ARCHIVED"
+    archived: "ARCHIVED",
+    pending: "PENDING",
+    in_progress: "IN_PROGRESS",
+    completed: "COMPLETED",
+    published: "IN_PROGRESS" // Map published to IN_PROGRESS to keep in sprint
   };
   return statusMap[status.toLowerCase()] || toUpperEnum(status);
 };
@@ -83,7 +87,7 @@ const mapContentItem = (doc: SeoContentItemDoc) => {
     backlogIdeaId: doc.backlogIdeaId ?? null,
     title: doc.title,
     category,
-    format: doc.format === "commercial" ? "COMMERCIAL" : doc.format.toUpperCase(),
+    format: doc.format === "commercial" ? "COMMERCIAL_PAGE" : doc.format === "blog" ? "BLOG" : doc.format === "faq" ? "ARTICLE" : doc.format.toUpperCase(),
     ownerId: doc.ownerId ?? null,
     reviewerId: doc.reviewerId ?? null,
     channel: doc.channel ?? null,
@@ -1024,16 +1028,41 @@ export const resolvers = {
       { input }: { input: any },
       context: any
     ) => {
-      console.log("Updating seoAgentPostingSettings for projectId:", input.projectId);
+      console.log("[updateSeoAgentPostingSettings] ===== UPDATE START =====");
+      console.log("[updateSeoAgentPostingSettings] Input:", {
+        projectId: input.projectId,
+        hypothesisId: input.hypothesisId,
+        weeklyPublishCount: input.weeklyPublishCount,
+        preferredDays: input.preferredDays,
+        preferredDaysType: typeof input.preferredDays?.[0],
+        preferredDaysLength: input.preferredDays?.length,
+        autoPublishEnabled: input.autoPublishEnabled
+      });
       
       const userId = context?.userId || "system";
       
-      // Map day names to numbers (0-6)
-      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-      const publishDays = input.preferredDays.map((dayName: string) => {
-        const index = dayNames.findIndex(day => day.toLowerCase() === dayName.toLowerCase());
-        return index >= 0 ? index : 1; // Default to Monday if not found
-      });
+      try {
+        // Validate preferredDays
+        if (!Array.isArray(input.preferredDays)) {
+          const error = new Error("preferredDays must be an array");
+          console.error("[updateSeoAgentPostingSettings] ❌ Invalid preferredDays:", input.preferredDays);
+          throw error;
+        }
+        
+        // Map day names to numbers (0-6)
+        const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        console.log("[updateSeoAgentPostingSettings] Mapping day names to numbers...");
+        const publishDays = input.preferredDays.map((dayName: string) => {
+          const index = dayNames.findIndex(day => day.toLowerCase() === dayName.toLowerCase());
+          if (index < 0) {
+            console.warn("[updateSeoAgentPostingSettings] ⚠️ Unknown day name:", dayName);
+          }
+          return index >= 0 ? index : 1; // Default to Monday if not found
+        });
+        console.log("[updateSeoAgentPostingSettings] ✅ Mapped days:", {
+          input: input.preferredDays,
+          output: publishDays
+        });
       
       // Use existing SeoSprintSettings model
       const updateData: any = {
@@ -1081,29 +1110,48 @@ export const resolvers = {
         }
       ).exec();
       
-      if (!settings) {
-        throw new Error("Failed to update posting settings");
+        if (!settings) {
+          const error = new Error("Failed to update posting settings");
+          console.error("[updateSeoAgentPostingSettings] ❌ Settings update failed");
+          throw error;
+        }
+        
+        // Map back to PostingSettings format
+        const preferredDays = settings.publishDays.map((day: number) => dayNames[day] || `Day ${day}`);
+        
+        console.log("[updateSeoAgentPostingSettings] ✅ Settings updated successfully");
+        console.log("[updateSeoAgentPostingSettings] WordPress Post Type:", (settings as any).wordpressPostType || "post (default)");
+        console.log("[updateSeoAgentPostingSettings] ===== UPDATE SUCCESS =====");
+        
+        return {
+          id: settings.id,
+          projectId: settings.projectId,
+          hypothesisId: settings.hypothesisId || null,
+          weeklyPublishCount: settings.weeklyCadence,
+          preferredDays,
+          autoPublishEnabled: input.autoPublishEnabled || false, // Not stored in SeoSprintSettings yet
+          language: settings.language || null,
+          wordpressBaseUrl: settings.wordpressBaseUrl || null,
+          wordpressUsername: settings.wordpressUsername || null,
+          wordpressConnected: !!(settings.wordpressBaseUrl && settings.wordpressUsername && settings.wordpressAppPassword),
+          wordpressDefaultCategoryId: (settings as any).wordpressDefaultCategoryId || null,
+          wordpressDefaultTagIds: (settings as any).wordpressDefaultTagIds || [],
+          wordpressPostType: (settings as any).wordpressPostType || null,
+          updatedAt: settings.updatedAt
+        };
+      } catch (error: any) {
+        console.error("[updateSeoAgentPostingSettings] ===== UPDATE FAILED =====");
+        console.error("[updateSeoAgentPostingSettings] ❌ Error:", error);
+        console.error("[updateSeoAgentPostingSettings] Error details:", {
+          projectId: input.projectId,
+          hypothesisId: input.hypothesisId,
+          preferredDays: input.preferredDays,
+          preferredDaysType: typeof input.preferredDays?.[0],
+          errorMessage: error?.message,
+          errorStack: error?.stack
+        });
+        throw error;
       }
-      
-      // Map back to PostingSettings format
-      const preferredDays = settings.publishDays.map((day: number) => dayNames[day] || `Day ${day}`);
-      
-      return {
-        id: settings.id,
-        projectId: settings.projectId,
-        hypothesisId: settings.hypothesisId || null,
-        weeklyPublishCount: settings.weeklyCadence,
-        preferredDays,
-        autoPublishEnabled: input.autoPublishEnabled || false, // Not stored in SeoSprintSettings yet
-        language: settings.language || null,
-        wordpressBaseUrl: settings.wordpressBaseUrl || null,
-        wordpressUsername: settings.wordpressUsername || null,
-        wordpressConnected: !!(settings.wordpressBaseUrl && settings.wordpressUsername && settings.wordpressAppPassword),
-        wordpressDefaultCategoryId: (settings as any).wordpressDefaultCategoryId || null,
-        wordpressDefaultTagIds: (settings as any).wordpressDefaultTagIds || [],
-        wordpressPostType: (settings as any).wordpressPostType || null,
-        updatedAt: settings.updatedAt
-      };
     },
     upsertContentItem: async (
       _: unknown,
@@ -1125,16 +1173,30 @@ export const resolvers = {
         dueDate,
         userId
       } = input;
+      // Map GraphQL category enum to database format
+      const categoryMap: Record<string, ContentCategory> = {
+        PAINS: "pain",
+        GOALS: "goal",
+        TRIGGERS: "trigger",
+        PRODUCT_FEATURES: "feature",
+        BENEFITS: "benefit",
+        FAQS: "faq",
+        INFORMATIONAL: "info"
+      };
+      const dbCategory = categoryMap[category] || "info";
+
       const payload = {
         projectId,
         hypothesisId,
         backlogIdeaId,
         title,
-        category: toLowerEnum(category) as ContentCategory,
-        format: (format === "COMMERCIAL"
+        category: dbCategory as ContentCategory,
+        format: (format === "COMMERCIAL_PAGE"
           ? "commercial"
           : format === "FAQ"
           ? "faq"
+          : format === "BLOG"
+          ? "blog"
           : "blog") as SeoContentItemDoc["format"],
         ownerId,
         reviewerId,
@@ -1223,6 +1285,17 @@ export const resolvers = {
         console.log("[generateContentForBacklogIdea] Backlog Idea:", backlogIdea.title, `(ID: ${backlogIdeaId})`);
         console.log("[generateContentForBacklogIdea] Category:", backlogIdea.category || "info");
 
+        // Prepare context for content generation
+        const projectContext = seoContext.project ? {
+          title: seoContext.project.title,
+          leanCanvas: seoContext.leanCanvas
+        } : {};
+        
+        const hypothesisContext = seoContext.hypothesis ? {
+          title: seoContext.hypothesis.title,
+          description: seoContext.hypothesis.description
+        } : {};
+
         // Generate content using new prompt system
         const generated = await generateContent({
           title: backlogIdea.title,
@@ -1230,8 +1303,8 @@ export const resolvers = {
           category: backlogIdea.category || "info",
           userId,
           contentType: "ARTICLE", // Default to ARTICLE, can be extended
-          projectContext: {}, // Fallback for old system
-          hypothesisContext: {}, // Fallback for old system
+          projectContext,
+          hypothesisContext,
           clusterContext,
           // New: use new prompt system
           backlogIdeaId: backlogIdea.id,
@@ -1295,13 +1368,36 @@ export const resolvers = {
         });
 
         // Auto-generate image for the content (async, don't wait)
+        // Use already loaded seoContext to avoid duplicate calls
         (async () => {
           try {
             const { generateImage } = await import("../services/contentGeneration.js");
+            
+            // Prepare context for image generation from already loaded seoContext
+            const imageProjectContext = seoContext.project ? {
+              title: seoContext.project.title,
+              leanCanvas: seoContext.leanCanvas
+            } : undefined;
+            
+            const imageHypothesisContext = seoContext.hypothesis ? {
+              title: seoContext.hypothesis.title,
+              description: seoContext.hypothesis.description
+            } : undefined;
+            
+            const imageIcpContext = seoContext.icp ? {
+              persona: seoContext.icp.persona,
+              pains: seoContext.icp.pains,
+              goals: seoContext.icp.goals,
+              triggers: seoContext.icp.triggers
+            } : undefined;
+            
             const imageResult = await generateImage({
               title: doc.title,
               description: doc.outline || backlogIdea.description || undefined,
-              content: doc.content
+              content: doc.content,
+              projectContext: imageProjectContext,
+              hypothesisContext: imageHypothesisContext,
+              icpContext: imageIcpContext
             });
 
             // Update content item with generated image
@@ -1343,37 +1439,117 @@ export const resolvers = {
       const { contentItemId, title, description } = input;
       const userId = context?.userId || "system";
 
+      console.log("[generateImageForContent] Starting image generation:", {
+        contentItemId,
+        title,
+        hasDescription: !!description
+      });
+
       // Get content item
       const contentItem = await SeoContentItem.findById(contentItemId).exec();
       if (!contentItem) {
+        console.error("[generateImageForContent] Content item not found:", contentItemId);
         throw new Error("Content item not found");
       }
 
-      // Import generation service
-      const { generateImage } = await import("../services/contentGeneration.js");
+      try {
+        // Load context for better image generation
+        const { loadSeoContext } = await import("../services/context/seoContext.js");
+        let projectContext: any = undefined;
+        let hypothesisContext: any = undefined;
+        let icpContext: any = undefined;
 
-      // Generate image
-      const imageResult = await generateImage({
-        title,
-        description,
-        content: (contentItem as any).content
-      });
+        try {
+          const seoContext = await loadSeoContext(
+            contentItem.projectId,
+            contentItem.hypothesisId,
+            userId
+          );
+          
+          if (seoContext.project) {
+            projectContext = {
+              title: seoContext.project.title,
+              leanCanvas: seoContext.leanCanvas
+            };
+          }
+          
+          if (seoContext.hypothesis) {
+            hypothesisContext = {
+              title: seoContext.hypothesis.title,
+              description: seoContext.hypothesis.description
+            };
+          }
+          
+          if (seoContext.icp) {
+            icpContext = {
+              persona: seoContext.icp.persona,
+              pains: seoContext.icp.pains,
+              goals: seoContext.icp.goals,
+              triggers: seoContext.icp.triggers
+            };
+          }
+          
+          console.log("[generateImageForContent] Context loaded:", {
+            hasProject: !!projectContext,
+            hasHypothesis: !!hypothesisContext,
+            hasICP: !!icpContext
+          });
+        } catch (contextError) {
+          console.warn("[generateImageForContent] Failed to load context, continuing without it:", contextError);
+          // Continue without context - image generation will still work
+        }
 
-      // Update content item with image URL
-      const updated = await SeoContentItem.findByIdAndUpdate(
-        contentItemId,
-        {
-          imageUrl: imageResult.imageUrl,
-          updatedBy: userId
-        },
-        { new: true }
-      ).exec();
+        // Import generation service
+        const { generateImage } = await import("../services/contentGeneration.js");
 
-      if (!updated) {
-        throw new Error("Failed to update content item with image");
+        // Generate image with context
+        console.log("[generateImageForContent] Calling generateImage service...");
+        const imageResult = await generateImage({
+          title,
+          description,
+          content: (contentItem as any).content,
+          projectContext,
+          hypothesisContext,
+          icpContext
+        });
+
+        console.log("[generateImageForContent] Image generated:", {
+          hasImageUrl: !!imageResult.imageUrl,
+          isPlaceholder: imageResult.imageUrl?.includes('placeholder') || imageResult.imageUrl?.includes('data:image/svg')
+        });
+
+        // Check if it's a placeholder - if so, throw error
+        if (!imageResult.imageUrl || 
+            imageResult.imageUrl.includes('data:image/svg+xml') || 
+            imageResult.imageUrl.includes('placeholder')) {
+          throw new Error("Image generation failed. Please check GEMINI_API_KEY or GOOGLE_API_KEY in backend environment variables.");
+        }
+
+        // Update content item with image URL
+        const updated = await SeoContentItem.findByIdAndUpdate(
+          contentItemId,
+          {
+            imageUrl: imageResult.imageUrl,
+            updatedBy: userId
+          },
+          { new: true }
+        ).exec();
+
+        if (!updated) {
+          throw new Error("Failed to update content item with image");
+        }
+
+        console.log("[generateImageForContent] Image saved successfully");
+        return mapContentItem(updated);
+      } catch (error: any) {
+        console.error("[generateImageForContent] Error:", error);
+        console.error("[generateImageForContent] Error details:", {
+          message: error.message,
+          stack: error.stack
+        });
+        // Re-throw with clear message
+        throw new Error(error.message || "Failed to generate image. Check backend logs for details.");
       }
-
-      return mapContentItem(updated);
     },
     regenerateContent: async (
       _: unknown,
@@ -1382,15 +1558,23 @@ export const resolvers = {
     ): Promise<ReturnType<typeof mapContentItem>> => {
       const userId = context?.userId || "system";
 
-      console.log("[regenerateContent] Starting regeneration:", { id, promptPart, userId });
+      console.log("[regenerateContent] ===== REGENERATION START =====");
+      console.log("[regenerateContent] Input:", { id, promptPart, userId });
 
-      // Get content item
-      const contentItemId = id;
-      const contentItem = await SeoContentItem.findById(contentItemId).exec();
-      if (!contentItem) {
-        console.error("[regenerateContent] Content item not found:", id);
-        throw new Error("Content item not found");
-      }
+      try {
+        // Get content item
+        const contentItemId = id;
+        const contentItem = await SeoContentItem.findById(contentItemId).exec();
+        if (!contentItem) {
+          const error = new Error("Content item not found");
+          console.error("[regenerateContent] ❌ Content item not found:", id);
+          console.error("[regenerateContent] Error details:", {
+            id,
+            userId,
+            errorMessage: error.message
+          });
+          throw error;
+        }
 
       console.log("[regenerateContent] Content item found:", {
         id: contentItem.id,
@@ -1405,123 +1589,310 @@ export const resolvers = {
       const hypothesisId = contentItem.hypothesisId;
       const backlogIdeaId = contentItem.backlogIdeaId;
 
-      if (!projectId || !hypothesisId) {
-        throw new Error("Content item missing projectId or hypothesisId");
-      }
+        if (!projectId || !hypothesisId) {
+          const error = new Error("Content item missing projectId or hypothesisId");
+          console.error("[regenerateContent] ❌ Missing required IDs:", {
+            contentItemId: id,
+            projectId,
+            hypothesisId,
+            backlogIdeaId
+          });
+          throw error;
+        }
 
       // Import generation service
       const { generateContent } = await import("../services/contentGeneration.js");
 
-      // Generate new content using new prompt system if backlogIdeaId is available
-      const userIdForGeneration = context?.userId || "system";
-      let generated;
-      
-      if (backlogIdeaId) {
-        // Use new prompt system with backlog idea
-        // Load SEO context for better regeneration
-        const { loadSeoContext } = await import("../services/context/seoContext.js");
-        const seoContext = await loadSeoContext(projectId, hypothesisId, userIdForGeneration);
+        // Generate new content using new prompt system if backlogIdeaId is available
+        const userIdForGeneration = context?.userId || "system";
+        let generated;
         
-        const backlogIdea = await SeoBacklogIdea.findById(backlogIdeaId).exec();
-        if (!backlogIdea) {
-          throw new Error(`Backlog idea not found: ${backlogIdeaId}`);
-        }
-
-        // Build custom prompt if promptPart is provided
-        const { buildDraftPrompt } = await import("../services/contentDrafts/buildDraftPrompt.js");
-        const { prompt: basePrompt } = buildDraftPrompt({
-          context: seoContext,
-          idea: backlogIdea,
-          contentType: "article",
-          language: seoContext.language,
-          specialRequirements: promptPart || undefined
-        });
-
-        // If promptPart is provided, append it to the prompt
-        const finalPrompt = promptPart 
-          ? `${basePrompt}\n\n### ADDITIONAL INSTRUCTIONS\n${promptPart}`
-          : basePrompt;
-
-        // Use OpenAI directly with custom prompt
-        const OpenAI = (await import("openai")).default;
-        const { env } = await import("../config/env.js");
-        const apiKey = process.env.OPENAI_API_KEY || env.openAiApiKey;
-        if (!apiKey) {
-          throw new Error("OPENAI_API_KEY is not set in environment variables");
-        }
-        const client = new OpenAI({ apiKey });
-
-        const response = await client.chat.completions.create({
-          model: env.openAiModel || "gpt-5.1",
-          temperature: 0.7,
-          max_completion_tokens: 8000, // gpt-5.1 uses max_completion_tokens instead of max_tokens
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: "You are a senior content writer. Always respond with valid JSON matching the requested format."
-            },
-            {
-              role: "user",
-              content: finalPrompt
+        if (backlogIdeaId) {
+          console.log("[regenerateContent] Using backlog idea for regeneration:", backlogIdeaId);
+          
+          // Use new prompt system with backlog idea
+          // Load SEO context for better regeneration
+          let seoContext;
+          try {
+            const { loadSeoContext } = await import("../services/context/seoContext.js");
+            console.log("[regenerateContent] Loading SEO context...");
+            seoContext = await loadSeoContext(projectId, hypothesisId, userIdForGeneration);
+            console.log("[regenerateContent] ✅ SEO context loaded:", {
+              hasProject: !!seoContext.project,
+              hasHypothesis: !!seoContext.hypothesis,
+              hasICP: !!seoContext.icp,
+              language: seoContext.language
+            });
+          } catch (contextError: any) {
+            console.error("[regenerateContent] ❌ Failed to load SEO context:", {
+              error: contextError.message,
+              stack: contextError.stack,
+              projectId,
+              hypothesisId
+            });
+            throw new Error(`Failed to load SEO context: ${contextError.message}`);
+          }
+          
+          let backlogIdea;
+          try {
+            backlogIdea = await SeoBacklogIdea.findById(backlogIdeaId).exec();
+            if (!backlogIdea) {
+              const error = new Error(`Backlog idea not found: ${backlogIdeaId}`);
+              console.error("[regenerateContent] ❌ Backlog idea not found:", backlogIdeaId);
+              throw error;
             }
-          ]
+            console.log("[regenerateContent] ✅ Backlog idea found:", {
+              id: backlogIdea.id,
+              title: backlogIdea.title,
+              category: backlogIdea.category
+            });
+          } catch (backlogError: any) {
+            console.error("[regenerateContent] ❌ Error loading backlog idea:", {
+              backlogIdeaId,
+              error: backlogError.message,
+              stack: backlogError.stack
+            });
+            throw backlogError;
+          }
+
+          // Build custom prompt if promptPart is provided
+          let basePrompt: string;
+          try {
+            const { buildDraftPrompt } = await import("../services/contentDrafts/buildDraftPrompt.js");
+            console.log("[regenerateContent] Building draft prompt...");
+            const promptResult = buildDraftPrompt({
+              context: seoContext,
+              idea: backlogIdea,
+              contentType: "article",
+              language: seoContext.language,
+              specialRequirements: promptPart || undefined
+            });
+            basePrompt = promptResult.prompt;
+            console.log("[regenerateContent] ✅ Prompt built:", {
+              length: basePrompt.length,
+              detectedType: promptResult.detectedType
+            });
+          } catch (promptError: any) {
+            console.error("[regenerateContent] ❌ Failed to build prompt:", {
+              error: promptError.message,
+              stack: promptError.stack
+            });
+            throw new Error(`Failed to build prompt: ${promptError.message}`);
+          }
+
+          // If promptPart is provided, append it to the prompt
+          const finalPrompt = promptPart 
+            ? `${basePrompt}\n\n### ADDITIONAL INSTRUCTIONS\n${promptPart}`
+            : basePrompt;
+          
+          console.log("[regenerateContent] Final prompt length:", finalPrompt.length);
+
+          // Use OpenAI directly with custom prompt
+          const OpenAI = (await import("openai")).default;
+          const { env } = await import("../config/env.js");
+          const apiKey = process.env.OPENAI_API_KEY || env.openAiApiKey;
+          if (!apiKey) {
+            const error = new Error("OPENAI_API_KEY is not set in environment variables");
+            console.error("[regenerateContent] ❌ OpenAI API key missing");
+            throw error;
+          }
+          const client = new OpenAI({ apiKey });
+
+          const model = env.openAiModel || "gpt-4o";
+          console.log("[regenerateContent] Calling OpenAI API:", {
+            model,
+            promptLength: finalPrompt.length,
+            hasApiKey: !!apiKey
+          });
+        
+        let response;
+        try {
+          response = await client.chat.completions.create({
+            model: model,
+            temperature: 0.7,
+            max_tokens: 8000,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content: "You are a senior content writer. Always respond with valid JSON matching the requested format."
+              },
+              {
+                role: "user",
+                content: finalPrompt
+              }
+            ]
+          });
+          } catch (apiError: any) {
+            console.error("[regenerateContent] ❌ OpenAI API error:", {
+              message: apiError.message,
+              code: apiError.code,
+              status: apiError.status,
+              type: apiError.type,
+              stack: apiError.stack
+            });
+            
+            // Fallback to gpt-4o if model error
+            if (model !== "gpt-4o") {
+              console.log("[regenerateContent] ⚠️ Trying fallback model gpt-4o...");
+              try {
+                response = await client.chat.completions.create({
+                  model: "gpt-4o",
+                  temperature: 0.7,
+                  max_tokens: 8000,
+                  response_format: { type: "json_object" },
+                  messages: [
+                    {
+                      role: "system",
+                      content: "You are a senior content writer. Always respond with valid JSON matching the requested format."
+                    },
+                    {
+                      role: "user",
+                      content: finalPrompt
+                    }
+                  ]
+                });
+                console.log("[regenerateContent] ✅ Fallback model succeeded");
+              } catch (fallbackError: any) {
+                console.error("[regenerateContent] ❌ Fallback model also failed:", {
+                  message: fallbackError.message,
+                  code: fallbackError.code,
+                  status: fallbackError.status
+                });
+                throw new Error(`OpenAI API failed: ${apiError.message}. Fallback also failed: ${fallbackError.message}`);
+              }
+            } else {
+              throw new Error(`OpenAI API error: ${apiError.message}`);
+            }
+          }
+
+        console.log("[regenerateContent] OpenAI API response received:", {
+          hasChoices: !!response.choices,
+          choicesCount: response.choices?.length || 0,
+          firstChoiceHasContent: !!response.choices?.[0]?.message?.content,
+          firstChoiceContentLength: response.choices?.[0]?.message?.content?.length || 0,
+          finishReason: response.choices?.[0]?.finish_reason,
+          model: response.model
         });
 
         const jsonContent = response.choices?.[0]?.message?.content || "";
+        const finishReason = response.choices?.[0]?.finish_reason;
+        
         if (!jsonContent) {
-          throw new Error("Failed to generate content");
-        }
-
-        // Parse JSON response and convert to HTML
-        const { convertJsonToMarkdown } = await import("../services/contentGeneration.js");
-        let parsed;
-        try {
-          parsed = JSON.parse(jsonContent);
-        } catch (parseError: any) {
-          console.error("[regenerateContent] Failed to parse JSON:", parseError);
-          throw new Error(`Failed to parse generated content: ${parseError.message}`);
+          console.error("[regenerateContent] ❌ No content in OpenAI response:", {
+            finishReason,
+            response: JSON.stringify(response, null, 2).substring(0, 1000)
+          });
+          
+          if (finishReason === "length") {
+            throw new Error("Failed to generate content: Response was truncated. Try reducing the prompt length or increasing max_tokens.");
+          } else if (finishReason === "content_filter") {
+            throw new Error("Failed to generate content: Response was filtered by content policy.");
+          } else {
+            throw new Error(`Failed to generate content: OpenAI API returned empty response (finish_reason: ${finishReason || "unknown"})`);
+          }
         }
         
-        const htmlContent = convertJsonToMarkdown(parsed, contentItem.title);
-        console.log("[regenerateContent] Content generated successfully, length:", htmlContent.length);
+        console.log("[regenerateContent] ✅ Received JSON content, length:", jsonContent.length);
 
-        generated = {
-          content: htmlContent,
-          outline: parsed.summary || contentItem.outline || ""
-        };
-      } else {
-        // Fallback to old system if no backlogIdeaId
-        generated = await generateContent({
-          title: contentItem.title,
-          description: contentItem.outline || undefined,
-          category: contentItem.category || "info",
-          contentType: contentItem.format === "commercial" ? "COMMERCIAL_PAGE" : "ARTICLE",
-          projectId,
-          hypothesisId,
-          userId: userIdForGeneration
+          // Parse JSON response and convert to HTML
+          let parsed: any;
+          try {
+            const { convertJsonToMarkdown } = await import("../services/contentGeneration.js");
+            console.log("[regenerateContent] Parsing JSON response...");
+            parsed = JSON.parse(jsonContent);
+            console.log("[regenerateContent] ✅ JSON parsed successfully");
+            
+            const htmlContent = convertJsonToMarkdown(parsed, contentItem.title);
+            console.log("[regenerateContent] ✅ Content converted to HTML, length:", htmlContent.length);
+
+            generated = {
+              content: htmlContent,
+              outline: parsed.summary || contentItem.outline || ""
+            };
+          } catch (parseError: any) {
+            console.error("[regenerateContent] ❌ Failed to parse/convert content:", {
+              error: parseError.message,
+              stack: parseError.stack,
+              jsonContentLength: jsonContent.length,
+              jsonContentPreview: jsonContent.substring(0, 500)
+            });
+            throw new Error(`Failed to parse generated content: ${parseError.message}`);
+          }
+        } else {
+          // Fallback to old system if no backlogIdeaId
+          console.log("[regenerateContent] No backlogIdeaId, using old generation system");
+          try {
+            generated = await generateContent({
+              title: contentItem.title,
+              description: contentItem.outline || undefined,
+              category: contentItem.category || "info",
+              contentType: contentItem.format === "commercial" ? "COMMERCIAL_PAGE" : "ARTICLE",
+              projectId,
+              hypothesisId,
+              userId: userIdForGeneration
+            });
+            console.log("[regenerateContent] ✅ Content generated via old system");
+          } catch (genError: any) {
+            console.error("[regenerateContent] ❌ Old generation system failed:", {
+              error: genError.message,
+              stack: genError.stack
+            });
+            throw genError;
+          }
+        }
+
+        // Update content item with regenerated content
+        console.log("[regenerateContent] Updating content item with new content...");
+        let updated;
+        try {
+          updated = await SeoContentItem.findByIdAndUpdate(
+            id,
+            {
+              content: generated.content,
+              outline: generated.outline || contentItem.outline,
+              updatedBy: userIdForGeneration
+            },
+            { new: true }
+          ).exec();
+
+          if (!updated) {
+            const error = new Error("Failed to update content item");
+            console.error("[regenerateContent] ❌ Failed to update content item:", {
+              id,
+              hasContent: !!generated.content,
+              contentLength: generated.content?.length || 0
+            });
+            throw error;
+          }
+
+          console.log("[regenerateContent] ✅ Content item updated successfully");
+          console.log("[regenerateContent] ===== REGENERATION SUCCESS =====");
+          return mapContentItem(updated);
+        } catch (updateError: any) {
+          console.error("[regenerateContent] ❌ Failed to update content item:", {
+            error: updateError.message,
+            stack: updateError.stack,
+            id,
+            hasContent: !!generated?.content
+          });
+          throw updateError;
+        }
+      } catch (error: any) {
+        console.error("[regenerateContent] ===== REGENERATION FAILED =====");
+        console.error("[regenerateContent] ❌ Error:", error);
+        console.error("[regenerateContent] Error details:", {
+          id,
+          promptPart,
+          userId,
+          errorMessage: error?.message,
+          errorStack: error?.stack,
+          errorName: error?.name,
+          errorCode: error?.code
         });
+        // Re-throw with clear message
+        throw new Error(error.message || "Failed to regenerate content. Check backend logs for details.");
       }
-
-      // Update content item with regenerated content
-      console.log("[regenerateContent] Updating content item with new content");
-      const updated = await SeoContentItem.findByIdAndUpdate(
-        id,
-        {
-          content: generated.content,
-          outline: generated.outline || contentItem.outline,
-          updatedBy: userIdForGeneration
-        },
-        { new: true }
-      ).exec();
-
-      if (!updated) {
-        console.error("[regenerateContent] Failed to update content item");
-        throw new Error("Failed to update content item");
-      }
-
-      console.log("[regenerateContent] Content item updated successfully");
-      return mapContentItem(updated);
     },
     rewriteTextSelection: async (
       _: unknown,
@@ -1577,21 +1948,53 @@ IMPORTANT:
 
         const client = new OpenAI({ apiKey });
 
-        const response = await client.chat.completions.create({
-          model: env.openAiModel || "gpt-5.1",
-          temperature: 0.7,
-          max_completion_tokens: 2000, // gpt-5.1 uses max_completion_tokens instead of max_tokens
-          messages: [
-            {
-              role: "system",
-              content: "You are a professional content editor. Rewrite only the selected text portion while maintaining consistency with the surrounding context. Return ONLY the rewritten text, no explanations."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ]
-        });
+        const model = env.openAiModel || "gpt-4o";
+        let response;
+        try {
+          response = await client.chat.completions.create({
+            model: model,
+            temperature: 0.7,
+            max_tokens: 2000,
+            messages: [
+              {
+                role: "system",
+                content: "You are a professional content editor. Rewrite only the selected text portion while maintaining consistency with the surrounding context. Return ONLY the rewritten text, no explanations."
+              },
+              {
+                role: "user",
+                content: prompt
+              }
+            ]
+          });
+        } catch (apiError: any) {
+          console.error("[rewriteTextSelection] ❌ OpenAI API error:", {
+            message: apiError.message,
+            code: apiError.code,
+            status: apiError.status
+          });
+          
+          // Fallback to gpt-4o if model error
+          if (model !== "gpt-4o") {
+            console.log("[rewriteTextSelection] ⚠️ Trying fallback model gpt-4o...");
+            response = await client.chat.completions.create({
+              model: "gpt-4o",
+              temperature: 0.7,
+              max_tokens: 2000,
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a professional content editor. Rewrite only the selected text portion while maintaining consistency with the surrounding context. Return ONLY the rewritten text, no explanations."
+                },
+                {
+                  role: "user",
+                  content: prompt
+                }
+              ]
+            });
+          } else {
+            throw apiError;
+          }
+        }
 
         const rewrittenText = response.choices?.[0]?.message?.content?.trim() || "";
         
@@ -1664,11 +2067,45 @@ IMPORTANT:
         }).exec();
 
         // Prepare WordPress post using mapper
-        const wpPost = mapContentItemToWordPressPost(
+        const wpPost = await mapContentItemToWordPressPost(
           contentItem,
           settings,
           undefined // No scheduled date for manual publish
         );
+
+        // Upload featured image if available
+        console.log(`[publishToWordPress] Проверка изображения:`, {
+          hasImageUrl: !!contentItem.imageUrl,
+          imageUrlPreview: contentItem.imageUrl ? contentItem.imageUrl.substring(0, 50) + "..." : null,
+          hasSettings: !!(settings?.wordpressBaseUrl && settings?.wordpressUsername && settings?.wordpressAppPassword)
+        });
+        
+        if (contentItem.imageUrl && settings?.wordpressBaseUrl && settings?.wordpressUsername && settings?.wordpressAppPassword) {
+          try {
+            console.log(`[publishToWordPress] 🖼️  Начинаю загрузку изображения...`);
+            const { uploadImageToWordPress } = await import("../services/wordpress/imageUpload.js");
+            const mediaId = await uploadImageToWordPress(contentItem.imageUrl, {
+              baseUrl: settings.wordpressBaseUrl.replace(/\/$/, ""),
+              username: settings.wordpressUsername,
+              appPassword: settings.wordpressAppPassword
+            });
+            if (mediaId) {
+              wpPost.featured_media = mediaId;
+              console.log(`[publishToWordPress] ✅ Featured image uploaded, media ID: ${mediaId}`);
+            } else {
+              console.warn(`[publishToWordPress] ⚠️ Не удалось загрузить изображение: ${contentItem.imageUrl?.substring(0, 100)}...`);
+            }
+          } catch (error: any) {
+            console.error(`[publishToWordPress] ❌ Ошибка загрузки изображения:`, error.message);
+            console.error(`[publishToWordPress] Stack:`, error.stack);
+            // Continue without image if upload fails
+          }
+        } else {
+          console.log(`[publishToWordPress] ⚠️ Изображение не будет загружено:`, {
+            hasImageUrl: !!contentItem.imageUrl,
+            hasSettings: !!(settings?.wordpressBaseUrl && settings?.wordpressUsername && settings?.wordpressAppPassword)
+          });
+        }
 
         // Override status if provided
         if (input.status) {
@@ -1682,12 +2119,35 @@ IMPORTANT:
             username: settings.wordpressUsername,
             appPassword: settings.wordpressAppPassword
           });
+
         }
 
-        // Publish to WordPress
+        // Publish to WordPress - WAIT for explicit confirmation
+        console.log(`[publishToWordPress] ===== НАЧАЛО ПУБЛИКАЦИИ =====`);
+        console.log(`[publishToWordPress] Content Item ID: ${input.contentItemId}`);
+        console.log(`[publishToWordPress] Отправка контента в WordPress...`);
+        
         const result = await wordpressClient.publishPost(wpPost);
+        
+        // CRITICAL: Only proceed if we got explicit confirmation from WordPress
+        // Status "published" should ONLY be set after WordPress confirms publication
+        if (!result || !result.id || !result.link) {
+          console.error(`[publishToWordPress] ❌ WordPress не вернул подтверждение публикации!`);
+          console.error(`[publishToWordPress] Ответ от WordPress:`, result);
+          console.error(`[publishToWordPress] Статус НЕ будет изменен на "published"`);
+          throw new Error("WordPress did not confirm publication. Missing post ID or link.");
+        }
+        
+        console.log(`[publishToWordPress] ✅ WordPress подтвердил публикацию:`, {
+          postId: result.id,
+          link: result.link
+        });
+        console.log(`[publishToWordPress] Теперь можно обновить статус на "published"`);
 
-        // Update content item status to PUBLISHED
+        // CRITICAL: Status "published" should ONLY be set after WordPress confirms publication
+        // This is the ONLY place in publishToWordPress where status should be set to "published"
+        // We have explicit confirmation: result.id and result.link exist
+        console.log(`[publishToWordPress] Обновление статуса content item на "published" (после подтверждения от WordPress)...`);
         const updatedContentItem = await SeoContentItem.findByIdAndUpdate(
           input.contentItemId,
           {
@@ -1696,17 +2156,43 @@ IMPORTANT:
           },
           { new: true }
         ).exec();
+        
+        if (!updatedContentItem) {
+          console.error(`[publishToWordPress] ❌ Не удалось обновить content item!`);
+          throw new Error("Failed to update content item status");
+        }
+        
+        // Verify status was actually updated
+        if (updatedContentItem.status !== "published") {
+          console.error(`[publishToWordPress] ❌ Статус не был обновлен на "published"! Текущий статус: ${updatedContentItem.status}`);
+          throw new Error(`Failed to update content item status to published. Current status: ${updatedContentItem.status}`);
+        }
+        
+        console.log(`[publishToWordPress] ✅ Content item статус обновлен на "published" (подтверждено WordPress)`);
 
-        // Update backlog item status to PUBLISHED if it exists
+        // Update backlog item status to IN_PROGRESS (published, but keep in sprint)
+        // Don't use "published" or "archived" - keep as IN_PROGRESS so it stays visible in sprint
+        // ONLY update after WordPress confirmed publication AND content item status is "published"
         if (updatedContentItem?.backlogIdeaId) {
+          console.log(`[publishToWordPress] Обновление статуса backlog item на IN_PROGRESS...`);
           await SeoBacklogIdea.findByIdAndUpdate(
             updatedContentItem.backlogIdeaId,
             {
-              status: "published"
+              status: "in_progress" // Keep in sprint after publishing
             }
           ).exec();
-          console.log(`[publishToWordPress] Updated backlog item ${updatedContentItem.backlogIdeaId} to published status`);
+          console.log(`[publishToWordPress] ✅ Обновлен статус backlog item ${updatedContentItem.backlogIdeaId} на IN_PROGRESS (опубликован, остается в спринте)`);
+        } else {
+          console.warn(`[publishToWordPress] ⚠️ Content item не имеет backlogIdeaId, не обновляем backlog item`);
         }
+
+        console.log(`[publishToWordPress] ===== ПУБЛИКАЦИЯ ЗАВЕРШЕНА УСПЕШНО =====`);
+        console.log(`[publishToWordPress] Итоговые статусы:`, {
+          contentItemStatus: updatedContentItem.status,
+          backlogItemStatus: updatedContentItem.backlogIdeaId ? "in_progress" : "N/A",
+          wordPressPostId: result.id,
+          wordPressPostUrl: result.link
+        });
 
         return {
           success: true,
@@ -1726,7 +2212,7 @@ IMPORTANT:
     },
     testWordPressConnection: async (
       _: unknown,
-      { input }: { input: { wordpressBaseUrl: string; wordpressUsername: string; wordpressAppPassword: string } },
+      { input }: { input: { wordpressBaseUrl: string; wordpressUsername: string; wordpressAppPassword: string; postType?: string } },
       context: any
     ) => {
       try {

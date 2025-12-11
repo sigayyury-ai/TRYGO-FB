@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjects } from "@/hooks/useProjects";
 import { getProjectAssistantQuery, ProjectAssistant } from "@/api/getProjectAssistant";
 import { changeProjectAssistantMutation } from "@/api/changeProjectAssistant";
 import LoaderSpinner from "@/components/LoaderSpinner";
@@ -38,7 +38,7 @@ const Settings: FC = () => {
   const [promoCodeInfo, setPromoCodeInfo] = useState<any>(null);
   const [checkingPromoCode, setCheckingPromoCode] = useState(false);
   const { toast } = useToast();
-  const { activeProject } = useProjectStore();
+  const { activeProject } = useProjects();
   const { 
     subscription, 
     currentPlan, 

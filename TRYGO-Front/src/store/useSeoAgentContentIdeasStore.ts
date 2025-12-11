@@ -50,8 +50,7 @@ export const useSeoAgentContentIdeasStore = create<SeoAgentContentIdeasState>()(
           throw new Error("hypothesisId is required for generating content ideas");
         }
         
-        console.log("[generateContentIdeas] Request:", { projectId, hypothesisId, category: category || "ALL" });
-        
+        // Removed excessive logging - only log errors
         set({ loading: true, error: null });
         try {
           const newIdeas = await generateContentIdeasMutation({
@@ -88,10 +87,9 @@ export const useSeoAgentContentIdeasStore = create<SeoAgentContentIdeasState>()(
         const currentHypothesisId = get().lastHypothesisId;
         const normalizedHypothesisId = hypothesisId && hypothesisId.trim() !== "" ? hypothesisId : null;
         
-        if (currentProjectId !== projectId || currentHypothesisId !== normalizedHypothesisId) {
-          // Different project/hypothesis - clear old data
-          set({ contentIdeas: [] });
-        }
+        // Always clear old data before fetching to ensure fresh data
+        // This prevents stale data from localStorage from being shown
+        set({ contentIdeas: [] });
         
         set({ loading: true, error: null });
         try {

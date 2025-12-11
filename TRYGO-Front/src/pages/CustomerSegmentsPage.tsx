@@ -124,7 +124,8 @@ const CustomerSegmentsPage: FC = () => {
   };
 
   const handleOpenICP = (segmentId: string) => {
-    useHypothesesPersonProfileStore.setState({ selectedCustomerSegmentId: segmentId  })
+    const { setSelectedCustomerSegmentId } = useHypothesesPersonProfileStore.getState();
+    setSelectedCustomerSegmentId(segmentId);
     navigate('/person');
   }
 

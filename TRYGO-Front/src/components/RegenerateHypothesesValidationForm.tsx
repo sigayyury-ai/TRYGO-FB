@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RefreshCw } from "lucide-react";
 import { useValidationStore } from "@/store/useValidationStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { useUserStore } from "@/store/useUserStore";
 import { useToast } from "@/hooks/use-toast";
 import { checkRegeneratePermission } from "@/utils/checkRegeneratePermission";
@@ -45,7 +45,7 @@ Recommend suitable channels for gathering feedback based on the ICP, such as:
   const [isLoading, setIsLoading] = useState(false);
 
   const { regenerateHypothesesValidation } = useValidationStore();
-  const { activeHypothesis } = useHypothesisStore();
+  const activeHypothesisId = useActiveHypothesisId();
   const { userData } = useUserStore();
   const { toast } = useToast();
 
@@ -55,7 +55,7 @@ Recommend suitable channels for gathering feedback based on the ICP, such as:
   }
 
   const handleRegenerate = async () => {
-    if (!activeHypothesis?.id) {
+    if (!activeHypothesisId) {
       toast({
         title: "Error",
         description: "No active hypothesis found",
@@ -67,7 +67,7 @@ Recommend suitable channels for gathering feedback based on the ICP, such as:
     setIsLoading(true);
     try {
       await regenerateHypothesesValidation({
-        projectHypothesisId: activeHypothesis.id,
+        projectHypothesisId: activeHypothesisId,
         promptPart: promptPart.trim() || null,
       });
 

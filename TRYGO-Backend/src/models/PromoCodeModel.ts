@@ -7,7 +7,7 @@ const promoCodeSchema: Schema = new Schema<IPromoCode>(
         code: {
             type: String,
             required: true,
-            unique: true,
+            unique: true, // unique: true automatically creates an index
             uppercase: true,
             trim: true,
         },
@@ -57,8 +57,8 @@ const promoCodeSchema: Schema = new Schema<IPromoCode>(
     }
 );
 
-// Индекс для быстрого поиска по коду
-promoCodeSchema.index({ code: 1 });
+// Индексы для быстрого поиска
+// Note: code index is automatically created by unique: true, so we don't need to add it explicitly
 promoCodeSchema.index({ isActive: 1, expiresAt: 1 });
 
 const PromoCodeModel = mongoose.model<IPromoCode, mongoose.Model<IPromoCode>>(
@@ -67,4 +67,9 @@ const PromoCodeModel = mongoose.model<IPromoCode, mongoose.Model<IPromoCode>>(
 );
 
 export default PromoCodeModel;
+
+
+
+
+
 

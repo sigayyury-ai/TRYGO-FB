@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContentIdeasList } from "./content/ContentIdeasList";
 import { CustomIdeaForm } from "./content/CustomIdeaForm";
@@ -24,7 +24,7 @@ const categoryLabels: Record<ContentCategory, string> = {
 
 interface SeoContentPanelProps {
   projectId: string;
-  hypothesisId?: string;
+  hypothesisId: string; // Required, not optional
 }
 
 export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProps) => {
@@ -37,36 +37,58 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
   const [actionLoading, setActionLoading] = useState(false);
   const [generatingCategory, setGeneratingCategory] = useState<ContentCategory | null>(null);
 
-  // Load content ideas from API
-  const loadContentIdeas = async () => {
+  // Load content ideas from API - обернуто в useCallback
+  const loadContentIdeas = useCallback(async () => {
     if (!projectId) {
+      console.warn("[SeoContentPanel] ⚠️ No projectId, skipping load");
+      return;
+    }
+    
+    if (!hypothesisId) {
+      setIdeasError("Please select a hypothesis first");
+      setContentIdeas([]);
       return;
     }
     
     setIdeasLoading(true);
     setIdeasError(null);
+    // Clear old ideas before loading new ones to prevent stale data
+    setContentIdeas([]);
     try {
       const { data } = await getSeoAgentContentIdeasQuery(projectId, hypothesisId);
+      
       const ideas = data?.seoAgentContentIdeas || [];
+      
+      // Reduced logging - only log errors or important warnings
+      if (ideas.length === 0) {
+        console.warn("[SeoContentPanel] ⚠️ No ideas returned from API");
+      }
+      
       setContentIdeas(ideas);
     } catch (error: unknown) {
       console.error("[SeoContentPanel] ❌ Error loading content ideas:", error);
       let errorMessage = "Failed to load content ideas";
       if (error instanceof Error) {
         errorMessage = error.message;
+        console.error("[SeoContentPanel] Error message:", errorMessage);
+        console.error("[SeoContentPanel] Error stack:", error.stack);
       }
       setIdeasError(errorMessage);
     } finally {
       setIdeasLoading(false);
     }
-  };
+  }, [projectId, hypothesisId]);
 
   useEffect(() => {
-    if (projectId) {
+    if (projectId && hypothesisId) {
       loadContentIdeas();
+    } else {
+      // Очищаем данные, если нет projectId или hypothesisId
+      setContentIdeas([]);
+      setIdeasError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, hypothesisId]);
+  }, [projectId, hypothesisId]); // loadContentIdeas is stable (useCallback with deps), no need to include
 
   const handleAddToBacklog = async (idea: ContentIdeaDto) => {
     setActionLoading(true);
@@ -120,7 +142,7 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
     }
   };
 
-  const handleGenerateAll = async () => {
+  const handleGenerateAll = useCallback(async () => {
     if (!hypothesisId) {
       toast({
         title: "Error",
@@ -130,7 +152,10 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
       return;
     }
 
-    // Generating all ideas
+    // Prevent multiple simultaneous calls
+    if (actionLoading) {
+      return;
+    }
 
     setActionLoading(true);
     try {
@@ -151,7 +176,7 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
     } finally {
       setActionLoading(false);
     }
-  };
+  }, [projectId, hypothesisId, actionLoading, loadContentIdeas, toast]);
 
   const handleCreateCustomIdea = async (data: {
     title: string;
@@ -190,8 +215,37 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
     }
   };
 
+  // Memoize category generation handler to prevent function recreation on every render
+  const handleGenerateForCategory = useCallback(async (category: ContentCategory) => {
+    if (!hypothesisId) return;
+    
+    setGeneratingCategory(category);
+    setActionLoading(true);
+    try {
+      await generateContentIdeasMutation({ projectId, hypothesisId, category });
+      await loadContentIdeas();
+      toast({
+        title: "Success",
+        description: `Ideas for ${categoryLabels[category]} generated successfully`,
+      });
+    } catch (error) {
+      console.error("[SeoContentPanel] Error generating ideas:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate content ideas";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+      setGeneratingCategory(null);
+    }
+  }, [projectId, hypothesisId, loadContentIdeas]);
+
   // Show all ideas (no filtering for now, matching prototype)
   const filteredIdeas = contentIdeas;
+  
+  // Removed excessive logging useEffect - was causing performance issues
 
   if (ideasLoading) {
     return (
@@ -237,36 +291,21 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
         </Card>
       )}
 
+      {/* Debug info */}
+      {contentIdeas.length === 0 && !ideasLoading && !ideasError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm text-yellow-800">
+            ⚠️ No ideas loaded. Check console for details.
+          </p>
+        </div>
+      )}
+
       {/* Content Ideas List - Grouped by categories */}
       <ContentIdeasList
         ideas={filteredIdeas}
         onAddToBacklog={handleAddToBacklog}
         onDismiss={handleDismiss}
-        onGenerateForCategory={hypothesisId ? async (category) => {
-          // Generating ideas for category
-          
-          setGeneratingCategory(category);
-          setActionLoading(true);
-          try {
-            await generateContentIdeasMutation({ projectId, hypothesisId, category });
-            await loadContentIdeas();
-            toast({
-              title: "Success",
-              description: `Ideas for ${categoryLabels[category]} generated successfully`,
-            });
-          } catch (error) {
-            console.error("[SeoContentPanel] Error generating ideas:", error);
-            const errorMessage = error instanceof Error ? error.message : "Failed to generate content ideas";
-            toast({
-              title: "Error",
-              description: errorMessage,
-              variant: "destructive",
-            });
-          } finally {
-            setActionLoading(false);
-            setGeneratingCategory(null);
-          }
-        } : undefined}
+        onGenerateForCategory={hypothesisId ? handleGenerateForCategory : undefined}
         loading={actionLoading}
         generatingCategory={generatingCategory}
       />

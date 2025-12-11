@@ -23,7 +23,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import LoaderSpinner from "./LoaderSpinner";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import { ProjectHypothesis } from "@/api/getProjectHypotheses";
 import { Trash2 } from "lucide-react";
 import {
@@ -67,7 +68,8 @@ export const EditHypothesisModal: FC<EditHypothesisModalProps> = ({
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  const { changeHypothesis, deleteHypothesis, loading } = useHypothesisStore();
+  const { activeProject } = useProjects();
+  const { changeHypothesis, deleteHypothesis, loading } = useHypotheses({ projectId: activeProject?.id });
 
   // Update form values when hypothesis changes
   useEffect(() => {

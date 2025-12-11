@@ -184,3 +184,8 @@ console.log('Current path:', window.location.pathname);
 - Скриншот Network tab
 - Текст ошибок (если есть)
 
+
+
+
+
+

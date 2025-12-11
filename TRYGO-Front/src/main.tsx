@@ -11,9 +11,15 @@ import { ApolloProvider } from '@apollo/client';
 import { client } from './config/apollo/client';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initTranslationErrorHandlers, isTranslationError } from './utils/translationErrorHandler';
+import { initFrontendLogger } from './utils/frontendLogger';
 
 // Initialize global handlers for translation errors
 initTranslationErrorHandlers();
+
+// Initialize frontend logger (sends logs to backend)
+// Frontend logger disabled by default to prevent memory leaks in Cursor/Electron
+// Uncomment to enable: initFrontendLogger();
+// Or enable conditionally: if (import.meta.env.DEV) initFrontendLogger();
 
 // Suppress React removeChild errors caused by browser translators
 const originalConsoleError = console.error;

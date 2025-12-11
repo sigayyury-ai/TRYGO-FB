@@ -29,7 +29,7 @@ import LoaderSpinner from "./LoaderSpinner";
 import { Globe, PenTool } from "lucide-react";
 import useSubscription from "@/hooks/use-subscription";
 import UpgradeModal from "./UpgradeModal";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjects } from "@/hooks/useProjects";
 
 const formSchema = z.object({
   startType: z.enum([ProjectStartType.StartFromScratch, ProjectStartType.UrlImport]),
@@ -72,7 +72,7 @@ export const GenerateProjectModal: FC<{
   const { toast } = useToast();
   const { generateProject, isLoading, projectGenerationError } = useSocketStore();
   const { canCreateProject, currentPlan } = useSubscription();
-  const { projects } = useProjectStore();
+  const { projects } = useProjects();
 
   // Get current project count
   const currentProjectsCount = projects.length;

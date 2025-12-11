@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { ContentIdeaDto, ContentCategory } from "@/api/getSeoAgentContentIdeas";
 import { ContentIdeaCard } from "./ContentIdeaCard";
 
@@ -41,6 +41,8 @@ export const ContentIdeasList = ({
   loading = false,
   generatingCategory = null,
 }: ContentIdeasListProps) => {
+  // Removed excessive logging useEffect - was causing performance issues
+
   const groupedIdeas = useMemo(() => {
     const grouped: Record<ContentCategory, ContentIdeaDto[]> = {
       [ContentCategory.PAINS]: [],
@@ -55,15 +57,33 @@ export const ContentIdeasList = ({
     ideas.forEach((idea) => {
       if (idea.category && grouped[idea.category]) {
         grouped[idea.category].push(idea);
+      } else {
+        // Логируем идеи с неправильной категорией для отладки
+        console.warn("[ContentIdeasList] ⚠️ Idea with unknown category:", {
+          id: idea.id,
+          title: idea.title,
+          category: idea.category,
+          availableCategories: Object.keys(grouped)
+        });
       }
     });
+    
+    // Removed excessive logging - was causing performance issues
 
     return grouped;
   }, [ideas]);
 
+  // Removed excessive logging useEffect - was causing performance issues
+
   return (
     <div className="content-ideas flex flex-col gap-4">
-      {categoryOrder.map((category) => {
+      {ideas.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-gray-500 text-sm mb-2">No content ideas available</p>
+          <p className="text-gray-400 text-xs">Check console for loading status</p>
+        </div>
+      ) : (
+        categoryOrder.map((category) => {
         const categoryIdeas = groupedIdeas[category];
         const isGenerating = generatingCategory === category;
 
@@ -114,7 +134,7 @@ export const ContentIdeasList = ({
             </div>
           </div>
         );
-      })}
+      }))}
     </div>
   );
 };

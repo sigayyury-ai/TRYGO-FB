@@ -36,6 +36,7 @@ interface ContentItem {
   imageUrl?: string;
   outline?: string;
   status: string;
+  backlogIdeaId?: string;
 }
 
 type SortOption = "newest" | "oldest" | "title";
@@ -48,6 +49,8 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  // Ref to store polling intervals for cleanup
+  const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
@@ -58,83 +61,115 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
   const scrollPositionRef = useRef<number | null>(null);
 
   // Check for existing content items on mount and when backlog items change
+  // Use useMemo to track backlog item IDs to avoid unnecessary re-checks
+  const backlogItemIds = useMemo(() => 
+    backlogItems.filter(i => i.status === BacklogStatus.PENDING).map(i => i.id).join(','),
+    [backlogItems]
+  );
+  
   useEffect(() => {
     const checkContentItems = async () => {
       setCheckingContent(true);
       const map = new Map<string, ContentItem>();
       const pendingItems = backlogItems.filter(i => i.status === BacklogStatus.PENDING);
       
-      // Check all items in parallel for better performance
-      const checks = pendingItems.map(async (item) => {
-        try {
-          const { data } = await getContentItemByBacklogIdeaQuery(item.id);
-          if (data?.contentItemByBacklogIdea) {
-            const contentItem = data.contentItemByBacklogIdea;
-            // Only add to map if content actually exists (not just an empty draft)
-            if (contentItem.content && contentItem.content.trim().length > 0) {
-              map.set(item.id, {
-                id: contentItem.id,
-                title: contentItem.title,
-                content: contentItem.content,
-                imageUrl: contentItem.imageUrl,
-                outline: contentItem.outline,
-                status: contentItem.status,
-              });
+      // Limit concurrent requests to prevent memory issues
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < pendingItems.length; i += BATCH_SIZE) {
+        const batch = pendingItems.slice(i, i + BATCH_SIZE);
+        const checks = batch.map(async (item) => {
+          try {
+            const { data } = await getContentItemByBacklogIdeaQuery(item.id);
+            if (data?.contentItemByBacklogIdea) {
+              const contentItem = data.contentItemByBacklogIdea;
+              // Only add to map if content actually exists (not just an empty draft)
+              if (contentItem.content && contentItem.content.trim().length > 0) {
+                map.set(item.id, {
+                  id: contentItem.id,
+                  title: contentItem.title,
+                  content: contentItem.content,
+                  imageUrl: contentItem.imageUrl,
+                  outline: contentItem.outline,
+                  status: contentItem.status,
+                  backlogIdeaId: contentItem.backlogIdeaId || item.id, // Use from API response or fallback to item.id
+                });
+              }
             }
+          } catch (error) {
+            // Ignore errors - content item might not exist
           }
-        } catch (error) {
-          // Ignore errors - content item might not exist
-        }
-      });
+        });
+        
+        await Promise.all(checks);
+      }
       
-      await Promise.all(checks);
       setContentItemsMap(map);
       setCheckingContent(false);
     };
-    checkContentItems();
-  }, [backlogItems]);
+    
+    // Only check if we have pending items
+    if (backlogItems.filter(i => i.status === BacklogStatus.PENDING).length > 0) {
+      checkContentItems();
+    } else {
+      setContentItemsMap(new Map());
+      setCheckingContent(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backlogItemIds]); // Use memoized IDs string instead of full array
 
   const displayedItems = useMemo(() => {
-    // Filter by PENDING status first
+    // CRITICAL: Only show PENDING items in backlog
+    // Items with status SCHEDULED, IN_PROGRESS, COMPLETED are in sprint and should NOT appear here
     let items = backlogItems.filter(item => item.status === BacklogStatus.PENDING);
     
-    // Log filtering information
-    if (backlogItems.length > 0) {
-      const pendingCount = backlogItems.filter(item => item.status === BacklogStatus.PENDING).length;
-      const otherStatuses = backlogItems.filter(item => item.status !== BacklogStatus.PENDING);
-      if (otherStatuses.length > 0) {
-        console.log(`[BacklogPanel] 🔍 Filtering: ${backlogItems.length} total items, ${pendingCount} PENDING (will show), ${otherStatuses.length} other statuses (hidden)`);
-        console.log(`[BacklogPanel] Hidden statuses:`, otherStatuses.reduce((acc, item) => {
-          acc[item.status] = (acc[item.status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>));
-      }
+    // Log filtering for debugging
+    const scheduledCount = backlogItems.filter(i => i.status === BacklogStatus.SCHEDULED).length;
+    const inProgressCount = backlogItems.filter(i => i.status === BacklogStatus.IN_PROGRESS).length;
+    const completedCount = backlogItems.filter(i => i.status === BacklogStatus.COMPLETED).length;
+    const pendingCount = items.length;
+    
+    if (scheduledCount > 0 || inProgressCount > 0 || completedCount > 0) {
+      console.log("📋 [BACKLOG_FILTER] Фильтрация элементов:", {
+        total: backlogItems.length,
+        pending: pendingCount,
+        scheduled: scheduledCount,
+        inProgress: inProgressCount,
+        completed: completedCount,
+        shownInBacklog: pendingCount,
+        hiddenFromBacklog: scheduledCount + inProgressCount + completedCount
+      });
     }
+    
+    // Removed excessive logging - was causing performance issues
     
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const beforeSearch = items.length;
       items = items.filter(item => 
         item.title.toLowerCase().includes(query) ||
         item.description?.toLowerCase().includes(query)
       );
-      if (beforeSearch !== items.length) {
-        console.log(`[BacklogPanel] 🔍 Search filter: ${beforeSearch} → ${items.length} items`);
-      }
     }
     
     // Apply content type filter
     if (filterBy !== "all") {
-      const beforeTypeFilter = items.length;
       items = items.filter(item => item.contentType === filterBy);
-      if (beforeTypeFilter !== items.length) {
-        console.log(`[BacklogPanel] 🔍 Content type filter (${filterBy}): ${beforeTypeFilter} → ${items.length} items`);
-      }
     }
     
-    // Apply sorting
+    // Apply sorting with priority: Content Ready items first
     items = [...items].sort((a, b) => {
+      // First, prioritize items with Content Ready (contentItemsMap.has)
+      const aHasContent = contentItemsMap.has(a.id);
+      const bHasContent = contentItemsMap.has(b.id);
+      
+      if (aHasContent && !bHasContent) {
+        return -1; // a comes first
+      }
+      if (!aHasContent && bHasContent) {
+        return 1; // b comes first
+      }
+      
+      // If both have content or both don't, apply normal sorting
       switch (sortBy) {
         case "newest":
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -148,7 +183,7 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
     });
     
     return items;
-  }, [backlogItems, searchQuery, sortBy, filterBy]);
+  }, [backlogItems, searchQuery, sortBy, filterBy, contentItemsMap]);
 
   const handleEdit = (item: BacklogIdeaDto) => {
     setEditingId(item.id);
@@ -216,9 +251,17 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
   };
 
   const handleRemove = async (itemId: string, event?: React.MouseEvent) => {
+    // Always prevent default and stop propagation
     if (event) {
       event.preventDefault();
       event.stopPropagation();
+      // Prevent any form submission
+      if (event.currentTarget) {
+        const form = (event.currentTarget as HTMLElement).closest('form');
+        if (form) {
+          event.preventDefault();
+        }
+      }
     }
     
     // Save scroll position before deletion
@@ -226,25 +269,34 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
 
     setLoading(true);
     try {
-      await deleteSeoAgentBacklogItemMutation(itemId);
+      const result = await deleteSeoAgentBacklogItemMutation(itemId);
       
-      toast({
-        title: "Success",
-        description: "Backlog item deleted",
-      });
-      // Reload backlog from API
-      if (onBacklogUpdated) {
-        onBacklogUpdated();
+      // Check if result indicates success
+      if (result?.data?.deleteSeoAgentBacklogIdea) {
+        toast({
+          title: "Success",
+          description: "Backlog item deleted",
+        });
+        
+        // Reload backlog from API - use setTimeout to ensure it's async and doesn't block
+        if (onBacklogUpdated) {
+          // Use requestAnimationFrame to ensure it happens after render
+          requestAnimationFrame(() => {
+            onBacklogUpdated();
+          });
+        }
+        
+        // Restore scroll position after a short delay to allow DOM update
+        setTimeout(() => {
+          window.scrollTo(0, savedScrollPosition);
+        }, 100);
       }
-      
-      // Restore scroll position after a short delay to allow DOM update
-      setTimeout(() => {
-        window.scrollTo(0, savedScrollPosition);
-      }, 100);
     } catch (error) {
+      console.error("Error deleting backlog item:", error);
+      // Don't reload page on error - just show toast
       toast({
         title: "Error",
-        description: "Failed to delete item",
+        description: error instanceof Error ? error.message : "Failed to delete item",
         variant: "destructive",
       });
     } finally {
@@ -274,7 +326,15 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
       itemTitle: item.title
     });
     
+    // Clear any existing polling interval for this item
+    const existingInterval = pollingIntervalsRef.current.get(item.id);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+      pollingIntervalsRef.current.delete(item.id);
+    }
+    
     setGeneratingId(item.id);
+    
     try {
       const { data } = await generateContentForBacklogIdeaMutation({
         backlogIdeaId: item.id,
@@ -293,6 +353,7 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
           imageUrl: contentItem.imageUrl || undefined,
           outline: contentItem.outline || undefined,
           status: contentItem.status,
+          backlogIdeaId: contentItem.backlogIdeaId || item.id, // Use from API response or fallback to item.id
         };
         
         // Update content items map
@@ -315,6 +376,7 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
             pollCount++;
             if (pollCount > 6) {
               clearInterval(pollInterval);
+              pollingIntervalsRef.current.delete(item.id);
               return;
             }
 
@@ -334,6 +396,7 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                   return updated;
                 });
                 clearInterval(pollInterval);
+                pollingIntervalsRef.current.delete(item.id);
                 toast({
                   title: "Image Generated",
                   description: "Preview image is now available",
@@ -343,6 +406,9 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
               // Ignore polling errors
             }
           }, 5000);
+          
+          // Store interval in ref for cleanup
+          pollingIntervalsRef.current.set(item.id, pollInterval);
         }
       }
     } catch (error: any) {
@@ -363,6 +429,16 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
       setGeneratingId(null);
     }
   };
+  
+  // Cleanup all polling intervals on unmount
+  useEffect(() => {
+    return () => {
+      pollingIntervalsRef.current.forEach((interval) => {
+        clearInterval(interval);
+      });
+      pollingIntervalsRef.current.clear();
+    };
+  }, []);
 
   const handleEditContent = (item: BacklogIdeaDto) => {
     const existingContent = contentItemsMap.get(item.id);
@@ -433,14 +509,21 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
       )}
 
       {/* Backlog Items */}
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {displayedItems.map((item) => (
           <Card 
             key={item.id} 
             className={cn(
-              "transition-all",
+              "transition-all flex flex-col",
               editingId === item.id && "ring-2 ring-blue-500"
             )}
+            onClick={(e) => {
+              // Prevent card click from interfering with button clicks
+              const target = e.target as HTMLElement;
+              if (target.closest('button[type="button"]')) {
+                e.stopPropagation();
+              }
+            }}
           >
           <CardContent className="p-4">
             {editingId === item.id ? (
@@ -487,14 +570,29 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                 </div>
               </div>
             ) : (
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col h-full">
+                  {/* Preview Image - moved to top */}
+                  {contentItemsMap.get(item.id)?.imageUrl && (
+                    <div className="w-full aspect-video rounded-t-lg overflow-hidden border-b bg-gray-100">
+                      <img
+                        src={contentItemsMap.get(item.id)?.imageUrl}
+                        alt={item.title}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          // Hide image on error
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 flex flex-col p-4 space-y-3">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm mb-1">{item.title}</h4>
+                      <h4 className="font-medium text-sm mb-1 line-clamp-2">{item.title}</h4>
                       {item.description && (
                         <p className="text-xs text-gray-600 mb-2 line-clamp-2">{item.description}</p>
                       )}
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-3">
                         <Badge variant="secondary" className="text-xs">
                           {item.contentType}
                         </Badge>
@@ -513,7 +611,7 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-wrap">
                       {checkingContent ? (
                         <Button
                           variant="outline"
@@ -561,33 +659,27 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                         <Calendar className="h-3 w-3 mr-1" />
                         Schedule
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      <button
                         type="button"
-                        onClick={(e) => handleRemove(item.id, e)}
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (e.nativeEvent) {
+                            e.nativeEvent.stopImmediatePropagation();
+                          }
+                          // Prevent any default browser behavior
+                          e.stopImmediatePropagation?.();
+                          await handleRemove(item.id, e);
+                        }}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                         disabled={loading}
                         title="Delete item"
+                        aria-label="Delete item"
                       >
                         <X className="h-3 w-3" />
-                      </Button>
+                      </button>
                     </div>
                   </div>
-                  {/* Preview Image - moved below buttons */}
-                  {contentItemsMap.get(item.id)?.imageUrl && (
-                    <div className="w-full h-32 rounded overflow-hidden border">
-                      <img
-                        src={contentItemsMap.get(item.id)?.imageUrl}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          // Hide image on error
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
             )}
           </CardContent>
@@ -630,6 +722,7 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                         imageUrl: data.contentItemByBacklogIdea.imageUrl,
                         outline: data.contentItemByBacklogIdea.outline,
                         status: data.contentItemByBacklogIdea.status,
+                        backlogIdeaId: data.contentItemByBacklogIdea.backlogIdeaId || backlogItem.id, // Use from API or fallback
                       });
                     }
                     return newMap;
@@ -641,11 +734,120 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
             };
             checkContent();
           }}
-          onApprove={() => {
+          onApprove={async () => {
+            // CRITICAL: Save editingContent reference BEFORE any async operations or state updates
+            const currentEditingContent = editingContent;
+            
+            console.log("✅ [APPROVE] ===== APPROVE И ДОБАВЛЕНИЕ В СПРИНТ =====");
+            console.log("✅ [APPROVE] Материал:", {
+              editingContentId: currentEditingContent?.id,
+              backlogIdeaId: currentEditingContent?.backlogIdeaId,
+              title: currentEditingContent?.title,
+              backlogItemsCount: backlogItems.length,
+              hasOnScheduleItem: !!onScheduleItem,
+              contentItemsMapSize: contentItemsMap.size
+            });
+
+            if (!currentEditingContent) {
+              console.error("✅ [APPROVE] ❌ editingContent is null! Cannot proceed.");
+              return;
+            }
+
+            // Find the corresponding backlog item BEFORE closing editor
+            console.log("✅ [APPROVE] Шаг 1: Поиск backlog item...");
+            const backlogItem = backlogItems.find(item => {
+              // Match by backlogIdeaId if available
+              if (currentEditingContent.backlogIdeaId) {
+                const matches = item.id === currentEditingContent.backlogIdeaId;
+                if (matches) {
+                  console.log("✅ [APPROVE] ✅ Найден по backlogIdeaId:", item.id);
+                }
+                return matches;
+              }
+              // Fallback: find by checking if this content item belongs to this backlog item
+              const contentItem = contentItemsMap.get(item.id);
+              const matches = contentItem?.id === currentEditingContent.id;
+              if (matches) {
+                console.log("✅ [APPROVE] ✅ Найден по contentItem.id:", item.id);
+              }
+              return matches;
+            });
+
+            console.log("✅ [APPROVE] Результат поиска:", backlogItem ? {
+              id: backlogItem.id,
+              title: backlogItem.title,
+              status: backlogItem.status
+            } : "❌ NOT FOUND");
+
+            // Store backlog item reference before closing editor
+            const itemToSchedule = backlogItem;
+
+            // Close the editor
             setEditingContent(null);
+
+            // Refresh content items map to reflect approved status
+            if (itemToSchedule) {
+              try {
+                const { data } = await getContentItemByBacklogIdeaQuery(itemToSchedule.id);
+                if (data?.contentItemByBacklogIdea) {
+                  setContentItemsMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(itemToSchedule.id, {
+                      id: data.contentItemByBacklogIdea.id,
+                      title: data.contentItemByBacklogIdea.title,
+                      content: data.contentItemByBacklogIdea.content,
+                      imageUrl: data.contentItemByBacklogIdea.imageUrl,
+                      outline: data.contentItemByBacklogIdea.outline,
+                      status: data.contentItemByBacklogIdea.status,
+                      backlogIdeaId: data.contentItemByBacklogIdea.backlogIdeaId || itemToSchedule.id,
+                    });
+                    return newMap;
+                  });
+                }
+              } catch (error) {
+                console.error("[BacklogPanel] Error refreshing content after approve:", error);
+              }
+
+              // Refresh backlog items list
+              if (onBacklogUpdated) {
+                console.log("[BacklogPanel] Calling onBacklogUpdated");
+                await onBacklogUpdated();
+              }
+
+              // Open schedule dialog with the approved item
+              if (onScheduleItem) {
+                console.log("✅ [APPROVE] Шаг 4: Открытие диалога выбора даты для item:", itemToSchedule.id);
+                // Use requestAnimationFrame to ensure DOM is updated
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    console.log("✅ [APPROVE] Вызов onScheduleItem...");
+                    try {
+                      onScheduleItem(itemToSchedule);
+                      console.log("✅ [APPROVE] ✅ onScheduleItem вызван успешно");
+                      console.log("✅ [APPROVE] ===== APPROVE ЗАВЕРШЕН =====");
+                    } catch (error) {
+                      console.error("✅ [APPROVE] ❌ Ошибка вызова onScheduleItem:", error);
+                    }
+                  }, 300);
+                });
+              } else {
+                console.warn("✅ [APPROVE] ⚠️ onScheduleItem не предоставлен!");
+              }
+            } else {
+              console.warn("✅ [APPROVE] ⚠️ Не удалось найти backlog item для content:", currentEditingContent.id);
+              console.warn("[BacklogPanel] Available backlog items:", backlogItems.map(i => ({
+                id: i.id,
+                title: i.title,
+                status: i.status
+              })));
+              console.warn("[BacklogPanel] Content items map keys:", Array.from(contentItemsMap.keys()));
+            }
+
             toast({
               title: "Success",
-              description: "Content approved and added to queue",
+              description: itemToSchedule && onScheduleItem 
+                ? "Content approved. Please select a date in the schedule."
+                : "Content approved and added to queue",
             });
           }}
         />

@@ -16,7 +16,8 @@ import ChannelsList from "./ChannelsList";
 import CustomerSegments from "./CustomerSegments";
 import RegenerateHypothesesCoreForm from "./RegenerateHypothesesCoreForm";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
 import {
   CustomerSegmentDto,
@@ -42,7 +43,8 @@ const LeanCanvas: FC = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  const { activeHypothesis } = useHypothesisStore();
+  const { activeProject } = useProjects();
+  const { activeHypothesis } = useHypotheses({ projectId: activeProject?.id });
   const wasAutoRefreshed = useHypothesesCoreStore(
     (state) => state.wasAutoRefreshed
   );

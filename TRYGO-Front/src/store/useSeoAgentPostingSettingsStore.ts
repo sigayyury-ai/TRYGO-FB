@@ -18,24 +18,38 @@ interface SeoAgentPostingSettingsState {
     preferredDays: string[];
     autoPublishEnabled: boolean;
     language: string | null;
+    wordpressBaseUrl: string | null;
+    wordpressUsername: string | null;
+    wordpressAppPassword: string | null;
+    wordpressPostType: string;
   } | null;
   
   // Actions
-  getSettings: (projectId: string) => Promise<void>;
+  getSettings: (projectId: string, hypothesisId?: string) => Promise<void>;
   updateSettings: (
     projectId: string,
     hypothesisId: string | undefined,
     weeklyPublishCount: number,
     preferredDays: string[],
     autoPublishEnabled: boolean,
-    language?: string | null
+    language?: string | null,
+    wordpressBaseUrl?: string | null,
+    wordpressUsername?: string | null,
+    wordpressAppPassword?: string | null,
+    wordpressDefaultCategoryId?: number | null,
+    wordpressDefaultTagIds?: number[],
+    wordpressPostType?: string | null
   ) => Promise<void>;
   setDraftSettings: (
     weeklyPublishCount: number,
     preferredDays: string[],
     autoPublishEnabled: boolean,
-    language?: string | null
-  ) => void;
+    language?: string | null,
+    wordpressBaseUrl?: string | null,
+          wordpressUsername?: string | null,
+          wordpressAppPassword?: string | null,
+          wordpressPostType?: string | null
+        ) => void;
   clearDraftSettings: () => void;
   clearError: () => void;
   resetApiStatus: () => void;
@@ -58,7 +72,7 @@ export const useSeoAgentPostingSettingsStore =
         apiUnavailable: false,
         draftSettings: null,
 
-        getSettings: async (projectId: string) => {
+        getSettings: async (projectId: string, hypothesisId?: string) => {
           // Skip if we already know API is unavailable
           if (get().apiUnavailable) {
             console.log("Skipping settings request - API known to be unavailable");
@@ -85,8 +99,12 @@ export const useSeoAgentPostingSettingsStore =
                     preferredDays: settings.preferredDays,
                     autoPublishEnabled: settings.autoPublishEnabled,
                     language: settings.language || "Russian",
+                    wordpressBaseUrl: settings.wordpressBaseUrl || null,
+                    wordpressUsername: settings.wordpressUsername || null,
+                    wordpressAppPassword: null, // Never load password from API
+                    wordpressPostType: settings.wordpressPostType || "post",
                   }
-                : defaultSettings,
+                : { ...defaultSettings, wordpressBaseUrl: null, wordpressUsername: null, wordpressAppPassword: null },
             });
           } catch (error: unknown) {
             console.error("Error loading posting settings:", error);
@@ -120,7 +138,7 @@ export const useSeoAgentPostingSettingsStore =
               settings: null,
               apiUnavailable: is400Error,
               // Use default settings if API is not available
-              draftSettings: defaultSettings,
+              draftSettings: { ...defaultSettings, wordpressBaseUrl: null, wordpressUsername: null, wordpressAppPassword: null, wordpressPostType: "post" },
             });
           }
         },
@@ -131,7 +149,13 @@ export const useSeoAgentPostingSettingsStore =
           weeklyPublishCount: number,
           preferredDays: string[],
           autoPublishEnabled: boolean,
-          language?: string | null
+          language?: string | null,
+          wordpressBaseUrl?: string | null,
+          wordpressUsername?: string | null,
+          wordpressAppPassword?: string | null,
+          wordpressDefaultCategoryId?: number | null,
+          wordpressDefaultTagIds?: number[],
+          wordpressPostType?: string | null
         ) => {
           set({ loading: true, error: null });
           try {
@@ -142,6 +166,12 @@ export const useSeoAgentPostingSettingsStore =
               preferredDays,
               autoPublishEnabled,
               language,
+              wordpressBaseUrl,
+              wordpressUsername,
+              wordpressAppPassword,
+              wordpressDefaultCategoryId,
+              wordpressDefaultTagIds,
+              wordpressPostType,
             });
 
             const updatedSettings = data.updateSeoAgentPostingSettings;
@@ -152,6 +182,10 @@ export const useSeoAgentPostingSettingsStore =
                 preferredDays: updatedSettings.preferredDays,
                 autoPublishEnabled: updatedSettings.autoPublishEnabled,
                 language: updatedSettings.language || "Russian",
+                wordpressBaseUrl: updatedSettings.wordpressBaseUrl || null,
+                wordpressUsername: updatedSettings.wordpressUsername || null,
+                wordpressAppPassword: null, // Never store password in draft
+                wordpressPostType: updatedSettings.wordpressPostType || "post",
               },
               loading: false,
             });
@@ -171,14 +205,23 @@ export const useSeoAgentPostingSettingsStore =
           weeklyPublishCount: number,
           preferredDays: string[],
           autoPublishEnabled: boolean,
-          language?: string | null
+          language?: string | null,
+          wordpressBaseUrl?: string | null,
+          wordpressUsername?: string | null,
+          wordpressAppPassword?: string | null,
+          wordpressPostType?: string | null
         ) => {
+          const current = get().draftSettings;
           set({
             draftSettings: {
               weeklyPublishCount,
               preferredDays,
               autoPublishEnabled,
-              language: language !== undefined ? language : get().draftSettings?.language || "Russian",
+              language: language !== undefined ? language : current?.language || "Russian",
+              wordpressBaseUrl: wordpressBaseUrl !== undefined ? wordpressBaseUrl : current?.wordpressBaseUrl || null,
+              wordpressUsername: wordpressUsername !== undefined ? wordpressUsername : current?.wordpressUsername || null,
+              wordpressAppPassword: wordpressAppPassword !== undefined ? wordpressAppPassword : current?.wordpressAppPassword || null,
+              wordpressPostType: wordpressPostType !== undefined ? wordpressPostType : current?.wordpressPostType || "post",
             },
           });
         },
@@ -192,8 +235,12 @@ export const useSeoAgentPostingSettingsStore =
                   preferredDays: currentSettings.preferredDays,
                   autoPublishEnabled: currentSettings.autoPublishEnabled,
                   language: currentSettings.language || "Russian",
+                  wordpressBaseUrl: currentSettings.wordpressBaseUrl || null,
+                  wordpressUsername: currentSettings.wordpressUsername || null,
+                  wordpressAppPassword: null, // Never load password
+                  wordpressPostType: currentSettings.wordpressPostType || "post",
                 }
-              : defaultSettings,
+              : { ...defaultSettings, wordpressBaseUrl: null, wordpressUsername: null, wordpressAppPassword: null, wordpressPostType: "post" },
           });
         },
 

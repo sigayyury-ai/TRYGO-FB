@@ -19,8 +19,8 @@ import {
   CreateMessageInput,
   AnswerCreatedEvent,
 } from "@/store/useSocketStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import { MessageType } from "@/types/MessageType";
 import Cookies from "js-cookie";
 import { useHypothesesPersonProfileStore } from "@/store/useHypothesesPersonProfileStore";
@@ -94,11 +94,12 @@ const AIAssistantChat: FC<AIAssistantChatProps> = ({ defaultOpen = false }) => {
     chatError,
     chatLoading,
   } = useSocketStore();
-  const { activeProject } = useProjectStore();
-  const { activeHypothesis } = useHypothesisStore();
-  const selectedCustomerSegmentId = useHypothesesPersonProfileStore(
-    (state) => state.selectedCustomerSegmentId
+  const { activeProject } = useProjects();
+  const { activeHypothesis } = useHypotheses({ projectId: activeProject?.id });
+  const getSelectedCustomerSegmentId = useHypothesesPersonProfileStore(
+    (state) => state.getSelectedCustomerSegmentId
   );
+  const selectedCustomerSegmentId = getSelectedCustomerSegmentId();
 
   const getMessageType = (): MessageType => {
     const path = location.pathname;

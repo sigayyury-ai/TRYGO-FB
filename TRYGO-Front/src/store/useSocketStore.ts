@@ -3,10 +3,9 @@ import io from "socket.io-client";
 import Cookies from "js-cookie";
 import { devtools } from "zustand/middleware";
 import { MessageType } from "@/types/MessageType";
-import { useHypothesisStore } from "./useHypothesisStore";
+import { getActiveProjectId, getActiveHypothesisId } from "@/utils/activeState";
 import { useHypothesesCoreStore } from "./useHypothesesCoreStore";
 import { useHypothesesPersonProfileStore } from "./useHypothesesPersonProfileStore";
-import { useProjectStore } from "./useProjectStore";
 
 export enum ProjectStartType {
   StartFromScratch = "START_FROM_SCRATCH",
@@ -118,7 +117,7 @@ export const useSocketStore = create<SocketState>()(
           return;
         }
 
-        const socket = io(import.meta.env.VITE_WS_SERVER_URL || "wss://ailaunchkit-backend-production.onrender.com", {
+        const socket = io(import.meta.env.VITE_WS_SERVER_URL || "ws://localhost:5001", {
           transports: ["websocket"],
           query: { token },
           reconnection: true, // Enable reconnection for stability
@@ -192,12 +191,16 @@ export const useSocketStore = create<SocketState>()(
         socket.on(
           "projectHypothesisGenerated",
           async (data: ProjectHypothesisGeneratedEvent) => {
-            const projectHypothesisId = data.projectHypothesisId; // или data.hypothesis.projectId
-            const projectId = useProjectStore.getState().activeProject.id;
+            const projectHypothesisId = data.projectHypothesisId;
+            const projectId = getActiveProjectId();
 
             if (!projectId) return;
 
             try {
+              // NOTE: For socket events, we still need to use stores to get/update hypothesis list
+              // This will be refactored when we implement full cookie-based state management with API calls
+              const { useHypothesisStore } = await import('./useHypothesisStore');
+              
               // 1. Обновляем список гипотез
               await useHypothesisStore.getState().getHypotheses(projectId);
 
@@ -205,6 +208,10 @@ export const useSocketStore = create<SocketState>()(
               const hypotheses = useHypothesisStore.getState().hypotheses;
               if (hypotheses.length > 0) {
                 const newHypothesis = hypotheses[hypotheses.length - 1];
+                // Update cookie with new hypothesis ID
+                const { setActiveHypothesisId } = await import('@/utils/activeState');
+                setActiveHypothesisId(newHypothesis.id);
+                
                 useHypothesisStore
                   .getState()
                   .setActiveHypothesis(newHypothesis.id);
@@ -241,22 +248,21 @@ export const useSocketStore = create<SocketState>()(
             try {
               set({ isLoading: true });
 
-              const { activeHypothesis } = useHypothesisStore.getState();
+              const activeHypothesisId = getActiveHypothesisId();
 
-
-              if (!activeHypothesis?.id) {
+              if (!activeHypothesisId) {
                 return;
               }
 
               if (isCore) {
                 const coreStore = useHypothesesCoreStore.getState();
-                await coreStore.getHypothesesCore(activeHypothesis.id);
+                await coreStore.getHypothesesCore(activeHypothesisId);
                 useHypothesesCoreStore.setState({ wasAutoRefreshed: true });
               }
 
               if (isPerson) {
                 const personStore = useHypothesesPersonProfileStore.getState();
-                await personStore.fetchProfile(activeHypothesis.id);
+                await personStore.fetchProfile(activeHypothesisId);
                 useHypothesesPersonProfileStore.setState({
                   wasAutoRefreshed: true,
                 });

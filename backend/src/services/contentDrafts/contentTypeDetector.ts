@@ -27,7 +27,17 @@ export function detectContentTemplateType(idea: SeoBacklogIdeaDoc): ContentTypeD
 
   // High confidence detections based on explicit keywords
   
-  // Onboarding - highest priority
+  // Tutorial/Guide - highest priority (before trigger to avoid false positives)
+  // "how to" articles should be recognized as tutorials, not triggers
+  if (text.match(/tutorial|туториал|руководство|инструкция|как сделать|how to|guide|гайд|step by step|пошагов|from scratch|с нуля|complete guide|полное руководство|create.*strategy|build.*strategy|make.*strategy/i)) {
+    return {
+      type: "tutorial",
+      confidence: "high",
+      reasoning: "Tutorial/guide keywords detected (how to, step by step, from scratch, etc.)"
+    };
+  }
+  
+  // Onboarding - high priority
   if (text.match(/onboarding|онбординг|начало работы|getting started|first steps|quick start|быстрый старт|как начать/i)) {
     return {
       type: "onboarding",
@@ -36,13 +46,17 @@ export function detectContentTemplateType(idea: SeoBacklogIdeaDoc): ContentTypeD
     };
   }
 
-  // Trigger - specific pattern
-  if (category === "trigger" || text.match(/триггер|trigger|когда появляется|когда возникает|момент когда/i)) {
-    return {
-      type: "trigger",
-      confidence: "high",
-      reasoning: "Category is 'trigger' or trigger keywords detected"
-    };
+  // Trigger - specific pattern (only if category is explicitly "trigger" or very specific trigger phrases)
+  // Avoid matching "how to" articles that might contain word "trigger" in context
+  if (category === "trigger" || text.match(/когда появляется|когда возникает|момент когда|recognize.*trigger|address.*trigger|identify.*trigger/i)) {
+    // Double-check: if it's a "how to" article, don't classify as trigger
+    if (!text.match(/how to|tutorial|guide|step by step|from scratch/i)) {
+      return {
+        type: "trigger",
+        confidence: "high",
+        reasoning: "Category is 'trigger' or specific trigger recognition keywords detected"
+      };
+    }
   }
 
   // Pain point - specific pattern
@@ -90,14 +104,8 @@ export function detectContentTemplateType(idea: SeoBacklogIdeaDoc): ContentTypeD
     };
   }
 
-  // Tutorial/Guide
-  if (text.match(/tutorial|туториал|руководство|инструкция|как сделать|how to|guide|гайд/i)) {
-    return {
-      type: "tutorial",
-      confidence: "medium",
-      reasoning: "Tutorial/guide keywords detected"
-    };
-  }
+  // Tutorial/Guide - already handled above with higher priority, but keep as fallback
+  // (This should rarely be reached due to earlier check)
 
   // Comparison
   if (text.match(/comparison|сравнение|vs|или|лучше|лучший|compare/i)) {

@@ -20,9 +20,17 @@ export interface RegenerateContentResponse {
 }
 
 export const regenerateContentMutation = (id: string, promptPart?: string) => {
+  console.log("[regenerateContentMutation] Calling mutation:", {
+    id,
+    promptPartLength: promptPart?.length || 0
+  });
+  
   return SEO_AGENT_MUTATE<RegenerateContentResponse>({
     mutation: REGENERATE_CONTENT,
     variables: { id, promptPart: promptPart || null },
+  }).catch((error) => {
+    console.error("[regenerateContentMutation] Error:", error);
+    throw error;
   });
 };
 

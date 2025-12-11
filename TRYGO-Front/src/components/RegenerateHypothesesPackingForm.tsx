@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RefreshCw } from "lucide-react";
 import { usePackingStore } from "@/store/usePackingStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { useUserStore } from "@/store/useUserStore";
 import { useToast } from "@/hooks/use-toast";
 import { checkRegeneratePermission } from "@/utils/checkRegeneratePermission";
@@ -25,7 +25,7 @@ The packing should be structured as follows:
   const [isLoading, setIsLoading] = useState(false);
 
   const { regenerateHypothesesPacking } = usePackingStore();
-  const { activeHypothesis } = useHypothesisStore();
+  const activeHypothesisId = useActiveHypothesisId();
   const { userData } = useUserStore();
   const { toast } = useToast();
 
@@ -35,7 +35,7 @@ The packing should be structured as follows:
   }
 
   const handleRegenerate = async () => {
-    if (!activeHypothesis?.id) {
+    if (!activeHypothesisId) {
       toast({
         title: "Error",
         description: "No active hypothesis found",
@@ -47,7 +47,7 @@ The packing should be structured as follows:
     setIsLoading(true);
     try {
       await regenerateHypothesesPacking({
-        projectHypothesisId: activeHypothesis.id,
+        projectHypothesisId: activeHypothesisId,
         promptPart: promptPart.trim() || null,
       });
 

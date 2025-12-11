@@ -36,8 +36,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import AIAssistantChat from "@/components/AIAssistantChat";
-import { useProjectStore } from "@/store/useProjectStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import LoaderSpinner from "@/components/LoaderSpinner";
 import { ProjectHypothesis } from "@/api/getProjectHypotheses";
 import {
@@ -65,17 +65,17 @@ const Hypotheses: FC = () => {
 
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const { activeProject } = useProjectStore();
+  const { activeProject } = useProjects();
   const projectId = useSocketStore((state) => state.projectId);
   const {
     hypotheses,
     activeHypothesis,
     loading: hypothesesLoading,
-    getHypotheses,
+    loadHypotheses,
     setActiveHypothesis,
     changeHypothesis,
     deleteHypothesis,
-  } = useHypothesisStore();
+  } = useHypotheses({ projectId: activeProject?.id });
 
   const {
     generateProjectHypothesis,
@@ -94,17 +94,7 @@ const Hypotheses: FC = () => {
   });
 
   useEffect(() => {
-    // if (activeProject?.id) {
-    //   getHypotheses(activeProject.id);
-    // }
-
-    const proceed = async () => {
-      if (activeProject?.id) {
-        await getHypotheses(activeProject?.id);
-      }
-    };
-
-    proceed();
+    // Hypotheses are automatically loaded by useHypotheses hook when projectId changes
   }, [activeProject]);
 
   // useEffect(() => {
@@ -259,9 +249,9 @@ const Hypotheses: FC = () => {
   };
 
   const handleSetActive = (id: string) => {
-    useHypothesesPersonProfileStore.setState({
-      selectedCustomerSegmentId: undefined,
-    });
+    // Сбрасываем selectedSegmentId при смене гипотезы
+    const { setActiveCustomerSegmentId } = require('@/utils/activeState');
+    setActiveCustomerSegmentId(null);
     setActiveHypothesis(id);
     toast({
       title: "Hypothesis activated",

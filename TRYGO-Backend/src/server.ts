@@ -6,8 +6,8 @@ import { ApolloServer } from '@apollo/server';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { connectMainDB } from './configuration/db';
-import imageRoutes from './routes/imageRoutes';
-import fileRoutes from './routes/fileRoutes';
+// import imageRoutes from './routes/imageRoutes';
+// import fileRoutes from './routes/fileRoutes';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createServer } from 'http';
@@ -110,8 +110,9 @@ async function startServer() {
         console.log('✅ GraphQL middleware set up');
 
         console.log('🖼️ Setting up routes...');
-        app.use('/image', imageRoutes);
-        app.use('/file', fileRoutes);
+        // AWS routes disabled - not needed
+        // app.use('/image', imageRoutes);
+        // app.use('/file', fileRoutes);
         console.log('✅ Routes set up');
 
         console.log('⏰ Starting Agenda jobs...');

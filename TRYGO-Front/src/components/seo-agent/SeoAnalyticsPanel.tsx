@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 interface SeoAnalyticsPanelProps {
   projectId: string;
-  hypothesisId?: string;
+  hypothesisId: string; // Required, not optional
 }
 
 export const SeoAnalyticsPanel = ({ projectId, hypothesisId }: SeoAnalyticsPanelProps) => {
@@ -28,4 +28,5 @@ export const SeoAnalyticsPanel = ({ projectId, hypothesisId }: SeoAnalyticsPanel
     </div>
   );
 };
+
 

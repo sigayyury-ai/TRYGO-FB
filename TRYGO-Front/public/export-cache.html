@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Cache Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            background: #0b59ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0948cc;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Export Article Ideas from Browser Cache</h1>
+    
+    <div class="info">
+        <p><strong>This page exports ARTICLE IDEAS (content ideas), not clusters.</strong></p>
+        <p>It will export content ideas that are stored in your browser's localStorage cache.</p>
+        <p>Click the button below to export the cached article ideas.</p>
+    </div>
+    
+    <button onclick="exportCache()">Export Cache Data</button>
+    
+    <div id="result" style="margin-top: 20px;"></div>
+    
+    <script>
+        function exportCache() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                // Get all localStorage keys
+                const allKeys = Object.keys(localStorage);
+                const cacheData = {};
+                
+                // Get SEO Agent related data
+                const seoAgentKey = 'seo-agent-content-ideas-storage';
+                if (localStorage.getItem(seoAgentKey)) {
+                    cacheData[seoAgentKey] = JSON.parse(localStorage.getItem(seoAgentKey));
+                }
+                
+                // Get all other relevant keys
+                allKeys.forEach(key => {
+                    if (key.includes('seo') || key.includes('content') || key.includes('idea')) {
+                        try {
+                            cacheData[key] = JSON.parse(localStorage.getItem(key));
+                        } catch (e) {
+                            cacheData[key] = localStorage.getItem(key);
+                        }
+                    }
+                });
+                
+                // Get article ideas from cache (not clusters)
+                const contentIdeas = cacheData[seoAgentKey]?.state?.contentIdeas || [];
+                
+                // Create export object - only article ideas
+                const exportData = {
+                    exportDate: new Date().toISOString(),
+                    description: "Article Ideas (Content Ideas) exported from browser cache - NOT clusters",
+                    totalIdeas: contentIdeas.length,
+                    articleIdeas: contentIdeas.map(idea => ({
+                        id: idea.id,
+                        title: idea.title,
+                        description: idea.description || "",
+                        category: idea.category, // PAINS, GOALS, TRIGGERS, etc.
+                        contentType: idea.contentType, // ARTICLE, COMMERCIAL_PAGE, etc.
+                        status: idea.status, // NEW, ADDED_TO_BACKLOG, DISMISSED
+                        dismissed: idea.dismissed || false,
+                        projectId: idea.projectId,
+                        hypothesisId: idea.hypothesisId,
+                        createdAt: idea.createdAt,
+                        updatedAt: idea.updatedAt
+                    })),
+                    // Group by category
+                    byCategory: contentIdeas.reduce((acc, idea) => {
+                        if (!acc[idea.category]) acc[idea.category] = [];
+                        acc[idea.category].push({
+                            id: idea.id,
+                            title: idea.title,
+                            status: idea.status,
+                            dismissed: idea.dismissed
+                        });
+                        return acc;
+                    }, {}),
+                    // Statistics
+                    statistics: {
+                        total: contentIdeas.length,
+                        byStatus: contentIdeas.reduce((acc, idea) => {
+                            acc[idea.status] = (acc[idea.status] || 0) + 1;
+                            return acc;
+                        }, {}),
+                        byCategory: contentIdeas.reduce((acc, idea) => {
+                            acc[idea.category] = (acc[idea.category] || 0) + 1;
+                            return acc;
+                        }, {}),
+                        dismissed: contentIdeas.filter(idea => idea.dismissed).length,
+                        notDismissed: contentIdeas.filter(idea => !idea.dismissed).length
+                    }
+                };
+                
+                // Create download link
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `browser-cache-export-${Date.now()}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+                
+                // Show summary
+                resultDiv.innerHTML = `
+                    <h2>✅ Export Complete!</h2>
+                    <p>File downloaded: <code>${link.download}</code></p>
+                    <h3>Summary:</h3>
+                    <ul>
+                        <li>Total article ideas in cache: <strong>${exportData.totalIdeas}</strong></li>
+                        <li>By status: ${JSON.stringify(exportData.statistics.byStatus)}</li>
+                        <li>By category: ${JSON.stringify(exportData.statistics.byCategory)}</li>
+                        <li>Dismissed: ${exportData.statistics.dismissed}</li>
+                        <li>Not dismissed: ${exportData.statistics.notDismissed}</li>
+                    </ul>
+                    <h3>Sample Article Ideas (first 10):</h3>
+                    <pre>${JSON.stringify(exportData.articleIdeas.slice(0, 10).map(i => ({
+                        id: i.id,
+                        title: i.title,
+                        category: i.category,
+                        status: i.status,
+                        dismissed: i.dismissed
+                    })), null, 2)}</pre>
+                    ${exportData.articleIdeas.length > 10 ? `<p>... and ${exportData.articleIdeas.length - 10} more article ideas</p>` : ''}
+                    <h3>Ideas by Category:</h3>
+                    <pre>${JSON.stringify(exportData.byCategory, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h2>❌ Error</h2>
+                    <p>${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            const seoAgentKey = 'seo-agent-content-ideas-storage';
+            const cached = localStorage.getItem(seoAgentKey);
+            if (cached) {
+                try {
+                    const data = JSON.parse(cached);
+                    const ideas = data.state?.contentIdeas || [];
+                    const byCategory = ideas.reduce((acc, idea) => {
+                        acc[idea.category] = (acc[idea.category] || 0) + 1;
+                        return acc;
+                    }, {});
+                    document.getElementById('result').innerHTML = `
+                        <div class="info">
+                            <h3>Article Ideas Cache Found!</h3>
+                            <p>Found <strong>${ideas.length}</strong> article ideas in cache.</p>
+                            <p>By category: ${JSON.stringify(byCategory)}</p>
+                            <p>Click the button above to export them.</p>
+                        </div>
+                    `;
+                } catch (e) {
+                    console.error('Error parsing cache:', e);
+                }
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="info">
+                        <h3>No Cache Found</h3>
+                        <p>No article ideas found in browser cache.</p>
+                        <p>Make sure you have visited the SEO Agent page and loaded content ideas.</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
+

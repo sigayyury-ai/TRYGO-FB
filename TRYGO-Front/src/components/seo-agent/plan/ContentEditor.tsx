@@ -18,8 +18,10 @@ import { approveContentItemMutation } from "@/api/approveContentItem";
 import { upsertContentItemMutation } from "@/api/upsertContentItem";
 import { regenerateContentMutation } from "@/api/regenerateContent";
 import { rewriteTextSelectionMutation } from "@/api/rewriteTextSelection";
+import { generateContentForBacklogIdeaMutation } from "@/api/generateContentForBacklogIdea";
 import { Badge } from "@/components/ui/badge";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useUserStore } from "@/store/useUserStore";
+import Cookies from "js-cookie";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
@@ -30,6 +32,7 @@ interface ContentItem {
   imageUrl?: string;
   outline?: string;
   status: string;
+  backlogIdeaId?: string;
 }
 
 interface ContentEditorProps {
@@ -54,11 +57,12 @@ export const ContentEditor = ({
   onClose,
   onApprove,
 }: ContentEditorProps) => {
-  const { user } = useAuthStore();
+  const { userData } = useUserStore();
   const { toast } = useToast();
   const [content, setContent] = useState(contentItem.content || "");
   const [imageUrl, setImageUrl] = useState(contentItem.imageUrl);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -86,23 +90,61 @@ export const ContentEditor = ({
   const handleGenerateImage = async () => {
     setGeneratingImage(true);
     try {
-      const { data } = await generateImageForContentMutation({
+      console.log("[ContentEditor] Starting image generation:", {
+        contentItemId: contentItem.id,
+        title: contentItem.title,
+        description: contentItem.outline
+      });
+
+      const { data, errors } = await generateImageForContentMutation({
         contentItemId: contentItem.id,
         title: contentItem.title,
         description: contentItem.outline,
       });
 
+      console.log("[ContentEditor] Image generation response:", { data, errors });
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors[0].message || "Failed to generate image");
+      }
+
       if (data?.generateImageForContent?.imageUrl) {
-        setImageUrl(data.generateImageForContent.imageUrl);
-        toast({
-          title: "Success",
-          description: "Image generated successfully",
-        });
+        const imageUrl = data.generateImageForContent.imageUrl;
+        // Check if it's a placeholder
+        if (imageUrl.includes('data:image/svg+xml') || imageUrl.includes('placeholder')) {
+          toast({
+            title: "Warning",
+            description: "Image generation returned placeholder. Check GEMINI_API_KEY in backend.",
+            variant: "destructive",
+          });
+        } else {
+          setImageUrl(imageUrl);
+          toast({
+            title: "Success",
+            description: "Image generated successfully",
+          });
+        }
+      } else {
+        throw new Error("No image URL returned from server");
       }
     } catch (error: any) {
+      console.error("[ContentEditor] Image generation error:", error);
+      console.error("[ContentEditor] Error details:", {
+        message: error.message,
+        graphQLErrors: error.graphQLErrors,
+        networkError: error.networkError
+      });
+      
+      let errorMessage = error.message || "Failed to generate image";
+      if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error.networkError) {
+        errorMessage = `Network error: ${error.networkError.message || "Failed to connect to server"}`;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to generate image",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -110,19 +152,175 @@ export const ContentEditor = ({
     }
   };
 
+  const handleRegenerate = async () => {
+    console.log("[ContentEditor] handleRegenerate called");
+    console.log("[ContentEditor] contentItem:", {
+      id: contentItem.id,
+      title: contentItem.title,
+      backlogIdeaId: (contentItem as any).backlogIdeaId,
+      allKeys: Object.keys(contentItem)
+    });
+
+    const backlogIdeaId = (contentItem as any).backlogIdeaId;
+    if (!backlogIdeaId) {
+      console.error("[ContentEditor] No backlogIdeaId found in contentItem");
+      toast({
+        title: "Error",
+        description: "Cannot regenerate: backlog idea ID not found. Please close and regenerate from backlog.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Confirm regeneration if content exists
+    if (content && content.trim().length > 0) {
+      const confirmed = window.confirm(
+        "This will completely replace the current content. Are you sure you want to regenerate?"
+      );
+      if (!confirmed) {
+        console.log("[ContentEditor] Regeneration cancelled by user");
+        return;
+      }
+    }
+
+    setRegenerating(true);
+    try {
+      console.log("[ContentEditor] Starting full regeneration:", {
+        backlogIdeaId,
+        projectId,
+        hypothesisId,
+        title: contentItem.title
+      });
+
+      const { data, errors } = await generateContentForBacklogIdeaMutation({
+        backlogIdeaId,
+        projectId,
+        hypothesisId,
+      });
+
+      console.log("[ContentEditor] Regeneration mutation response:", {
+        hasData: !!data,
+        hasErrors: !!errors,
+        errorsCount: errors?.length || 0
+      });
+
+      if (errors && errors.length > 0) {
+        console.error("[ContentEditor] GraphQL errors:", errors);
+        throw new Error(errors[0].message || "Failed to regenerate content");
+      }
+
+      if (data?.generateContentForBacklogIdea) {
+        const generated = data.generateContentForBacklogIdea;
+        
+        console.log("[ContentEditor] Regeneration response:", {
+          hasContent: !!generated.content,
+          contentLength: generated.content?.length || 0,
+          hasImage: !!generated.imageUrl,
+          hasOutline: !!generated.outline,
+          status: generated.status
+        });
+        
+        // Update content
+        if (generated.content) {
+          console.log("[ContentEditor] Updating content in editor...");
+          // Update state first
+          setContent(generated.content);
+          
+          // Update Quill editor if it exists
+          const quill = quillRef.current?.getEditor();
+          if (quill) {
+            console.log("[ContentEditor] Updating Quill editor...");
+            // Use setTimeout to ensure state update is processed
+            setTimeout(() => {
+              try {
+                quill.clipboard.dangerouslyPasteHTML(generated.content || "");
+                // Clear selection after update
+                quill.setSelection(null);
+                console.log("[ContentEditor] Quill editor updated successfully");
+              } catch (quillError) {
+                console.error("[ContentEditor] Error updating Quill:", quillError);
+              }
+            }, 0);
+          } else {
+            console.warn("[ContentEditor] Quill editor not found");
+          }
+        } else {
+          console.warn("[ContentEditor] No content in regeneration response");
+        }
+        
+        // Update image if generated
+        if (generated.imageUrl) {
+          console.log("[ContentEditor] Updating image URL");
+          setImageUrl(generated.imageUrl);
+        }
+        
+        // Update outline if available
+        if (generated.outline) {
+          console.log("[ContentEditor] Updating outline");
+          // Update contentItem outline if needed
+          (contentItem as any).outline = generated.outline;
+        }
+
+        toast({
+          title: "Success",
+          description: generated.imageUrl 
+            ? "Content and image regenerated successfully" 
+            : "Content regenerated. Image is being generated in the background...",
+        });
+      } else {
+        console.error("[ContentEditor] No data in response:", data);
+        throw new Error("No data returned from regeneration");
+      }
+    } catch (error: any) {
+      console.error("[ContentEditor] Regenerate error:", error);
+      console.error("[ContentEditor] Regenerate error details:", {
+        message: error.message,
+        graphQLErrors: error.graphQLErrors,
+        networkError: error.networkError,
+        stack: error.stack
+      });
+      
+      let errorMessage = error.message || "Failed to regenerate content";
+      if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error.networkError) {
+        errorMessage = `Network error: ${error.networkError.message || "Failed to connect to server"}`;
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      console.log("[ContentEditor] Starting save:", {
+        contentItemId: contentItem.id,
+        title: contentItem.title,
+        hasContent: !!content
+      });
+
       // Get latest content from Quill editor to ensure we save the most recent version
       const quill = quillRef.current?.getEditor();
       const latestContent = quill ? quill.root.innerHTML : content;
       
-      await upsertContentItemMutation({
+      console.log("[ContentEditor] Content to save:", {
+        contentLength: latestContent.length,
+        hasImage: !!imageUrl
+      });
+
+      const { data, errors } = await upsertContentItemMutation({
         id: contentItem.id,
         projectId,
         hypothesisId: hypothesisId || "",
         title: contentItem.title,
-        category: "INFO",
+        category: "INFORMATIONAL",
         format: "BLOG",
         outline: contentItem.outline,
         content: latestContent,
@@ -131,14 +329,38 @@ export const ContentEditor = ({
         userId: localStorage.getItem("userId") || "system",
       });
 
-      toast({
-        title: "Success",
-        description: "Content saved",
-      });
+      console.log("[ContentEditor] Save response:", { data, errors });
+
+      if (errors && errors.length > 0) {
+        throw new Error(errors[0].message || "Failed to save content");
+      }
+
+      if (data?.upsertContentItem) {
+        toast({
+          title: "Success",
+          description: "Content saved successfully",
+        });
+      } else {
+        throw new Error("No data returned from save operation");
+      }
     } catch (error: any) {
+      console.error("[ContentEditor] Save error:", error);
+      console.error("[ContentEditor] Save error details:", {
+        message: error.message,
+        graphQLErrors: error.graphQLErrors,
+        networkError: error.networkError
+      });
+      
+      let errorMessage = error.message || "Failed to save content";
+      if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error.networkError) {
+        errorMessage = `Network error: ${error.networkError.message || "Failed to connect to server"}`;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to save content",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -209,6 +431,12 @@ export const ContentEditor = ({
     e?.preventDefault();
     if (!chatInput.trim() || isProcessingChat) return;
 
+    console.log("[ContentEditor] handleChatSubmit called:", {
+      chatInput: chatInput.trim(),
+      isProcessingChat,
+      contentItemId: contentItem.id
+    });
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
@@ -224,30 +452,57 @@ export const ContentEditor = ({
     try {
       let result: string;
       
-      // If there's an active selection in chat, use it
-      const hasSelection = activeSelectionInChat && selectionInfo;
+      // Check for current selection in editor (not just activeSelectionInChat)
+      const quill = quillRef.current?.getEditor();
+      let currentSelection = null;
+      if (quill) {
+        const selection = quill.getSelection(true);
+        if (selection && selection.length > 0) {
+          const selectedText_ = quill.getText(selection.index, selection.length);
+          if (selectedText_.trim()) {
+            currentSelection = {
+              index: selection.index,
+              length: selection.length,
+              text: selectedText_,
+              contextBefore: quill.getText(0, selection.index).substring(Math.max(0, quill.getText(0, selection.index).length - 500)),
+              contextAfter: quill.getText(selection.index + selection.length, quill.getLength() - selection.index - selection.length).substring(0, 500)
+            };
+          }
+        }
+      }
       
-      if (hasSelection && selectionInfo) {
+      // Use activeSelectionInChat if available, otherwise use current selection
+      const hasSelection = (activeSelectionInChat && selectionInfo) || currentSelection;
+      const selectionToUse = (activeSelectionInChat && selectionInfo) ? selectionInfo : currentSelection;
+      
+      if (hasSelection && selectionToUse) {
         // Rewrite only the selected portion
+        console.log("[ContentEditor] Calling rewriteTextSelectionMutation:", {
+          contentItemId: contentItem.id,
+          selectedTextLength: selectionToUse.text.length,
+          instruction
+        });
+        
         const { data, errors } = await rewriteTextSelectionMutation({
           contentItemId: contentItem.id,
-          selectedText: selectionInfo.text,
-          contextBefore: selectionInfo.contextBefore,
-          contextAfter: selectionInfo.contextAfter,
+          selectedText: selectionToUse.text,
+          contextBefore: selectionToUse.contextBefore,
+          contextAfter: selectionToUse.contextAfter,
           instruction: instruction
         });
+        
+        console.log("[ContentEditor] rewriteTextSelectionMutation response:", { data, errors });
 
         if (errors && errors.length > 0) {
           throw new Error(errors[0].message || "Failed to rewrite text");
         }
 
         if (data?.rewriteTextSelection?.success && data.rewriteTextSelection.rewrittenText) {
-          const quill = quillRef.current?.getEditor();
-          if (quill && selectionInfo) {
+          if (quill && selectionToUse) {
             // Replace ONLY the selected portion
             // Set selection and delete
-            quill.setSelection(selectionInfo.index, selectionInfo.length);
-            quill.deleteText(selectionInfo.index, selectionInfo.length);
+            quill.setSelection(selectionToUse.index, selectionToUse.length);
+            quill.deleteText(selectionToUse.index, selectionToUse.length);
             
             // Insert rewritten text with HTML formatting preserved
             // Use clipboard to convert HTML to Delta format
@@ -257,12 +512,12 @@ export const ContentEditor = ({
             const Delta = (quill as any).constructor.import("delta");
             if (Delta) {
               const insertDelta = new Delta()
-                .retain(selectionInfo.index)
+                .retain(selectionToUse.index)
                 .concat(delta);
               quill.updateContents(insertDelta, "api");
             } else {
               // Fallback: insert as plain text if Delta import fails
-              quill.insertText(selectionInfo.index, data.rewriteTextSelection.rewrittenText.replace(/<[^>]*>/g, ""), "api");
+              quill.insertText(selectionToUse.index, data.rewriteTextSelection.rewrittenText.replace(/<[^>]*>/g, ""), "api");
             }
             
             // Update content state
@@ -283,12 +538,19 @@ export const ContentEditor = ({
         } else {
           throw new Error(data?.rewriteTextSelection?.error || "Failed to rewrite text");
         }
-      } else if (instruction.toLowerCase().includes("regenerate") || instruction.toLowerCase().includes("перегенерировать")) {
-        // Regenerate entire content
+      } else {
+        // No selection - apply instruction to entire content
+        console.log("[ContentEditor] Calling regenerateContentMutation:", {
+          contentItemId: contentItem.id,
+          instruction
+        });
+        
         const { data, errors } = await regenerateContentMutation(
           contentItem.id,
           instruction
         );
+        
+        console.log("[ContentEditor] regenerateContentMutation response:", { data, errors });
 
         if (errors && errors.length > 0) {
           throw new Error(errors[0].message || "Failed to regenerate content");
@@ -296,13 +558,10 @@ export const ContentEditor = ({
 
         if (data?.regenerateContent?.content) {
           setContent(data.regenerateContent.content);
-          result = "✅ Content regenerated successfully! The entire article has been updated.";
+          result = `✅ Content updated based on your instruction: "${instruction.substring(0, 100)}${instruction.length > 100 ? '...' : ''}"`;
         } else {
           throw new Error("No content returned from server");
         }
-      } else {
-        // No selection - general instruction, but we need to clarify
-        result = "💡 Please select a portion of text first, or use 'regenerate' to regenerate the entire content.";
       }
 
       const assistantMessage: ChatMessage = {
@@ -315,52 +574,92 @@ export const ContentEditor = ({
       setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
       console.error("[ContentEditor] Chat error:", error);
+      console.error("[ContentEditor] Chat error details:", {
+        message: error.message,
+        graphQLErrors: error.graphQLErrors,
+        networkError: error.networkError,
+        stack: error.stack
+      });
+      
+      let errorText = error.message || "Failed to process your request";
+      
+      // Check for network errors
+      if (error.networkError) {
+        errorText = `Network error: ${error.networkError.message || "Failed to connect to server"}`;
+      }
+      
+      // Check for GraphQL errors
+      if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+        errorText = `GraphQL error: ${error.graphQLErrors[0].message}`;
+      }
+      
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `❌ Error: ${error.message || "Failed to process your request"}`,
+        content: `❌ Error: ${errorText}`,
         timestamp: new Date(),
       };
       setChatMessages((prev) => [...prev, errorMessage]);
+      
+      toast({
+        title: "Error",
+        description: errorText,
+        variant: "destructive",
+      });
     } finally {
       setIsProcessingChat(false);
     }
   };
 
   const handleApprove = async () => {
+    console.log("[ContentEditor] handleApprove called", {
+      contentItemId: contentItem.id,
+      backlogIdeaId: (contentItem as any).backlogIdeaId,
+      hasContent: !!content.trim(),
+      hasImage: !!imageUrl
+    });
+
     setApproving(true);
     try {
       if (!user?.id) {
         throw new Error("User not authenticated");
       }
+
+      console.log("[ContentEditor] Upserting content item...");
       await upsertContentItemMutation({
         id: contentItem.id,
         projectId,
         hypothesisId: hypothesisId || "",
         backlogIdeaId: (contentItem as any).backlogIdeaId,
         title: contentItem.title,
-        category: (contentItem as any).category || "INFO",
+        category: (contentItem as any).category || "INFORMATIONAL",
         format: (contentItem as any).format || "BLOG",
         outline: contentItem.outline || "",
         content: content,
         imageUrl: imageUrl,
         status: "READY",
-        userId: user.id,
+            userId: userId,
       });
+      console.log("[ContentEditor] Content item upserted successfully");
 
+      console.log("[ContentEditor] Approving content item...");
       await approveContentItemMutation({
         contentItemId: contentItem.id,
         projectId,
         hypothesisId,
       });
+      console.log("[ContentEditor] Content item approved successfully");
 
       toast({
         title: "Success",
         description: "Content approved and added to queue",
       });
 
+      console.log("[ContentEditor] Calling onApprove callback");
       onApprove();
+      console.log("[ContentEditor] onApprove callback completed");
     } catch (error: any) {
+      console.error("[ContentEditor] Error in handleApprove:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to approve content",
@@ -373,7 +672,7 @@ export const ContentEditor = ({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] w-full p-0 overflow-hidden">
+      <DialogContent className="max-w-[95vw] max-h-[95vh] w-full p-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle>Edit Content: {contentItem.title}</DialogTitle>
           <DialogDescription>
@@ -381,10 +680,10 @@ export const ContentEditor = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* LEFT PANEL - Canvas Editor */}
-          <div className="flex-1 flex flex-col border-r overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 flex flex-col border-r overflow-hidden min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
               {/* Status Badge */}
               <div className="flex items-center gap-2">
                 <Badge variant={contentItem.status === "READY" ? "default" : "secondary"}>
@@ -392,49 +691,30 @@ export const ContentEditor = ({
                 </Badge>
               </div>
 
-              {/* Image Section - Moved above editor with 16:9 aspect ratio */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Article Image</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGenerateImage}
-                    disabled={generatingImage}
-                  >
-                    {generatingImage ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Image
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {imageUrl ? (
-                  <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
-                    <img
-                      src={imageUrl}
-                      alt={contentItem.title}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center text-gray-400" style={{ aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    No image generated yet. Click "Generate Image" to create one.
-                  </div>
-                )}
-              </div>
-
               {/* Content Editor */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="content">Article Content</Label>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRegenerate}
+                      disabled={regenerating || saving || approving}
+                      title="Regenerate entire article content"
+                    >
+                      {regenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Regenerate
+                        </>
+                      )}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -461,7 +741,19 @@ export const ContentEditor = ({
                     dangerouslySetInnerHTML={{ __html: content || "<p class='text-gray-500 italic'>*No content to preview*</p>" }}
                   />
                 ) : (
-                  <div className="border rounded-lg">
+                  <div className="border rounded-lg relative">
+                    <style>{`
+                      .ql-toolbar {
+                        position: sticky;
+                        top: 0;
+                        z-index: 10;
+                        background: white;
+                        border-bottom: 1px solid #e5e7eb;
+                      }
+                      .ql-container {
+                        position: relative;
+                      }
+                    `}</style>
                     <ReactQuill
                       ref={quillRef}
                       theme="snow"
@@ -543,49 +835,48 @@ export const ContentEditor = ({
                 </p>
               </div>
             </div>
-
-            {/* Bottom Actions */}
-            <div className="border-t p-4 bg-gray-50 flex items-center justify-end gap-2">
-              <Button variant="outline" onClick={onClose} disabled={saving || approving}>
-                Cancel
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleSave}
-                disabled={saving || approving}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Draft"
-                )}
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleApprove}
-                disabled={saving || approving || !content.trim()}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {approving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Approving...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Approve & Add to Queue
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
 
           {/* RIGHT PANEL - Chat for Editing */}
-          <div className="w-96 flex flex-col border-l bg-gray-50">
+          <div className="w-96 flex flex-col border-l bg-gray-50 min-h-0">
+            {/* Image Section - Moved to right sidebar above chat */}
+            <div className="p-4 border-b bg-white space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Article Image</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateImage}
+                  disabled={generatingImage}
+                >
+                  {generatingImage ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </div>
+              {imageUrl ? (
+                <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
+                  <img
+                    src={imageUrl}
+                    alt={contentItem.title}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="border-2 border-dashed rounded-lg p-4 text-center text-gray-400 text-xs" style={{ aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  No image yet
+                </div>
+              )}
+            </div>
+
             <div className="p-4 border-b bg-white">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-600" />
@@ -601,13 +892,12 @@ export const ContentEditor = ({
               {chatMessages.length === 0 && (
                 <div className="text-center text-gray-500 text-sm space-y-2 pt-8">
                   <MessageSquare className="h-8 w-8 mx-auto text-gray-400" />
-                  <p>Start editing by selecting text and asking me to:</p>
+                  <p>You can edit content in two ways:</p>
                   <ul className="text-left space-y-1 mt-4">
-                    <li>• "Rewrite this to be more engaging"</li>
-                    <li>• "Make this simpler"</li>
-                    <li>• "Add more details here"</li>
-                    <li>• "Regenerate the entire content"</li>
+                    <li>• <strong>Select text</strong> in the editor and type an instruction to rewrite only that portion</li>
+                    <li>• <strong>Type any instruction</strong> without selection to apply it to the entire content</li>
                   </ul>
+                  <p className="text-xs text-gray-400 mt-3">Examples: "Make it more engaging", "Add examples", "Simplify the language"</p>
                 </div>
               )}
               
@@ -672,7 +962,7 @@ export const ContentEditor = ({
                   placeholder={
                     activeSelectionInChat 
                       ? "How should I edit this text? (e.g., 'make it more engaging', 'simplify', 'add examples')" 
-                      : "Select text and click + to edit, or type 'regenerate' to regenerate entire content"
+                      : "Type your instruction here. Select text first to edit only that portion, or type without selection to edit entire content"
                   }
                   className="min-h-[80px] resize-none"
                   onKeyDown={(e) => {
@@ -686,8 +976,8 @@ export const ContentEditor = ({
                     {activeSelectionInChat 
                       ? "I'll rewrite only the selected portion" 
                       : selectedText 
-                        ? "Click + to add selection to chat" 
-                        : "Select text first"}
+                        ? "Click + to edit selection, or type to edit entire content" 
+                        : "Type to edit entire content, or select text to edit only that portion"}
                   </span>
                   <Button
                     type="submit"
@@ -713,6 +1003,45 @@ export const ContentEditor = ({
               </form>
             </div>
           </div>
+        </div>
+
+        {/* Bottom Actions - Moved outside panels to be always visible */}
+        <div className="border-t p-4 bg-gray-50 flex items-center justify-end gap-2 flex-shrink-0">
+          <Button variant="outline" onClick={onClose} disabled={saving || approving}>
+            Cancel
+          </Button>
+          <Button
+            variant="default"
+            onClick={handleSave}
+            disabled={saving || approving}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Draft"
+            )}
+          </Button>
+          <Button
+            variant="default"
+            onClick={handleApprove}
+            disabled={saving || approving || !content.trim()}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {approving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Approving...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Approve & Add to Queue
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

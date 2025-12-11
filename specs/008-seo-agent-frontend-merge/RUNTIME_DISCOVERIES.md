@@ -62,3 +62,8 @@
 - Авторизация работает через Google OAuth
 - Backend доступен на production URL
 
+
+
+
+
+

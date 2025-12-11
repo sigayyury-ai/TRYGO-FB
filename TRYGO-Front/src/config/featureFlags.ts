@@ -19,12 +19,23 @@ export interface FeatureFlags {
  */
 export const getFeatureFlags = (): FeatureFlags => {
   const env = import.meta.env;
+  
+  // В Vite import.meta.env.DEV - это булево значение
+  // Проверяем dev режим несколькими способами для надежности
+  const isDev = env.DEV === true || 
+                env.MODE === 'development' || 
+                env.PROD === false ||
+                !env.PROD;
+
+  // По умолчанию включаем SEO Agent в dev режиме
+  const seoAgentEnabled = env.VITE_SEO_AGENT_ENABLED === "true" || 
+                         (env.VITE_SEO_AGENT_ENABLED !== "false" && isDev);
 
   return {
     seoAgent: {
-      enabled: env.VITE_SEO_AGENT_ENABLED === "true" || env.DEV === true,
+      enabled: seoAgentEnabled,
       devShell: env.VITE_SEO_AGENT_DEV_SHELL === "true",
-      uiTesting: env.VITE_SEO_AGENT_UI_TESTING === "true" || env.DEV === true,
+      uiTesting: env.VITE_SEO_AGENT_UI_TESTING === "true" || isDev,
     },
   };
 };
@@ -51,4 +62,5 @@ export const useSeoAgentUiTesting = (): boolean => {
 };
 
 export const featureFlags = getFeatureFlags();
+
 

@@ -1,7 +1,7 @@
 import { FC, useState, useEffect } from "react";
 import { Loader, Lock, Search, Users } from "lucide-react";
 import { useResearchStore } from "@/store/useResearchStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { Button } from "@/components/ui/button";
 import EditableText from "@/components/EditableText";
 import LoaderSpinner from "@/components/LoaderSpinner";
@@ -15,9 +15,7 @@ const Research: FC = () => {
   const { hasFeatureAccess, currentPlan } = useSubscription();
   const hasResearchAccess = hasFeatureAccess('research');
   
-  const activeHypothesisId = useHypothesisStore(
-    (state) => state.activeHypothesis.id
-  );
+  const activeHypothesisId = useActiveHypothesisId();
 
   const loading = useResearchStore((state) => state.loading);
 
@@ -40,7 +38,7 @@ const Research: FC = () => {
     if (activeHypothesisId) {
       getHypothesesMarketResearch(activeHypothesisId);
     }
-  }, [activeHypothesisId]);
+  }, [activeHypothesisId, getHypothesesMarketResearch]);
 
   return (
     <div className="min-h-screen bg-validation-gradient bg-grid-pattern flex flex-col">

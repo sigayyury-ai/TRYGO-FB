@@ -10,11 +10,15 @@ const hypothesesPersonProfileQueryResolver = {
             context: IContext
         ) {
             try {
-                return await hypothesesPersonProfileService.getAllHypothesesPersonProfiles(
+                console.log(`[getAllHypothesesPersonProfiles resolver] Request for projectHypothesisId: ${projectHypothesisId}, userId: ${context.userId}`);
+                const profiles = await hypothesesPersonProfileService.getAllHypothesesPersonProfiles(
                     projectHypothesisId,
                     context.userId
                 );
+                console.log(`[getAllHypothesesPersonProfiles resolver] Returning ${profiles.length} profiles`);
+                return profiles;
             } catch (err) {
+                console.error(`[getAllHypothesesPersonProfiles resolver] Error:`, err);
                 elevateError(err);
             }
         },

@@ -62,3 +62,8 @@
 - `TRYGO-Backend/src/resolvers/seoAgent/seoAgentMutationResolver.ts`
 - `TRYGO-Backend/src/resolvers/_indexResolvers.ts`
 
+
+
+
+
+

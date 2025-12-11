@@ -4,7 +4,7 @@ import AIAssistantChat from "@/components/AIAssistantChat";
 import { useGtmStore } from "@/store/useGtmStore";
 import LoaderSpinner from "@/components/LoaderSpinner";
 import EditableText from "@/components/EditableText";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { useEffect } from "react";
 import GtmTable from "@/components/GtmTable";
 import RegenerateHypothesesGtmForm from "@/components/RegenerateHypothesesGtmForm";
@@ -12,9 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
 
 const GTM = () => {
-  const activeHypothesisId = useHypothesisStore(
-    (state) => state.activeHypothesis.id
-  );
+  const activeHypothesisId = useActiveHypothesisId();
 
   const loading = useGtmStore((state) => state.loading);
   const hypothesesGtm = useGtmStore((state) => state.hypothesesGtm);
@@ -25,7 +23,7 @@ const GTM = () => {
     if (activeHypothesisId) {
       getHypothesesGtm(activeHypothesisId);
     }
-  }, [activeHypothesisId]);
+  }, [activeHypothesisId, getHypothesesGtm]);
 
   return (
     <>

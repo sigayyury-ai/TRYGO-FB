@@ -287,3 +287,8 @@ https://trygo-frontend.onrender.com
 - Настройте автоматический деплой при push в `main` ветку
 - Используйте Environment Groups в Render для общих переменных
 
+
+
+
+
+

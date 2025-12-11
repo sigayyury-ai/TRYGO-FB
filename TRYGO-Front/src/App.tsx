@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,9 +16,9 @@ import CustomerSegmentsPage from "./pages/CustomerSegmentsPage";
 import NotFound from "./pages/NotFound";
 
 import { useUserStore } from "./store/useUserStore";
-import { useProjectStore } from "./store/useProjectStore";
-import { useHypothesisStore } from "./store/useHypothesisStore";
 import { useSocketStore } from "./store/useSocketStore";
+import { useProjects } from "./hooks/useProjects";
+import { useHypotheses } from "./hooks/useHypotheses";
 import Cookies from "js-cookie";
 import CustomerChannelsPage from "./pages/CustomerChannelsPage";
 import Validation from "./pages/Validation";
@@ -45,30 +45,40 @@ const App = () => {
   const initializeAuth = useUserStore((state) => state.initializeAuth);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const isLoadingAuth = useUserStore((state) => state.isLoading);
-  const getProjects = useProjectStore((state) => state.getProjects);
-  const projectsLoading = useProjectStore((state) => state.loading);
-  const activeProject = useProjectStore((state) => state.activeProject);
-  const getHypotheses = useHypothesisStore((state) => state.getHypotheses);
   const { isTrialExpired, needsUpgrade, subscription, isSubscriptionActive, isLoading: subscriptionLoading } = useSubscription();
   const { initSocket } = useSocketStore();
-
-  // Очищаем несуществующие данные из localStorage при загрузке приложения
-  useEffect(() => {
-    clearInvalidStoredData();
-  }, []);
+  
+  // Use cookie-based hooks instead of Zustand stores
+  const { projects, activeProject, loading: projectsLoading, loadProjects } = useProjects();
+  const { loadHypotheses } = useHypotheses({ projectId: activeProject?.id, projects });
 
   // Expose stores to window for debugging in browser console
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__DEBUG_STORES__ = {
-        project: useProjectStore.getState(),
-        hypothesis: useHypothesisStore.getState(),
         user: useUserStore.getState(),
-        // Helper functions to get fresh state
-        getProjectStore: () => useProjectStore.getState(),
-        getHypothesisStore: () => useHypothesisStore.getState(),
         getUserStore: () => useUserStore.getState(),
+        // Cookie-based state access
+        getActiveProjectId: () => {
+          const Cookies = require('js-cookie');
+          return Cookies.get('activeProjectId');
+        },
+        getActiveHypothesisId: () => {
+          const Cookies = require('js-cookie');
+          return Cookies.get('activeHypothesisId');
+        },
       };
+      
+      // Expose diagnostic utility
+      import('@/utils/diagnoseMissingData').then(({ diagnoseMissingData, formatDiagnosis }) => {
+        (window as any).diagnoseMissingData = async () => {
+          const result = await diagnoseMissingData();
+          console.log(formatDiagnosis(result));
+          return result;
+        };
+      }).catch(() => {
+        // Ignore import errors in production
+      });
     }
   }, [activeProject]); // Update when activeProject changes
 
@@ -91,26 +101,37 @@ const App = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoadingAuth]);
 
-  // Fetch projects after authentication is confirmed
+  // Load projects after authentication is confirmed
+  // Projects are automatically loaded by useProjects hook on mount
+  // But we need to reload them after authentication
+  // Use ref to prevent multiple calls
+  const hasLoadedAfterAuthRef = useRef(false);
+  
   useEffect(() => {
-    if (isAuthenticated && !isLoadingAuth && !projectsLoading) {
+    if (isAuthenticated && !isLoadingAuth && !hasLoadedAfterAuthRef.current) {
       // Wait a bit for token to be synced to cookies after login
       const timer = setTimeout(() => {
-        getProjects().catch((error) => {
+        loadProjects().catch((error) => {
           console.error('Failed to load projects:', error);
         });
+        hasLoadedAfterAuthRef.current = true;
       }, 500);
       return () => clearTimeout(timer);
+    }
+    // Reset flag when auth state changes
+    if (!isAuthenticated) {
+      hasLoadedAfterAuthRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoadingAuth]);
 
+  // Load hypotheses when active project changes
   useEffect(() => {
     if (activeProject?.id) {
-      getHypotheses(activeProject.id);
+      loadHypotheses(activeProject.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeProject?.id]); // Виконується тільки при зміні activeProject.id
+  }, [activeProject?.id]);
 
   return (
     <GoogleOAuthProvider>

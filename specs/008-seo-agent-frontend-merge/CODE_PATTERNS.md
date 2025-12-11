@@ -239,3 +239,8 @@ const activeHypothesis = useHypothesisStore((state) => state.activeHypothesis);
 4. Использовать те же UI компоненты для консистентности
 5. Все GraphQL запросы должны использовать activeProject.id и activeHypothesis?.id из stores
 
+
+
+
+
+

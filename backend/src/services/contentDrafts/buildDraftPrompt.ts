@@ -51,43 +51,59 @@ function buildWebsitePagePromptOld(options: DraftPromptOptions): { prompt: strin
       : undefined;
   const leanChannels = fallbackList(leanCanvas?.channels);
 
+  // Resolve language with proper priority: explicit > context > default
+  const resolvedLanguage = language ?? context.language;
+  
+  if (!resolvedLanguage) {
+    console.warn("[buildDraftPrompt] No language found in context or parameters, defaulting to English");
+  } else {
+    console.log("[buildDraftPrompt] Using language:", resolvedLanguage, "(explicit:", language, ", context:", context.language, ")");
+  }
+  
+  const finalLanguage = resolvedLanguage ?? "English";
+  const isRussian = finalLanguage.toLowerCase() === "russian" || finalLanguage.toLowerCase() === "ru";
+
   const goalsBlock = goals.length
     ? goals.map((item) => `- ${item}`).join("\n")
-    : "- TODO: добавить цели ICP";
+    : (isRussian ? "- TODO: добавить цели ICP" : "- TODO: add ICP goals");
   const painsBlock = pains.length
     ? pains.map((item) => `- ${item}`).join("\n")
-    : "- TODO: добавить боли ICP";
+    : (isRussian ? "- TODO: добавить боли ICP" : "- TODO: add ICP pains");
   const triggersBlock = triggers.length
     ? triggers.map((item) => `- ${item}`).join("\n")
-    : "- TODO: добавить триггеры / JTBD";
+    : (isRussian ? "- TODO: добавить триггеры / JTBD" : "- TODO: add triggers / JTBD");
   const objectionsBlock = objections.length
     ? objections.map((item) => `- ${item}`).join("\n")
-    : "- TODO: добавить возражения";
-  const customerJourneyBlock = customerJourney ?? "TODO: описать путь клиента";
+    : (isRussian ? "- TODO: добавить возражения" : "- TODO: add objections");
+  const customerJourneyBlock = customerJourney ?? (isRussian ? "TODO: описать путь клиента" : "TODO: describe customer journey");
 
   const leanProblemsBlock = leanProblems.length
     ? leanProblems.map((item) => `- ${item}`).join("\n")
-    : "- TODO: заполнить проблемы (Lean Canvas)";
+    : (isRussian ? "- TODO: заполнить проблемы (Lean Canvas)" : "- TODO: fill problems (Lean Canvas)");
   const leanSolutionsBlock = leanSolutions.length
     ? leanSolutions.map((item) => `- ${item}`).join("\n")
-    : "- TODO: заполнить решения (Lean Canvas)";
+    : (isRussian ? "- TODO: заполнить решения (Lean Canvas)" : "- TODO: fill solutions (Lean Canvas)");
   const leanSolutionsList = leanSolutions.length ? leanSolutions.join("; ") : null;
-  const leanUVPBlock = leanUVP ?? "TODO: указать уникальное ценностное предложение";
+  const leanUVPBlock = leanUVP ?? (isRussian ? "TODO: указать уникальное ценностное предложение" : "TODO: specify unique value proposition");
   const leanChannelsBlock = leanChannels.length
     ? leanChannels.map((item) => `- ${item}`).join("\n")
-    : "- TODO: добавить каналы/сообщения";
+    : (isRussian ? "- TODO: добавить каналы/сообщения" : "- TODO: add channels/messaging");
   const primaryLeanSolution = leanSolutions.length > 0 ? leanSolutions[0] : null;
-
-  const resolvedLanguage = language ?? context.language ?? "Russian";
 
   const contentGoalText =
     contentGoal?.trim() ||
-    "Определи и сформулируй основную бизнес-цель статьи на основе контекста и идеи (не допускай TODO).";
+    (isRussian 
+      ? "Определи и сформулируй основную бизнес-цель статьи на основе контекста и идеи (не допускай TODO)."
+      : "Define and formulate the main business goal of the article based on context and idea (do not allow TODO).");
   const funnelStageText =
     funnelStage?.trim() ||
-    "Solution-aware / BOFU — читатель знает проблему и рассматривает конкретные решения";
+    (isRussian
+      ? "Solution-aware / BOFU — читатель знает проблему и рассматривает конкретные решения"
+      : "Solution-aware / BOFU — reader knows the problem and is considering specific solutions");
   const specialRequirementsText =
-    specialRequirements?.trim() || "Нет дополнительных требований (можно уточнить).";
+    specialRequirements?.trim() || (isRussian
+      ? "Нет дополнительных требований (можно уточнить)."
+      : "No additional requirements (can be specified).");
 
   const ideaCategory = idea.category ?? "info";
 
@@ -99,7 +115,7 @@ function buildWebsitePagePromptOld(options: DraftPromptOptions): { prompt: strin
 ###
 CONTENT SETTINGS
 - Content type: ${contentType}
-- Language: ${resolvedLanguage}
+- Language: ${finalLanguage}
 - Funnel stage: ${funnelStageText}
 - Content goal / KPI: ${contentGoalText}
 - Idea category: ${ideaCategory}
@@ -156,13 +172,6 @@ OUTPUT FORMAT (return JSON only):
       "notes": "Editor notes / TODOs"
     }
   ],
-  "cta": {
-    "headline": "Short CTA headline under 60 characters that hints at the product benefit",
-    "body": "2-3 persuasive sentences that summarise the solution and invite action (use the product name ${projectTitle})",
-    "buttonLabel": "Action-oriented label (≤20 characters)",
-    "url_hint": "Suggested destination URL or TODO",
-    "tone": "Describe the tone, e.g. consultative, urgent, exclusive"
-  },
   "seo": {
     "keywords": ["Keyword 1", "Keyword 2", "Keyword 3"],
     "internalLinks": [
@@ -182,33 +191,34 @@ OUTPUT FORMAT (return JSON only):
 
 ###
 WRITING RULES
-- Use ${resolvedLanguage}.
-- Tone: expert yet empathetic; speak directly to the persona that already understands проблему и ищет решение.
-- Подчёркивай продукт (название: ${projectTitle}) нативно: упоминай реальные функции из Lean Canvas Solutions/UVP, не выдумывай новых. Не выделяй продукт чрезмерно, но покажи, как он помогает закрыть pains/goals.
-- Общий объём текста (сумма всех outline.body) — не менее 4000 слов; если для раскрытия темы не хватает данных, добавь TODO с описанием нужной информации.
-- Для каждого элемента outline.body подготовь минимум три абзаца по 2–4 предложения, сочетая нарратив, списки и таблицы, когда это помогает.
-- Во вводном абзаце (первый outline.body) явно обозначь цель материала: коротко передай, чего должен добиться читатель и какой бизнес-результат нужен компании.
-- Всегда добавляй блоки: проблема, решение, выгоды с цифрами/фактами, социальные доказательства, ответы на возражения, CTA.
-- Работай как профессиональный копирайтер и следуй восьми установкам:
-  1. Уточни задачу и роль статьи: покажи, какую проблему решает аудитория и какую ценность несёт материал.
-  2. Определи главную идею: сформулируй одно ключевое сообщение, которое читатель сможет пересказать в одном предложении.
-  3. Собери контекст и факты: используй аргументы, примеры, логические объяснения, данные/наблюдения, реальные кейсы, сравнения или метафоры; избегай воды.
-  4. Построй структуру как сценарист: зацеп → контекст → разбор/решение → примеры/доказательства → вывод и действие.
-  5. Пиши живо и по-человечески: короткие абзацы, сильные глаголы, конкретика, естественные интонации, минимум канцелярита и штампов.
-  6. Поддерживай читателя: предвосхищай вопросы, давай ответы и делай плавные переходы между блоками.
-  7. Проверь текст на голос: убедись, что стиль звучит как эксперт-человек, а не энциклопедия.
-  8. Смотри глазами читателя: оцени, что удерживает внимание, нет ли лишнего, что читатель унесёт и что сделает дальше; финализируй текст под это.
-- Для каждой публикации формируй уникальную, логически сегментированную структуру: варьируй порядок и названия разделов, избегай шаблонов.
-- Генерируй выразительные и уникальные заголовки H2 (без сухих "Преимущества", "Проблема" и т.п.); придумай фразы, которые отражают суть раздела и цепляют внимание, сохраняя последовательность блоков.
-- Включай социальные доказательства (кейсы, обзоры, отзывы) с конкретными числовыми результатами, если данные доступны; при отсутствии обозначай, какую информацию нужно уточнить.
-- Каждый блок outline.body начинай с содержательного <p> (без псевдозаголовков вроде "Введение:" или строк вида "Validating Market Demand"); не вставляй дополнительные заголовки (ни в тегах, ни простым текстом), потому что основной заголовок блока передаётся через поле heading и рендерится как <h2> на фронтенде. Чтобы выделить мысль, используй <strong> внутри <p>, а не отдельный заголовок.
-- В итоговом тексте (outline.body) используй явные HTML-теги: развивающий текст оформляй в <p>, списки размечай <ul>/<li> или <ol>/<li>; если нужен вложенный подраздел, используй <h3>/<h4>, но не дублируй основной заголовок и не вставляй строки без тегов, которые выглядят как отдельный заголовок.
-- Добавь отдельные секции с аналитикой (данные/тенденции), практическими советами и FAQ (≥3 вопроса). Если стадия не BOFU — FAQ можно отметить TODO. Для FAQ начни раздел с <h2>FAQ</h2>, а каждый вопрос оформляй как <p><strong>Вопрос?</strong></p> с последующим абзацем-ответом (не используй <h2> для вопросов).
-- В финальной секции проанализируй все решения из Lean Canvas Solutions (${leanSolutionsList ?? "TODO: перечислить решения"}), выбери наиболее релевантное теме статьи (например, ${primaryLeanSolution ?? "укажи ключевое решение"}), объясни, почему оно лучше остальных, и покажи, как помогает закрыть ключевую проблему; заверши секцию нативным призывом к действию, плавно подводящим читателя к следующему шагу (без явного слова "CTA").
-- Финальный абзац outline.body оформи как цельный <p> с естественным призывом и упоминанием продукта, без лейблов вроде "CTA:".
-- Обязательно заполни объект "cta": подбери headline, body, buttonLabel и tone, согласованные с финальной секцией; не оставляй там TODO, если данные доступны.
-- Подбери 2–3 высоко-релевантных SEO-ключа (на основе  ${idea.title} и описания ${idea.description} ) и естественно повтори в заголовках H2 и по тексту но не больше 3-5 раз.
-- Соблюдай SEO best practices: структурируй контент с подзаголовками, списками, таблицами; добавляй внутренние/внешние ссылки (internalLinks/externalLinks), включай PAA-стилизованный FAQ.
+- CRITICAL: Write all content in ${finalLanguage} language. All text, headings, paragraphs, and responses must be in ${finalLanguage}.
+- Tone: expert yet empathetic; speak directly to the persona that already understands the problem and is looking for a solution.
+- Highlight the product (name: ${projectTitle}) naturally: mention real features from Lean Canvas Solutions/UVP, don't invent new ones. Don't overemphasize the product, but show how it helps address pains/goals.
+- Total text volume (sum of all outline.body) — at least 6000-8000 words. This is CRITICAL for comprehensive, valuable content. If there's not enough data to cover the topic, add TODO with description of needed information.
+- For each outline.body element, prepare 5-8 substantial paragraphs (each paragraph should be 4-6 sentences, 80-120 words).
+- Prioritize narrative, detailed explanations over bullet lists. Use lists only when absolutely necessary (e.g., step-by-step instructions, comparisons). Maximum 1-2 lists per section, and each list should be followed by 2-3 paragraphs of detailed explanation.
+- Each section should tell a complete story: introduce the concept, explain it in detail with examples, provide context, discuss implications, and connect to the next section.
+- CRITICAL: Write in-depth, comprehensive content. Each paragraph should add substantial value and detail. Avoid superficial, bullet-point-only content.
+- In the introductory paragraph (first outline.body), clearly state the material's goal: briefly convey what the reader should achieve and what business result the company needs.
+- Always include blocks: problem, solution, benefits with numbers/facts, social proof, answers to objections.
+- Work as a professional copywriter and follow these eight principles:
+  1. Clarify the task and article's role: show what problem the audience solves and what value the material provides.
+  2. Define the main idea: formulate one key message that the reader can retell in one sentence.
+  3. Gather context and facts: use arguments, examples, logical explanations, data/observations, real cases, comparisons or metaphors; avoid fluff.
+  4. Build structure like a screenwriter: hook → context → analysis/solution → examples/proof → conclusion and action.
+  5. Write lively and humanly: short paragraphs, strong verbs, specifics, natural intonations, minimal bureaucracy and clichés.
+  6. Support the reader: anticipate questions, provide answers, and make smooth transitions between blocks.
+  7. Check the text for voice: ensure the style sounds like an expert-human, not an encyclopedia.
+  8. See through the reader's eyes: evaluate what holds attention, whether there's anything unnecessary, what the reader will take away and what they'll do next; finalize the text accordingly.
+- For each publication, form a unique, logically segmented structure: vary the order and names of sections, avoid templates.
+- Generate expressive and unique H2 headings (avoid dry ones like "Advantages", "Problem", etc.); create phrases that reflect the section's essence and grab attention while maintaining block sequence.
+- Include social proof (cases, reviews, testimonials) with specific numerical results if data is available; if absent, indicate what information needs to be clarified.
+- Each outline.body block should start with a meaningful <p> (without pseudo-headings like "Introduction:" or lines like "Validating Market Demand"); don't insert additional headings (neither in tags nor as plain text), because the main block heading is passed through the heading field and rendered as <h2> on the frontend. To emphasize a thought, use <strong> inside <p>, not a separate heading.
+- In the final text (outline.body), use explicit HTML tags: wrap narrative text in <p>, mark lists as <ul>/<li> or <ol>/<li>; if a nested subsection is needed, use <h3>/<h4>, but don't duplicate the main heading and don't insert lines without tags that look like a separate heading.
+- Add separate sections with analytics (data/trends), practical tips, and FAQ (≥3 questions). If the stage is not BOFU — FAQ can be marked TODO. For FAQ, start the section with <h2>FAQ</h2>, and format each question as <p><strong>Question?</strong></p> followed by an answer paragraph (don't use <h2> for questions).
+- In the final section, analyze all solutions from Lean Canvas Solutions (${leanSolutionsList ?? "TODO: list solutions"}), select the most relevant to the article topic (e.g., ${primaryLeanSolution ?? "specify key solution"}), explain why it's better than others, and show how it helps solve the key problem.
+- Select 2–3 highly relevant SEO keywords (based on ${idea.title} and description ${idea.description}) and naturally repeat them in H2 headings and throughout the text, but no more than 3-5 times.
+- Follow SEO best practices: structure content with subheadings, lists, tables; add internal/external links (internalLinks/externalLinks), include PAA-styled FAQ.
 - Return ONLY the JSON object.`;
 
   return { prompt };
@@ -236,12 +246,22 @@ export function buildDraftPrompt(options: DraftPromptOptions): { prompt: string;
   const typeDetection = detectContentTemplateType(idea);
   const detectedType = typeDetection.type;
 
+  // Resolve language with proper priority: explicit > context > default
+  // Only use "English" as default if no language is found at all
+  const resolvedLanguage = language ?? context.language;
+  
+  if (!resolvedLanguage) {
+    console.warn("[buildDraftPrompt] No language found in context or parameters, defaulting to English");
+  } else {
+    console.log("[buildDraftPrompt] Using language:", resolvedLanguage);
+  }
+
   // Use content-type-specific prompt template
   const prompt = buildContentTypeSpecificPrompt(detectedType, {
     context,
     idea,
     contentType,
-    language: language ?? context.language ?? "Russian",
+      language: resolvedLanguage ?? "English",
     contentGoal,
     funnelStage,
     specialRequirements

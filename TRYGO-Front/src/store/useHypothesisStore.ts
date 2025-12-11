@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import {
   getProjectHypothesesQuery,
   ProjectHypothesis,
@@ -11,6 +10,7 @@ import {
 import { deleteProjectHypothesisMutation } from "@/api/deleteProjectHypothesis";
 import { useHypothesesCoreStore } from "./useHypothesesCoreStore";
 import { useProjectStore } from "./useProjectStore";
+import Cookies from "js-cookie";
 
 interface HypothesisState {
   hypotheses: ProjectHypothesis[];
@@ -24,191 +24,163 @@ interface HypothesisState {
   deleteHypothesis: (id: string) => Promise<void>;
 }
 
-export const useHypothesisStore = create<HypothesisState>()(
-  persist(
-    (set, get) => ({
-      hypotheses: [],
-      activeHypothesis: null,
-      loading: false,
-      error: null,
+const COOKIE_HYPOTHESIS_ID = "activeHypothesisId";
 
-      getHypotheses: async (projectId) => {
-        set({ loading: true, error: null });
-        try {
-          const { data } = await getProjectHypothesesQuery(projectId);
-          const hypotheses = data.getProjectHypotheses || [];
+export const useHypothesisStore = create<HypothesisState>()((set, get) => ({
+  hypotheses: [],
+  activeHypothesis: null,
+  loading: false,
+  error: null,
 
-          // Перевіряємо чи проект новостворений і чи прийшов порожній масив гіпотез
-          if (hypotheses.length === 0) {
-            const projects = useProjectStore.getState().projects;
-            const currentProject = projects.find(p => p.id === projectId);
-            
-            // Якщо проект новий (створений менше 5 хвилин тому) і гіпотез немає
-            if (currentProject && currentProject.createdAt) {
-              const projectAge = Date.now() - new Date(currentProject.createdAt).getTime();
-              const fiveMinutes = 5 * 60 * 1000;
-              
-              if (projectAge < fiveMinutes) {
-                // Це новий проект без гіпотез - це помилка генерації
-                set({
-                  hypotheses: [],
-                  loading: false,
-                  error: "Unfortunately something went wrong with project generation, попробуйте создать новый аккаунт",
-                  activeHypothesis: null,
-                });
-                return;
-              }
-            }
-          }
+  getHypotheses: async (projectId) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await getProjectHypothesesQuery(projectId);
+      const hypotheses = data.getProjectHypotheses || [];
 
-          set({
-            hypotheses,
-            loading: false,
-          });
-
-          // Validate activeHypothesis - check if it exists in fresh data and belongs to current project
-          const validActiveHypothesis = get().activeHypothesis;
-          if (validActiveHypothesis && validActiveHypothesis.id) {
-            const freshHypothesis = hypotheses.find(h => h.id === validActiveHypothesis.id);
-            if (!freshHypothesis) {
-              // Hypothesis from store doesn't exist in fresh data - clear it
-              set({ activeHypothesis: null });
-              // Также очищаем из persist storage
-              try {
-                const persistStorage = localStorage.getItem('hypothesis-store');
-                if (persistStorage) {
-                  const parsed = JSON.parse(persistStorage);
-                  if (parsed.state?.activeHypothesis?.id === validActiveHypothesis.id) {
-                    parsed.state.activeHypothesis = null;
-                    localStorage.setItem('hypothesis-store', JSON.stringify(parsed));
-                  }
-                }
-              } catch (e) {
-                // Silent fail
-              }
-            } else if (freshHypothesis.title !== validActiveHypothesis.title || 
-                       freshHypothesis.projectId !== projectId) {
-              // Hypothesis title changed or belongs to different project - update it
-              set({ activeHypothesis: freshHypothesis });
-            }
-          }
-
-          // Select hypothesis: prioritize saved activeHypothesis if it belongs to current project
-          // Otherwise select the first hypothesis
-          if (hypotheses.length > 0) {
-            const isActiveHypothesisInCurrentProject = currentActiveHypothesis && 
-              hypotheses.some(h => h.id === currentActiveHypothesis.id && h.projectId === projectId);
-            
-            // If active hypothesis exists and belongs to current project, keep it
-            // Otherwise, select the first hypothesis
-            if (!currentActiveHypothesis || !isActiveHypothesisInCurrentProject) {
-              set({ activeHypothesis: hypotheses[0] });
-            }
-          } else {
-            // Clear active hypothesis if no hypotheses exist
-            set({ activeHypothesis: null });
-          }
-        } catch (error: unknown) {
-          let errorMessage = "Failed to load hypotheses";
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          set({
-            error: errorMessage,
-            loading: false,
-          });
-        }
-      },
-
-      setActiveHypothesis: (hypothesisId) => {
-        // Валидация: не позволяем установить удаленную гипотезу
-        if (hypothesisId === DELETED_HYPOTHESIS_ID) {
-          set({ activeHypothesis: null });
-          return;
-        }
+      // Перевіряємо чи проект новостворений і чи прийшов порожній масив гіпотез
+      if (hypotheses.length === 0) {
+        const projects = useProjectStore.getState().projects;
+        const currentProject = projects.find(p => p.id === projectId);
         
-        // Если пустая строка, просто очищаем
-        if (!hypothesisId || hypothesisId.trim() === "") {
-          set({ activeHypothesis: null });
-          return;
-        }
-        
-        const hypothesis = get().hypotheses.find((h) => h.id === hypothesisId);
-        if (hypothesis) {
-          set({ activeHypothesis: hypothesis });
-        }
-        // Не логируем если не найдено - это нормально при инициализации
-      },
-
-      changeHypothesis: async (input) => {
-        set({ loading: true, error: null });
-        try {
-          const { data } = await changeProjectHypothesisMutation({
-            input: {
-              id: input.id,
-              title: input.title,
-              description: input.description,
-            },
-          });
-
-          const updatedHypothesis = data.changeProjectHypothesis;
-
-          set((state) => ({
-            hypotheses: state.hypotheses.map((h) =>
-              h.id === input.id ? updatedHypothesis : h
-            ),
-            loading: false,
-          }));
-
-          if (get().activeHypothesis?.id === input.id) {
-            set({ activeHypothesis: updatedHypothesis });
+        // Якщо проект новий (створений менше 5 хвилин тому) і гіпотез немає
+        if (currentProject && (currentProject as any).createdAt) {
+          const projectAge = Date.now() - new Date((currentProject as any).createdAt).getTime();
+          const fiveMinutes = 5 * 60 * 1000;
+          
+          if (projectAge < fiveMinutes) {
+            // Це новий проект без гіпотез - це помилка генерації
+            set({
+              hypotheses: [],
+              loading: false,
+              error: "Unfortunately something went wrong with project generation, попробуйте создать новый аккаунт",
+              activeHypothesis: null,
+            });
+            return;
           }
-        } catch (error: unknown) {
-          let errorMessage = "Failed to update hypothesis";
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          set({
-            error: errorMessage,
-            loading: false,
-          });
         }
-      },
+      }
 
-      deleteHypothesis: async (id) => {
-        set({ loading: true, error: null });
-        try {
-          await deleteProjectHypothesisMutation({
-            deleteProjectHypothesisId: id,
-          });
+      // Восстанавливаем из cookies
+      const savedHypothesisId = Cookies.get(COOKIE_HYPOTHESIS_ID);
+      let activeHypothesis: ProjectHypothesis | null = null;
 
-          set((state) => ({
-            hypotheses: state.hypotheses.filter((h) => h.id !== id),
-            loading: false,
-          }));
-
-          if (get().activeHypothesis?.id === id) {
-            const firstHypothesis = get().hypotheses[0];
-            set({ activeHypothesis: firstHypothesis || null });
-          }
-        } catch (error: unknown) {
-          let errorMessage = "Failed to delete hypothesis";
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          set({
-            error: errorMessage,
-            loading: false,
-          });
+      if (savedHypothesisId) {
+        // Ищем сохраненную гипотезу в свежих данных из API
+        const foundHypothesis = hypotheses.find(h => h.id === savedHypothesisId && h.projectId === projectId);
+        if (foundHypothesis) {
+          activeHypothesis = foundHypothesis;
+        } else {
+          // Сохраненная гипотеза не найдена или принадлежит другому проекту - очищаем cookie
+          Cookies.remove(COOKIE_HYPOTHESIS_ID);
         }
-      },
-    }),
-    {
-      name: "hypothesis-store",
-      // Сохраняем только activeHypothesis, не сохраняем hypotheses (они загружаются из API)
-      partialize: (state) => ({
-        activeHypothesis: state.activeHypothesis,
-      }),
+      }
+
+      // Если не нашли в cookies или cookies пуст, берем первую гипотезу
+      if (!activeHypothesis && hypotheses.length > 0) {
+        activeHypothesis = hypotheses[0];
+        // Сохраняем в cookies
+        Cookies.set(COOKIE_HYPOTHESIS_ID, activeHypothesis.id, { expires: 365 });
+      }
+
+      set({
+        hypotheses,
+        activeHypothesis,
+        loading: false,
+      });
+    } catch (error: unknown) {
+      let errorMessage = "Failed to load hypotheses";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      set({
+        error: errorMessage,
+        loading: false,
+      });
     }
-  )
-);
+  },
+
+  setActiveHypothesis: (hypothesisId) => {
+    if (!hypothesisId || hypothesisId.trim() === "") {
+      Cookies.remove(COOKIE_HYPOTHESIS_ID);
+      set({ activeHypothesis: null });
+      return;
+    }
+    
+    const hypothesis = get().hypotheses.find((h) => h.id === hypothesisId);
+    if (hypothesis) {
+      // Сохраняем в cookies
+      Cookies.set(COOKIE_HYPOTHESIS_ID, hypothesisId, { expires: 365 });
+      set({ activeHypothesis: hypothesis });
+    }
+  },
+
+  changeHypothesis: async (input) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await changeProjectHypothesisMutation({
+        input: {
+          id: input.id,
+          title: input.title,
+          description: input.description,
+        },
+      });
+
+      const updatedHypothesis = data.changeProjectHypothesis;
+
+      set((state) => ({
+        hypotheses: state.hypotheses.map((h) =>
+          h.id === input.id ? updatedHypothesis : h
+        ),
+        loading: false,
+      }));
+
+      if (get().activeHypothesis?.id === input.id) {
+        set({ activeHypothesis: updatedHypothesis });
+      }
+    } catch (error: unknown) {
+      let errorMessage = "Failed to update hypothesis";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      set({
+        error: errorMessage,
+        loading: false,
+      });
+    }
+  },
+
+  deleteHypothesis: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      await deleteProjectHypothesisMutation({
+        deleteProjectHypothesisId: id,
+      });
+
+      set((state) => ({
+        hypotheses: state.hypotheses.filter((h) => h.id !== id),
+        loading: false,
+      }));
+
+      if (get().activeHypothesis?.id === id) {
+        const firstHypothesis = get().hypotheses[0];
+        if (firstHypothesis) {
+          Cookies.set(COOKIE_HYPOTHESIS_ID, firstHypothesis.id, { expires: 365 });
+          set({ activeHypothesis: firstHypothesis });
+        } else {
+          Cookies.remove(COOKIE_HYPOTHESIS_ID);
+          set({ activeHypothesis: null });
+        }
+      }
+    } catch (error: unknown) {
+      let errorMessage = "Failed to delete hypothesis";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      set({
+        error: errorMessage,
+        loading: false,
+      });
+    }
+  },
+}));

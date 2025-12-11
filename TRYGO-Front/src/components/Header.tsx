@@ -27,11 +27,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUserStore } from "@/store/useUserStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
 import { useHypothesesPersonProfileStore } from "@/store/useHypothesesPersonProfileStore";
-import { useProjectStore } from "@/store/useProjectStore";
 import { useSocketStore } from "@/store/useSocketStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import {
   Select,
   SelectContent,
@@ -70,41 +70,31 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
 
   const logout = useUserStore((state) => state.logout);
 
+  const { activeProject, projects, setActiveProject, loadProjects } = useProjects();
   const {
-    getHypotheses,
     hypotheses,
     activeHypothesis,
     loading: hypothesesLoading,
     error: hypothesesError,
     setActiveHypothesis,
-  } = useHypothesisStore();
-
-  const { activeProject, projects, setActiveProject } = useProjectStore();
+    loadHypotheses,
+  } = useHypotheses({ projectId: activeProject?.id, projects });
   const { canCreateHypothesis, currentPlan } = useSubscription();
 
   const handleLogout = async () => {
     // Clear all Zustand stores
     logout();
-    useHypothesisStore.persist.clearStorage();
-    useHypothesesPersonProfileStore.persist.clearStorage();
     useHypothesesCoreStore.persist.clearStorage();
-    useProjectStore.persist.clearStorage();
-    useHypothesesPersonProfileStore.setState({
-      selectedCustomerSegmentId: undefined,
-    });
+    // Сбрасываем selectedSegmentId через clearActiveIds()
     useHypothesesCoreStore.setState({
       coreData: null,
     });
-    useHypothesisStore.setState({
-      activeHypothesis: null,
-      hypotheses: [],
-    });
-    useProjectStore.setState({
-      activeProject: null,
-      projects: []
-    });
     useSocketStore.setState({ projectId: null });
     useUserStore.getState().setHasInitializedProject(false);
+    
+    // Clear active project and hypothesis from cookies
+    const { clearActiveIds } = require('@/utils/activeState');
+    clearActiveIds();
 
     // Clear all localStorage
     localStorage.clear();
@@ -148,9 +138,9 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   const handleSetActive = (id: string) => {
-    useHypothesesPersonProfileStore.setState({
-      selectedCustomerSegmentId: undefined,
-    });
+    // Сбрасываем selectedSegmentId при смене гипотезы
+    const { setActiveCustomerSegmentId } = require('@/utils/activeState');
+    setActiveCustomerSegmentId(null);
     setActiveHypothesis(id);
     toast({
       title: "Hypothesis activated",
@@ -203,6 +193,13 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
       setActiveProject(projects[0].id);
     }
   }, [projects, activeProject, setActiveProject]);
+  
+  // Загружаем гипотезы при изменении активного проекта
+  useEffect(() => {
+    if (activeProject?.id) {
+      loadHypotheses(activeProject.id);
+    }
+  }, [activeProject?.id, loadHypotheses]);
 
 
   return (

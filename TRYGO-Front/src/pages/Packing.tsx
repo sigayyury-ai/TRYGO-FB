@@ -4,7 +4,7 @@ import Header from "@/components/Header";
 import LoaderSpinner from "@/components/LoaderSpinner";
 import RegenerateHypothesesPackingForm from "@/components/RegenerateHypothesesPackingForm";
 import { Button } from "@/components/ui/button";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { usePackingStore } from "@/store/usePackingStore";
 import { Lock, Package } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,9 +16,7 @@ const Packing = () => {
   const { hasFeatureAccess, currentPlan } = useSubscription();
   const hasPackingAccess = hasFeatureAccess('packing');
   
-  const activeHypothesisId = useHypothesisStore(
-    (state) => state.activeHypothesis.id
-  );
+  const activeHypothesisId = useActiveHypothesisId();
 
   const loading = usePackingStore((state) => state.loading);
 
@@ -38,7 +36,7 @@ const Packing = () => {
     if (activeHypothesisId) {
       getHypothesesPacking(activeHypothesisId);
     }
-  }, [activeHypothesisId]);
+  }, [activeHypothesisId, getHypothesesPacking]);
 
   return (
     <>

@@ -14,7 +14,7 @@ const seoAgentPostingSettingsSchema = new Schema(
         projectId: {
             type: String,
             required: true,
-            unique: true,
+            unique: true, // unique: true automatically creates an index
         },
         hypothesisId: {
             type: String,
@@ -46,8 +46,7 @@ const seoAgentPostingSettingsSchema = new Schema(
     }
 );
 
-// Ensure unique projectId (one settings per project)
-seoAgentPostingSettingsSchema.index({ projectId: 1 }, { unique: true });
+// Note: projectId index is automatically created by unique: true, so we don't need to add it explicitly
 
 export const SeoAgentPostingSettingsModel = mongoose.model<ISeoAgentPostingSettings>(
     'SeoAgentPostingSettings',

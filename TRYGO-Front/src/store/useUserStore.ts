@@ -33,6 +33,8 @@ export const useUserStore = create<UseUserStoreType>()(
         hasInitializedProject: false,
         setHasInitializedProject: (value) =>
           set({ hasInitializedProject: value }),
+        // Токен всегда проверяем из cookies при инициализации
+        // persist может восстановить null, но мы всегда можем проверить cookies
         token: Cookies.get("token") || null,
         isLoading: false,
         showJoyride: false,
@@ -52,20 +54,49 @@ export const useUserStore = create<UseUserStoreType>()(
           } else {
             Cookies.remove("token");
           }
+          // Сохраняем userId в cookies для использования в API запросах
+          if (user?.id) {
+            Cookies.set("userId", user.id, {
+              expires: 30,
+              secure: true,
+              sameSite: "strict",
+            });
+            localStorage.setItem("userId", user.id);
+          } else {
+            Cookies.remove("userId");
+            localStorage.removeItem("userId");
+          }
         },
         logout: () => {
           Cookies.remove("token");
+          Cookies.remove("userId");
+          localStorage.removeItem("userId");
+          // Очищаем persist storage для useUserStore
+          localStorage.removeItem("useUserStore");
           set({ userData: null, isAuthenticated: false, token: null, showJoyride: false });
         },
   
         initializeAuth: async () => {
           set({ isLoading: true });
-          const currentToken = get().token;
+          // Проверяем токен и из store, и из cookies (на случай если persist еще не загрузился)
+          const storeToken = get().token;
+          const cookieToken = Cookies.get("token");
+          const currentToken = storeToken || cookieToken;
+          const currentUserData = get().userData;
+  
+          // Если токен есть в cookies, но не в store - восстанавливаем его
+          if (cookieToken && !storeToken) {
+            set({ token: cookieToken });
+          }
   
           try {
             if (currentToken) {
+              // Если есть токен, всегда проверяем его валидность через API
               const { user, token } = await getUserByTokenQuery();
               set({ userData: user, isAuthenticated: true, token });
+            } else if (currentUserData) {
+              // Если токена нет, но userData есть - очищаем (невалидное состояние)
+              set({ userData: null, isAuthenticated: false });
             }
           } catch (error: unknown) {
             // Only logout on authentication errors (401, 403), not on network errors
@@ -88,10 +119,20 @@ export const useUserStore = create<UseUserStoreType>()(
             } else if (!isNetworkError) {
               // Other errors - keep token but don't set user as authenticated
               console.warn('Auth initialization error (non-auth):', error);
-              set({ userData: null, isAuthenticated: false });
+              // Если есть userData в localStorage - сохраняем его, возможно это временная ошибка
+              if (currentUserData && currentToken) {
+                // Сохраняем состояние из localStorage, если токен есть
+                set({ userData: currentUserData, isAuthenticated: true });
+              } else {
+                set({ userData: null, isAuthenticated: false });
+              }
             } else {
               // Network error - keep everything, backend might be starting
               console.warn('Backend connection error, keeping auth state:', error);
+              // При сетевой ошибке сохраняем состояние из localStorage, если оно есть
+              if (currentUserData && currentToken) {
+                set({ userData: currentUserData, isAuthenticated: true });
+              }
             }
           } finally {
             set({ isLoading: false });
@@ -109,6 +150,21 @@ export const useUserStore = create<UseUserStoreType>()(
         hasInitializedProject: state.hasInitializedProject,
         showJoyride: state.showJoyride,
       }),
+      // После восстановления состояния из localStorage проверяем cookies
+      // Если токен есть в cookies, но не в store - восстанавливаем его
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const cookieToken = Cookies.get("token");
+          // Если токен есть в cookies, но не в восстановленном состоянии - восстанавливаем
+          if (cookieToken && !state.token) {
+            state.token = cookieToken;
+          }
+          // Если токен есть в cookies и отличается от восстановленного - обновляем
+          if (cookieToken && cookieToken !== state.token) {
+            state.token = cookieToken;
+          }
+        }
+      },
     }
   )
 );

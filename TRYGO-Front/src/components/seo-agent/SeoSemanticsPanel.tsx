@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Save, X } from "lucide-react";
@@ -19,7 +19,7 @@ import LoaderSpinner from "@/components/LoaderSpinner";
 
 interface SeoSemanticsPanelProps {
   projectId: string;
-  hypothesisId?: string;
+  hypothesisId: string; // Required, not optional
 }
 
 interface EditingCluster {
@@ -37,9 +37,9 @@ export const SeoSemanticsPanel = ({ projectId, hypothesisId }: SeoSemanticsPanel
   const [isCreating, setIsCreating] = useState(false);
   const [editingCluster, setEditingCluster] = useState<EditingCluster | null>(null);
 
-  // Load clusters from API
-  const loadClusters = async () => {
-    if (!projectId) return;
+  // Load clusters from API - обернуто в useCallback
+  const loadClusters = useCallback(async () => {
+    if (!projectId || !hypothesisId) return;
     
     setLoading(true);
     setError(null);
@@ -56,13 +56,14 @@ export const SeoSemanticsPanel = ({ projectId, hypothesisId }: SeoSemanticsPanel
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, hypothesisId]);
 
   useEffect(() => {
-    if (projectId) {
+    if (projectId && hypothesisId) {
       loadClusters();
     }
-  }, [projectId, hypothesisId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, hypothesisId]); // loadClusters is stable (useCallback with deps), no need to include
 
   const handleCreate = () => {
     setEditingCluster({

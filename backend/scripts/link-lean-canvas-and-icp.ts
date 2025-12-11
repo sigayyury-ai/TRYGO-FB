@@ -154,3 +154,7 @@ async function linkLeanCanvasAndICP() {
 
 linkLeanCanvasAndICP();
 
+
+
+
+

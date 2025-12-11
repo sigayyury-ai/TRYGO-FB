@@ -1,14 +1,11 @@
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjects } from "@/hooks/useProjects";
 import { useUserStore } from "@/store/useUserStore";
 import LoaderSpinner from "./LoaderSpinner";
 
 export const RequireProject = ({ children }: { children: React.ReactNode }) => {
-  const loading = useProjectStore((state) => state.loading);
-  const error = useProjectStore((state) => state.error);
-  const getProjects = useProjectStore((state) => state.getProjects);
+  const { loading, error, projects, loadProjects } = useProjects();
   const isLoadingAuth = useUserStore((state) => state.isLoading);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
-  const projects = useProjectStore((state) => state.projects);
 
   // Show loading while auth is initializing
   if (isLoadingAuth) {
@@ -44,7 +41,7 @@ export const RequireProject = ({ children }: { children: React.ReactNode }) => {
           </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => getProjects()}
+            onClick={() => loadProjects()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Try again

@@ -153,3 +153,8 @@ db.subscriptions.deleteOne({ userId: ObjectId("ID_ПОЛЬЗОВАТЕЛЯ") })
 node add-pro-subscription.js user@example.com --remove
 ```
 
+
+
+
+
+

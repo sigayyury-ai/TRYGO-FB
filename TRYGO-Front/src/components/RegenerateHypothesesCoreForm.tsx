@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw } from "lucide-react";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { useUserStore } from "@/store/useUserStore";
 import { useToast } from "@/hooks/use-toast";
 import { checkRegeneratePermission } from "@/utils/checkRegeneratePermission";
@@ -15,7 +15,7 @@ const RegenerateHypothesesCoreForm: FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { regenerateHypothesesCore } = useHypothesesCoreStore();
-  const { activeHypothesis } = useHypothesisStore();
+  const activeHypothesisId = useActiveHypothesisId();
   const { userData } = useUserStore();
   const { toast } = useToast();
 
@@ -25,7 +25,7 @@ const RegenerateHypothesesCoreForm: FC = () => {
   }
 
   const handleRegenerate = async () => {
-    if (!activeHypothesis?.id) {
+    if (!activeHypothesisId) {
       toast({
         title: "Error",
         description: "No active hypothesis found",
@@ -37,7 +37,7 @@ const RegenerateHypothesesCoreForm: FC = () => {
     setIsLoading(true);
     try {
       await regenerateHypothesesCore({
-        projectHypothesisId: activeHypothesis.id,
+        projectHypothesisId: activeHypothesisId,
         promptPart: promptPart.trim() || null,
       });
 

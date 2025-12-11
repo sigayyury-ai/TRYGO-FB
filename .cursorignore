@@ -1,0 +1,25 @@
+# Игнорировать большие JSON файлы и логи
+logs/**/*.json
+logs/**/*.log
+logs/backups/
+logs/exports/
+
+# Игнорировать node_modules
+node_modules/
+**/node_modules/
+
+# Игнорировать большие файлы данных
+*.backup
+*-backup-*.json
+*-export-*.json
+
+# Игнорировать временные файлы
+tmp/
+*.tmp
+*.cache
+
+# Игнорировать build артефакты
+dist/
+build/
+*.map
+

@@ -40,13 +40,18 @@ import { useToast } from "@/hooks/use-toast";
 import CjmTable from "@/components/CjmTable";
 import JtbdBlock from "@/components/JtbdBlock";
 import { itemVariants } from "@/utils/itemVariants";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
+import { useActiveCustomerSegmentId } from "@/hooks/useActiveIds";
 import useSubscription from "@/hooks/use-subscription";
 import FeatureUpgradeBlock from "@/components/FeatureUpgradeBlock";
 
 const Person = () => {
   const { hasFeatureAccess } = useSubscription();
   const hasIcpAccess = hasFeatureAccess("icp");
+
+  const { activeProject } = useProjects();
+  const { activeHypothesis } = useHypotheses({ projectId: activeProject?.id });
 
   const coreData = useHypothesesCoreStore((state) => state.coreData);
   const coreLoading = useHypothesesCoreStore((state) => state.loading);
@@ -59,7 +64,6 @@ const Person = () => {
   const wasAutoRefreshed = useHypothesesPersonProfileStore(
     (state) => state.wasAutoRefreshed
   );
-  const { activeHypothesis } = useHypothesisStore();
 
   const {
     loading: profileLoading,
@@ -72,17 +76,14 @@ const Person = () => {
 
   const { toast } = useToast();
 
-  const selectedSegmentId = useHypothesesPersonProfileStore(
-    (state) => state.selectedCustomerSegmentId
-  );
-
-  const setSelectedSegmentId = useHypothesesPersonProfileStore(
+  const setSelectedCustomerSegmentId = useHypothesesPersonProfileStore(
     (state) => state.setSelectedCustomerSegmentId
   );
+  
+  // Используем хук для реактивного чтения selectedSegmentId из куки
+  const selectedSegmentId = useActiveCustomerSegmentId();
 
   const availableSegments = (() => {
-    console.log("allProfiles", allProfiles);
-    console.log("segments", segments);
     if (!allProfiles || allProfiles.length === 0 || !segments || segments.length === 0) return [];
     return segments.filter((segment) =>
       allProfiles.some((profile) => profile.customerSegmentId === segment.id)
@@ -96,25 +97,51 @@ const Person = () => {
     }
   }, [activeHypothesis?.id, getHypothesesCore]);
 
-  // Завантажуємо профілі
+  // Завантажуємо профілі при изменении гипотезы
   useEffect(() => {
     if (activeHypothesis?.id) {
+      // fetchProfile сам сбросит selectedSegmentId и загрузит данные для новой гипотезы
       fetchProfile(activeHypothesis.id);
     } else {
-      useHypothesesPersonProfileStore.setState({ profile: null });
+      // Сбрасываем всё при отсутствии гипотезы
+      setSelectedCustomerSegmentId(null);
+      useHypothesesPersonProfileStore.setState({ 
+        profile: null,
+        allProfiles: null,
+      });
     }
-  }, [activeHypothesis?.id, fetchProfile]);
+  }, [activeHypothesis?.id, fetchProfile, setSelectedCustomerSegmentId]);
 
   useEffect(() => {
-    if (selectedSegmentId && allProfiles?.length) {
+    // Синхронизируем profile с selectedSegmentId из куки
+    if (selectedSegmentId && allProfiles && allProfiles.length > 0) {
       const matchedProfile = allProfiles.find(
         (profile) => profile.customerSegmentId === selectedSegmentId
       );
+      if (matchedProfile && (!profile || profile.id !== matchedProfile.id)) {
+        // Обновляем profile только если он изменился
+        useHypothesesPersonProfileStore.setState({
+          profile: matchedProfile,
+        });
+      } else if (!matchedProfile) {
+        // Если профиль для выбранного сегмента не найден, сбрасываем выбор и выбираем первый
+        if (allProfiles[0]?.customerSegmentId) {
+          setSelectedCustomerSegmentId(allProfiles[0].customerSegmentId);
+        }
+        useHypothesesPersonProfileStore.setState({
+          profile: allProfiles[0] || null,
+        });
+      }
+    } else if (!selectedSegmentId && allProfiles && allProfiles.length > 0 && !profile) {
+      // Если нет выбранного сегмента, но есть профили, выбираем первый
+      if (allProfiles[0]?.customerSegmentId) {
+        setSelectedCustomerSegmentId(allProfiles[0].customerSegmentId);
+      }
       useHypothesesPersonProfileStore.setState({
-        profile: matchedProfile || null,
+        profile: allProfiles[0],
       });
     }
-  }, [selectedSegmentId, allProfiles]);
+  }, [selectedSegmentId, allProfiles, profile, setSelectedCustomerSegmentId]);
 
   useEffect(() => {
     if (wasAutoRefreshed) {
@@ -126,9 +153,9 @@ const Person = () => {
     }
   }, [wasAutoRefreshed]);
 
-  const handleSelectedSegmentIdChoose = (selectedSegmentId: string) => {
-    const matchedProfile = allProfiles.find(
-      (profile) => profile.customerSegmentId === selectedSegmentId
+  const handleSelectedSegmentIdChoose = (segmentId: string) => {
+    const matchedProfile = allProfiles?.find(
+      (profile) => profile.customerSegmentId === segmentId
     );
 
     if (!matchedProfile) {
@@ -137,22 +164,25 @@ const Person = () => {
         description: "ICP profile not found",
         variant: "destructive",
       });
-
       return;
     }
 
-    setSelectedSegmentId(selectedSegmentId);
+    // Сохраняем в куки и обновляем состояние
+    setSelectedCustomerSegmentId(segmentId);
+    useHypothesesPersonProfileStore.setState({
+      profile: matchedProfile,
+    });
   };
 
   useEffect(() => {
     if (profileError) {
       toast({
-        title: "Error",
-        description: "Something went wrong",
+        title: "Error loading ICP data",
+        description: profileError || "Something went wrong while loading ICP profile data",
         variant: "destructive",
       });
     }
-  }, [profileError]);
+  }, [profileError, toast]);
 
   const handleTextUpdate =
     (field: keyof ChangeHypothesesPersonProfileInput) => (value: string) => {
@@ -165,19 +195,22 @@ const Person = () => {
     };
 
   const handleArrayUpdate =
-    (field: keyof ChangeHypothesesPersonProfileInput) => (items: string[]) => {
+    (field: keyof ChangeHypothesesPersonProfileInput) => async (items: string[]) => {
       if (!profile) return;
 
-      updateProfile({
-        id: profile.id,
-        [field]: items,
-      }).catch((e) => {
+      try {
+        await updateProfile({
+          id: profile.id,
+          [field]: items,
+        });
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "Failed to update profile on server";
         toast({
           title: "Error",
-          description: "Failed to update profile on server",
+          description: errorMessage,
           variant: "destructive",
         });
-      });
+      }
     };
 
   const deleteItem = (
@@ -289,6 +322,72 @@ const Person = () => {
     );
   }
 
+  // Если нет активной гипотезы, показываем сообщение
+  if (!activeHypothesis) {
+    return (
+      <div className="min-h-screen bg-person-gradient bg-grid-pattern">
+        <div className="px-4 py-8 pt-24 w-full">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <Users className="h-12 w-12 mx-auto mb-4 text-blue-500" />
+              <h1 className="text-2xl font-bold text-blue-900 mb-2">
+                No Active Hypothesis
+              </h1>
+              <p className="text-blue-700">
+                Please select a hypothesis from the header to view ICP data.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Если нет данных Core (сегментов), показываем сообщение
+  if (!coreLoading && (!coreData || !segments || segments.length === 0)) {
+    return (
+      <div className="min-h-screen bg-person-gradient bg-grid-pattern">
+        <div className="px-4 py-8 pt-24 w-full">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <Users className="h-12 w-12 mx-auto mb-4 text-blue-500" />
+              <h1 className="text-2xl font-bold text-blue-900 mb-2">
+                Customer Segments Not Found
+              </h1>
+              <p className="text-blue-700 mb-4">
+                Please check the Core page and ensure customer segments are generated for this hypothesis.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Если нет ICP профилей, показываем сообщение
+  if (!profileLoading && (!allProfiles || allProfiles.length === 0)) {
+    return (
+      <div className="min-h-screen bg-person-gradient bg-grid-pattern">
+        <div className="px-4 py-8 pt-24 w-full">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <Users className="h-12 w-12 mx-auto mb-4 text-blue-500" />
+              <h1 className="text-2xl font-bold text-blue-900 mb-2">
+                ICP Data Not Found
+              </h1>
+              <p className="text-blue-700 mb-4">
+                ICP (Ideal Customer Profile) data hasn't been generated yet for this hypothesis.
+              </p>
+              <p className="text-blue-600 text-sm">
+                ICP data is typically generated when you create a project. If you see this message, please contact support.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-person-gradient bg-grid-pattern">
       <div className="px-4 py-8 pt-24 w-full">
@@ -304,22 +403,33 @@ const Person = () => {
                   </h1>
                 </div>
               </div>
-              <div className="space-y-6">
-                {availableSegments.map((segment) => (
-                  <div
-                    key={segment.id}
-                    className="border border-gray-200 rounded-lg p-4 relative bg-white hover:bg-blue-50 cursor-pointer"
-                    onClick={() => handleSelectedSegmentIdChoose(segment.id)}
-                  >
-                    <h4 className="font-medium text-lg text-blue-600 mb-2 cursor-pointer  p-1 rounded">
-                      {segment.name}
-                    </h4>
-                    <p className="text-gray-700 cursor-pointer  p-1 rounded">
-                      {segment.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {availableSegments.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-blue-700 mb-2">
+                    No customer segments available.
+                  </p>
+                  <p className="text-blue-600 text-sm">
+                    Please ensure that ICP profiles are linked to customer segments on the Core page.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {availableSegments.map((segment) => (
+                    <div
+                      key={segment.id}
+                      className="border border-gray-200 rounded-lg p-4 relative bg-white hover:bg-blue-50 cursor-pointer transition-colors"
+                      onClick={() => handleSelectedSegmentIdChoose(segment.id)}
+                    >
+                      <h4 className="font-medium text-lg text-blue-600 mb-2 cursor-pointer p-1 rounded">
+                        {segment.name}
+                      </h4>
+                      <p className="text-gray-700 cursor-pointer p-1 rounded">
+                        {segment.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <>

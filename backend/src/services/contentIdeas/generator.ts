@@ -441,12 +441,10 @@ export async function generateIdeasFromOpenAI(
   console.log(`[generator] Using model: ${primaryModel}`);
 
   async function runOnce(usingModel: string) {
-    // Check if model is gpt-5.1 or newer (uses max_completion_tokens instead of max_tokens)
-    const isGpt5Model = usingModel?.includes("gpt-5");
     return client.chat.completions.create({
       model: usingModel,
       temperature: 0.7,
-      ...(isGpt5Model ? { max_completion_tokens: 1000 } : { max_tokens: 1000 }), // gpt-5.1 uses max_completion_tokens
+      max_tokens: 1000,
       response_format: { type: "json_object" },
       messages: [
         {

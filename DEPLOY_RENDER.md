@@ -212,3 +212,8 @@
 - [MongoDB Atlas Setup](https://www.mongodb.com/docs/atlas/getting-started/)
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 
+
+
+
+
+

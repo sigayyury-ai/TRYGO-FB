@@ -47,7 +47,8 @@ import AIAssistantChat from "@/components/AIAssistantChat";
 import EditableText from "@/components/EditableText";
 import { useGtmStore, StageKeyType } from "@/store/useGtmStore";
 import { StatusType } from "@/api/getHypothesesGtm";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
 import { useToast } from "@/hooks/use-toast";
 import { GtmTypes } from "@/types/GtmType";
@@ -108,12 +109,12 @@ const GTMDetails = () => {
   >(loadCollapsedSections);
 
   // Store hooks
+  const { activeProject } = useProjects();
+  const { activeHypothesis } = useHypotheses({ projectId: activeProject?.id });
+  
   const hypothesesGtm = useGtmStore((state) => state.hypothesesGtm);
   const getHypothesesGtm = useGtmStore((state) => state.getHypothesesGtm);
   const storeLoading = useGtmStore((state) => state.loading);
-  const activeHypothesis = useHypothesisStore(
-    (state) => state.activeHypothesis
-  );
   const coreData = useHypothesesCoreStore((state) => state.coreData);
   const getHypothesesCore = useHypothesesCoreStore(
     (state) => state.getHypothesesCore

@@ -1,4 +1,10 @@
 import "dotenv/config";
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// dotenv/config already loaded .env
+// Now load .env.local if it exists (will override .env values)
+config({ path: resolve(process.cwd(), ".env.local"), override: true });
 
 const {
   MONGODB_URI,
@@ -11,10 +17,11 @@ const {
   GOOGLE_API_KEY,
   GEMINI_API_KEY,
   OPENAI_API_KEY,
-  OPENAI_MODEL = "gpt-4o-mini",
+  OPENAI_MODEL = "gpt-4o",
   WORDPRESS_BASE_URL,
   WORDPRESS_USERNAME,
-  WORDPRESS_APP_PASSWORD
+  WORDPRESS_APP_PASSWORD,
+  LOG_SENSITIVE_DATA = "false"
 } = process.env;
 
 if (!MONGODB_URI) {
@@ -39,6 +46,7 @@ export const env = {
   openAiModel: OPENAI_MODEL,
   wordpressBaseUrl: WORDPRESS_BASE_URL,
   wordpressUsername: WORDPRESS_USERNAME,
-  wordpressAppPassword: WORDPRESS_APP_PASSWORD
+  wordpressAppPassword: WORDPRESS_APP_PASSWORD,
+  logSensitiveData: LOG_SENSITIVE_DATA === "true"
 };
 

@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import { channelTypes, getChannelTypeLabel } from "@/utils/channelTypes";
 import { ArrowLeft, Check, LinkIcon, Plus, Trash2, X } from "lucide-react";
 import { FC, useEffect, useState } from "react";
@@ -68,15 +69,15 @@ const CustomerChannelsPage: FC = () => {
 
   const navigate = useNavigate();
 
+  const { activeProject } = useProjects();
+  const { activeHypothesis } = useHypotheses({ projectId: activeProject?.id });
   const { coreData, changeHypothesesCore, getHypothesesCore } = useHypothesesCoreStore();
-  const { activeHypothesis } = useHypothesisStore.getState();
-
 
   useEffect(() => {
     if (!coreData && activeHypothesis?.id) {
-      getHypothesesCore(activeHypothesis?.id);
+      getHypothesesCore(activeHypothesis.id);
     }
-  }, [coreData, activeHypothesis?.id]);
+  }, [coreData, activeHypothesis?.id, getHypothesesCore]);
 
 
   useEffect(() => {

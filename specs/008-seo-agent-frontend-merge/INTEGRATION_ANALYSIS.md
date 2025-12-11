@@ -188,3 +188,8 @@ export const SeoAgentPage = () => {
 3. Реализовать SeoAgentPage с использованием stores
 4. Убедиться что все запросы используют активный проект из store
 
+
+
+
+
+

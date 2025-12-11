@@ -23,9 +23,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSocketStore } from "@/store/useSocketStore";
 import { useToast } from "@/hooks/use-toast";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useProjects } from "@/hooks/useProjects";
 import LoaderSpinner from "./LoaderSpinner";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
 import useSubscription from "@/hooks/use-subscription";
 import UpgradeModal from "./UpgradeModal";
 
@@ -61,7 +60,7 @@ export const AddHypothesesModal: FC<{
     isGeneratingHypothesis,
     generatedHypothesisId,
   } = useSocketStore();
-  const { activeProject } = useProjectStore();
+  const { activeProject } = useProjects();
 
   useEffect(() => {
     if (generatedHypothesisId) {

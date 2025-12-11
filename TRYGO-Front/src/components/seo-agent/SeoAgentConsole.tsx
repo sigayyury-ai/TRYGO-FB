@@ -10,7 +10,7 @@ import { SubscriptionBanner } from "./SubscriptionBanner";
 
 interface SeoAgentConsoleProps {
   projectId: string;
-  hypothesisId?: string;
+  hypothesisId: string; // Required, not optional
 }
 
 const VALID_TABS = ["plan", "content", "semantics", "analytics", "settings"] as const;
@@ -84,27 +84,26 @@ export const SeoAgentConsole = ({ projectId, hypothesisId }: SeoAgentConsoleProp
 
         <div className="flex-1 overflow-auto">
           <TabsContent value="plan" className="mt-0">
-            <SeoPlanPanel projectId={projectId} hypothesisId={hypothesisId} />
+            {activeTab === "plan" && <SeoPlanPanel projectId={projectId} hypothesisId={hypothesisId} />}
           </TabsContent>
 
           <TabsContent value="content" className="mt-0">
-            <SeoContentPanel projectId={projectId} hypothesisId={hypothesisId} />
+            {activeTab === "content" && <SeoContentPanel projectId={projectId} hypothesisId={hypothesisId} />}
           </TabsContent>
 
           <TabsContent value="semantics" className="mt-0">
-            <SeoSemanticsPanel projectId={projectId} hypothesisId={hypothesisId} />
+            {activeTab === "semantics" && <SeoSemanticsPanel projectId={projectId} hypothesisId={hypothesisId} />}
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-0">
-            <SeoAnalyticsPanel projectId={projectId} hypothesisId={hypothesisId} />
+            {activeTab === "analytics" && <SeoAnalyticsPanel projectId={projectId} hypothesisId={hypothesisId} />}
           </TabsContent>
 
           <TabsContent value="settings" className="mt-0">
-            <SeoPostingSettingsPanel projectId={projectId} hypothesisId={hypothesisId} />
+            {activeTab === "settings" && <SeoPostingSettingsPanel projectId={projectId} hypothesisId={hypothesisId} />}
           </TabsContent>
         </div>
       </Tabs>
     </div>
   );
 };
-

@@ -11,6 +11,12 @@ export const GET_SEO_AGENT_POSTING_SETTINGS = gql`
       preferredDays
       autoPublishEnabled
       language
+      wordpressBaseUrl
+      wordpressUsername
+      wordpressConnected
+      wordpressDefaultCategoryId
+      wordpressDefaultTagIds
+      wordpressPostType
       updatedAt
     }
   }
@@ -24,6 +30,12 @@ export interface PostingSettingsDto {
   preferredDays: string[];
   autoPublishEnabled: boolean;
   language?: string | null;
+  wordpressBaseUrl?: string | null;
+  wordpressUsername?: string | null;
+  wordpressConnected: boolean;
+  wordpressDefaultCategoryId?: number | null;
+  wordpressDefaultTagIds?: number[];
+  wordpressPostType?: string | null;
   updatedAt: string;
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlySchedule } from "./plan/MonthlySchedule";
 import { BacklogPanel } from "./plan/BacklogPanel";
@@ -8,7 +8,7 @@ import { getSeoAgentPostingSettingsQuery, PostingSettingsDto } from "@/api/getSe
 
 interface SeoPlanPanelProps {
   projectId: string;
-  hypothesisId?: string;
+  hypothesisId: string; // Required, not optional
 }
 
 export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => {
@@ -22,15 +22,54 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
   // Ref to MonthlySchedule to trigger schedule dialog
   const scheduleRef = useRef<{ openScheduleDialog: (item: BacklogIdeaDto) => void } | null>(null);
 
-  // Load backlog from API
-  const loadBacklog = async () => {
-    if (!projectId) return;
+  // Load backlog from API - обернуто в useCallback
+  const loadBacklog = useCallback(async () => {
+    if (!projectId || !hypothesisId) return;
     
     setBacklogLoading(true);
     setBacklogError(null);
     try {
       const { data } = await getSeoAgentBacklogQuery(projectId, hypothesisId);
-      setBacklogItems(data?.seoAgentBacklog || []);
+      const items = data?.seoAgentBacklog || [];
+      
+      // Log queue status for debugging
+      const scheduledItems = items.filter(item => item.status === BacklogStatus.SCHEDULED);
+      const inProgressItems = items.filter(item => item.status === BacklogStatus.IN_PROGRESS);
+      const pendingItems = items.filter(item => item.status === BacklogStatus.PENDING);
+      
+      console.log("📊 [STATUS_CHECK] ===== ПРОВЕРКА СТАТУСОВ =====");
+      console.log("📊 [STATUS_CHECK] Общая статистика:", {
+        total: items.length,
+        scheduled: scheduledItems.length,
+        inProgress: inProgressItems.length,
+        pending: pendingItems.length
+      });
+      
+      if (scheduledItems.length > 0) {
+        console.log("📊 [STATUS_CHECK] 📅 Запланированные материалы (SCHEDULED):", scheduledItems.map(item => ({
+          id: item.id,
+          title: item.title,
+          date: item.scheduledDate,
+          status: item.status
+        })));
+      }
+      
+      if (inProgressItems.length > 0) {
+        console.log("📊 [STATUS_CHECK] 🚀 Опубликованные материалы (IN_PROGRESS):", inProgressItems.map(item => ({
+          id: item.id,
+          title: item.title,
+          date: item.scheduledDate,
+          status: item.status
+        })));
+      }
+      
+      if (pendingItems.length > 0) {
+        console.log("📊 [STATUS_CHECK] ⏳ В ожидании (PENDING):", pendingItems.length, "материалов");
+      }
+      
+      console.log("📊 [STATUS_CHECK] ===== ПРОВЕРКА ЗАВЕРШЕНА =====");
+      
+      setBacklogItems(items);
     } catch (error: unknown) {
       console.error("Error loading backlog:", error);
       let errorMessage = "Failed to load backlog";
@@ -41,10 +80,10 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
     } finally {
       setBacklogLoading(false);
     }
-  };
+  }, [projectId, hypothesisId]);
 
-  // Load settings from API
-  const loadSettings = async () => {
+  // Load settings from API - обернуто в useCallback
+  const loadSettings = useCallback(async () => {
     if (!projectId) return;
     
     setSettingsLoading(true);
@@ -62,14 +101,72 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
     } finally {
       setSettingsLoading(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
-    if (projectId) {
+    if (projectId && hypothesisId) {
       loadBacklog();
       loadSettings();
     }
-  }, [projectId, hypothesisId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, hypothesisId]); // loadBacklog and loadSettings are stable (useCallback with deps), no need to include
+
+  // Calculate counts before conditional return (needed for useEffect)
+  const scheduledCount = backlogItems.filter(
+    item => item.status === BacklogStatus.SCHEDULED
+  ).length;
+  const inProgressCount = backlogItems.filter(
+    item => item.status === BacklogStatus.IN_PROGRESS
+  ).length;
+  const completedCount = backlogItems.filter(
+    item => item.status === BacklogStatus.COMPLETED
+  ).length;
+  const pendingCount = backlogItems.filter(
+    item => item.status === BacklogStatus.PENDING
+  ).length;
+  
+  // Items in sprint = scheduled + in_progress + completed (not shown in backlog)
+  const inSprintCount = scheduledCount + inProgressCount + completedCount;
+  
+  // Log current sprint status - MUST be before conditional return to maintain hook order
+  useEffect(() => {
+    console.log("📊 [SPRINT_STATUS] ===== ТЕКУЩЕЕ СОСТОЯНИЕ СПРИНТА =====");
+    console.log("📊 [SPRINT_STATUS] Всего элементов в беклоге:", backlogItems.length);
+    console.log("📊 [SPRINT_STATUS] В спринте:", inSprintCount, {
+      scheduled: scheduledCount,
+      inProgress: inProgressCount,
+      completed: completedCount
+    });
+    console.log("📊 [SPRINT_STATUS] В беклоге (PENDING):", pendingCount);
+    
+    if (scheduledCount > 0) {
+      const scheduledItems = backlogItems.filter(item => item.status === BacklogStatus.SCHEDULED);
+      console.log("📊 [SPRINT_STATUS] 📅 Запланированные материалы:", scheduledItems.map(i => ({
+        id: i.id,
+        title: i.title,
+        scheduledDate: i.scheduledDate
+      })));
+    }
+    
+    if (inProgressCount > 0) {
+      const inProgressItems = backlogItems.filter(item => item.status === BacklogStatus.IN_PROGRESS);
+      console.log("📊 [SPRINT_STATUS] 🚀 Опубликованные материалы:", inProgressItems.map(i => ({
+        id: i.id,
+        title: i.title,
+        scheduledDate: i.scheduledDate
+      })));
+    }
+    
+    if (completedCount > 0) {
+      const completedItems = backlogItems.filter(item => item.status === BacklogStatus.COMPLETED);
+      console.log("📊 [SPRINT_STATUS] ✅ Завершенные материалы:", completedItems.map(i => ({
+        id: i.id,
+        title: i.title
+      })));
+    }
+    
+    console.log("📊 [SPRINT_STATUS] ===== КОНЕЦ СТАТУСА =====");
+  }, [backlogItems, inSprintCount, scheduledCount, inProgressCount, completedCount, pendingCount]);
 
   if (backlogLoading || settingsLoading) {
     return (
@@ -82,13 +179,6 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
   const weeklyPublishCount = settings?.weeklyPublishCount || 2;
   const preferredDays = settings?.preferredDays || ["Tuesday", "Thursday"];
 
-  const scheduledCount = backlogItems.filter(
-    item => item.status === BacklogStatus.SCHEDULED
-  ).length;
-  const pendingCount = backlogItems.filter(
-    item => item.status === BacklogStatus.PENDING
-  ).length;
-
   return (
     <div className="space-y-6">
       <div>
@@ -98,11 +188,14 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
         </p>
         <div className="flex gap-4 mt-3 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">Scheduled:</span>
-            <span className="font-semibold text-blue-600">{scheduledCount}</span>
+            <span className="text-gray-500">In Sprint:</span>
+            <span className="font-semibold text-blue-600">{inSprintCount}</span>
+            <span className="text-xs text-gray-400">
+              ({scheduledCount} scheduled, {inProgressCount} published, {completedCount} completed)
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">Pending:</span>
+            <span className="text-gray-500">In Backlog:</span>
             <span className="font-semibold text-gray-600">{pendingCount}</span>
           </div>
         </div>
@@ -139,6 +232,7 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
             weeklyPublishCount={weeklyPublishCount}
             preferredDays={preferredDays}
             backlogItems={backlogItems}
+            onBacklogUpdated={loadBacklog}
           />
         </CardContent>
       </Card>
@@ -156,12 +250,24 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
             hypothesisId={hypothesisId}
             backlogItems={backlogItems}
             onScheduleItem={(item) => {
+              console.log("[SeoPlanPanel] onScheduleItem called", {
+                itemId: item.id,
+                itemTitle: item.title,
+                hasScheduleRef: !!scheduleRef.current
+              });
               // Trigger schedule dialog in MonthlySchedule
               if (scheduleRef.current) {
+                console.log("[SeoPlanPanel] Calling scheduleRef.current.openScheduleDialog");
                 scheduleRef.current.openScheduleDialog(item);
+              } else {
+                console.error("[SeoPlanPanel] scheduleRef.current is null! Dialog cannot be opened.");
               }
             }}
-            onBacklogUpdated={loadBacklog}
+            onBacklogUpdated={async () => {
+              console.log("🔄 [BACKLOG_UPDATE] Обновление беклога после изменений...");
+              await loadBacklog();
+              console.log("🔄 [BACKLOG_UPDATE] ✅ Беклог обновлен");
+            }}
           />
         </CardContent>
       </Card>

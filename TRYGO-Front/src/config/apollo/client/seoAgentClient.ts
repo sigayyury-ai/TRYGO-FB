@@ -1,6 +1,8 @@
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import Cookies from 'js-cookie'
+import { getActiveIds } from '@/utils/activeState'
+import { useUserStore } from '@/store/useUserStore'
 
 // SEO Agent uses a separate backend service
 const seoAgentUrl = import.meta.env.VITE_SEO_AGENT_URL || 'http://localhost:4100/graphql'
@@ -9,53 +11,73 @@ const httpLink = new HttpLink({
   uri: seoAgentUrl,
   fetchOptions: {
     cache: 'no-store'
+  },
+  fetch: async (uri, options) => {
+    try {
+      const response = await fetch(uri, options);
+      
+      if (!response.ok && import.meta.env.DEV) {
+        console.error('[seoAgentClient] Response not OK:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: uri
+        });
+      }
+      
+      return response;
+    } catch (error: any) {
+      // Always log errors, but with less detail in production
+      const isDev = import.meta.env.DEV;
+      
+      if (isDev) {
+        console.error('[seoAgentClient] ❌ Fetch error:', error);
+        console.error('[seoAgentClient] Error details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+          uri,
+          method: options?.method,
+          cause: error.cause
+        });
+        
+        // Provide more helpful error message
+        if (error.message === 'Failed to fetch') {
+          console.error('[seoAgentClient] Network error - possible causes:');
+          console.error('  1. Backend server not running on', seoAgentUrl);
+          console.error('  2. CORS issue - check backend CORS configuration');
+          console.error('  3. Network connectivity issue');
+          console.error('  4. Firewall blocking the request');
+        }
+      } else {
+        // Minimal error logging in production
+        console.error('[seoAgentClient] Request failed:', error.message);
+      }
+      
+      throw error;
+    }
   }
 })
 
 const authLink = setContext((_, { headers }) => {
   const token = Cookies.get('token')
   
-  // Используем Zustand stores для получения актуальных projectId и hypothesisId
-  // Импортируем синхронно, так как это setContext
-  let projectId = ''
-  let hypothesisId = ''
+  // Используем утилиту для получения активных ID из cookies
+  const { projectId, hypothesisId } = getActiveIds()
   
-  try {
-    // Используем динамический импорт для избежания циклических зависимостей
-    const { useProjectStore } = require('@/store/useProjectStore')
-    const { useHypothesisStore } = require('@/store/useHypothesisStore')
-    
-    const activeProject = useProjectStore.getState().activeProject
-    const activeHypothesis = useHypothesisStore.getState().activeHypothesis
-    
-    projectId = activeProject?.id || ''
-    hypothesisId = activeHypothesis?.id || ''
-    
-    // Логирование для отладки (всегда, чтобы видеть что отправляется)
-    if (projectId || hypothesisId) {
-      console.log('[seoAgentClient] 📤 Sending headers:', {
-        projectId,
-        projectTitle: activeProject?.title || 'N/A',
-        hypothesisId,
-        hypothesisTitle: activeHypothesis?.title || 'N/A'
-      });
-    } else {
-      console.warn('[seoAgentClient] ⚠️ No projectId or hypothesisId in headers!');
-      console.warn('[seoAgentClient] activeProject:', activeProject);
-      console.warn('[seoAgentClient] activeHypothesis:', activeHypothesis);
-    }
-  } catch (err) {
-    // Fallback на localStorage, если stores недоступны
-    projectId = localStorage.getItem('activeProjectId') || ''
-    hypothesisId = localStorage.getItem('activeHypothesisId') || ''
-  }
+  // Получаем userId из userStore (Zustand store)
+  const userData = useUserStore.getState().userData
+  const userId = userData?.id || Cookies.get('userId') || localStorage.getItem('userId')
+  
+  // Removed logging - only log critical errors to prevent memory issues
+  // Missing projectId/hypothesisId will be handled by backend validation
 
   return {
     headers: {
       ...headers,
       authorization: token ? `Bearer ${token}` : '',
       'x-project-id': projectId || '',
-      'x-hypothesis-id': hypothesisId || ''
+      'x-hypothesis-id': hypothesisId || '',
+      ...(userId && { 'x-user-id': userId })
     }
   }
 })

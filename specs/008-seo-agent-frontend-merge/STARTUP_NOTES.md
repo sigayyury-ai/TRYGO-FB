@@ -91,3 +91,8 @@ npm run dev
 - Браузер DevTools → Console
 - Network tab для GraphQL запросов
 
+
+
+
+
+

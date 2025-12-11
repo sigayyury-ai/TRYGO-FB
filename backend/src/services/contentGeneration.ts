@@ -32,6 +32,25 @@ export interface ImageGenerationRequest {
   title: string;
   description?: string;
   content?: string;
+  // Audience context for better image generation
+  projectContext?: {
+    title?: string;
+    leanCanvas?: {
+      problems?: string[];
+      solutions?: string[];
+      uniqueValueProposition?: string;
+    };
+  };
+  hypothesisContext?: {
+    title?: string;
+    description?: string;
+  };
+  icpContext?: {
+    persona?: string;
+    pains?: string[];
+    goals?: string[];
+    triggers?: string[];
+  };
 }
 
 export interface ImageGenerationResponse {
@@ -153,22 +172,50 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
         console.log("[generateContent] OpenAI API key found, creating client...");
         const client = new OpenAI({ apiKey });
 
-      const response = await client.chat.completions.create({
-        model: env.openAiModel || "gpt-5.1",
-        temperature: 0.7,
-        max_completion_tokens: 8000, // Increased for 4000-5000 word articles (gpt-5.1 uses max_completion_tokens instead of max_tokens)
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: "You are a senior content writer. Always respond with valid JSON matching the requested format."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
-      });
+      const model = env.openAiModel || "gpt-4o";
+      let response;
+      try {
+        response = await client.chat.completions.create({
+          model: model,
+          temperature: 0.7,
+          max_tokens: 8000,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: "You are a senior content writer. Always respond with valid JSON matching the requested format."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ]
+        });
+      } catch (apiError: any) {
+        console.error("[generateContent] OpenAI API error:", apiError.message);
+        // Fallback to gpt-4o if model error
+        if (model !== "gpt-4o") {
+          console.log("[generateContent] Trying fallback model gpt-4o...");
+          response = await client.chat.completions.create({
+            model: "gpt-4o",
+            temperature: 0.7,
+            max_tokens: 8000,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content: "You are a senior content writer. Always respond with valid JSON matching the requested format."
+              },
+              {
+                role: "user",
+                content: prompt
+              }
+            ]
+          });
+        } else {
+          throw apiError;
+        }
+      }
 
       const jsonContent = response.choices?.[0]?.message?.content || "";
       if (!jsonContent) {
@@ -200,21 +247,48 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
     
     const articlePrompt = buildArticlePrompt(request);
     
-    const response = await client.chat.completions.create({
-      model: env.openAiModel || "gpt-5.1",
-      temperature: 0.7,
-      max_completion_tokens: 6000, // Increased for longer articles (1500-2500 words) (gpt-5.1 uses max_completion_tokens instead of max_tokens)
-      messages: [
-        {
-          role: "system",
-          content: "You are a senior content writer and SEO specialist. You create comprehensive, well-researched blog articles that provide genuine value to readers while being optimized for search engines. Always respond with clean, well-structured Markdown content without any extra formatting, quotes, or meta-commentary."
-        },
-        {
-          role: "user",
-          content: articlePrompt
-        }
-      ]
-    });
+    const model = env.openAiModel || "gpt-4o";
+    let response;
+    try {
+      response = await client.chat.completions.create({
+        model: model,
+        temperature: 0.7,
+        max_tokens: 6000,
+        messages: [
+          {
+            role: "system",
+            content: "You are a senior content writer and SEO specialist. You create comprehensive, well-researched blog articles that provide genuine value to readers while being optimized for search engines. Always respond with clean, well-structured Markdown content without any extra formatting, quotes, or meta-commentary."
+          },
+          {
+            role: "user",
+            content: articlePrompt
+          }
+        ]
+      });
+    } catch (apiError: any) {
+      console.error("[generateContent] OpenAI API error (fallback):", apiError.message);
+      // Fallback to gpt-4o if model error
+      if (model !== "gpt-4o") {
+        console.log("[generateContent] Trying fallback model gpt-4o...");
+        response = await client.chat.completions.create({
+          model: "gpt-4o",
+          temperature: 0.7,
+          max_tokens: 6000,
+          messages: [
+            {
+              role: "system",
+              content: "You are a senior content writer and SEO specialist. You create comprehensive, well-researched blog articles that provide genuine value to readers while being optimized for search engines. Always respond with clean, well-structured Markdown content without any extra formatting, quotes, or meta-commentary."
+            },
+            {
+              role: "user",
+              content: articlePrompt
+            }
+          ]
+        });
+      } else {
+        throw apiError;
+      }
+    }
     
     const generatedContent = response.choices?.[0]?.message?.content || "";
 
@@ -465,215 +539,197 @@ function convertJsonToMarkdown(parsed: any, fallbackTitle: string): string {
 export { convertJsonToMarkdown };
 
 /**
- * Generate image for content using Google Gemini (primary), images service, or OpenAI DALL-E
+ * Try Imagen 3.0 as fallback
+ */
+
+/**
+ * Generate image for content using Google Gemini only
  */
 export const generateImage = async (
   request: ImageGenerationRequest
 ): Promise<ImageGenerationResponse> => {
   try {
-    // Primary: Try Google Gemini first
+    // Use Google Gemini only
     const hasGeminiKey = !!(env.geminiApiKey || env.googleApiKey);
-    console.log("[generateImage] 🔍 Checking providers:", {
+    const apiKey = env.geminiApiKey || env.googleApiKey;
+    
+    console.log("[generateImage] 🔍 Checking Google Gemini API key:", {
       hasGeminiKey,
-      hasImagesService: !!env.imagesServiceUrl,
-      hasOpenAIKey: !!env.openAiApiKey
+      hasGeminiApiKey: !!env.geminiApiKey,
+      hasGoogleApiKey: !!env.googleApiKey,
+      apiKeyLength: apiKey?.length || 0,
+      apiKeyPrefix: apiKey ? `${apiKey.substring(0, 10)}...` : "none"
     });
 
-    if (hasGeminiKey) {
-      try {
-        const apiKey = env.geminiApiKey || env.googleApiKey;
-        console.log("[generateImage] ✅ Using Google Gemini as PRIMARY provider");
-        
-        // Use improved prompt from old repository
-        const { buildImagePrompt } = await import("./contentGeneration/buildImagePrompt.js");
-        const imagePrompt = buildImagePrompt({
-          title: request.title,
-          description: request.description || null,
-          category: null
-        }, "hero");
-        
-        console.log("[generateImage] 📝 Prompt length:", imagePrompt.prompt.length, "chars");
-        
-        // Try Google Gemini Imagen API
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              instances: [{
-                prompt: imagePrompt.prompt
-              }],
-              parameters: {
-                sampleCount: 1,
-                negativePrompt: imagePrompt.negativePrompt,
-                aspectRatio: imagePrompt.aspectRatio
-              }
-            }),
-            signal: AbortSignal.timeout(30000)
-          }
-        );
-
-        console.log("[generateImage] 🌐 Google Gemini response status:", response.status, response.statusText);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("[generateImage] 📦 Google Gemini response data keys:", Object.keys(data));
-          
-          if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
-            console.log("[generateImage] ✅✅✅ Image generated via Google Gemini (PRIMARY)");
-            // Convert base64 to data URL
-            return {
-              imageUrl: `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`
-            };
-          } else {
-            console.warn("[generateImage] ⚠️ Google Gemini response OK but no image data:", JSON.stringify(data).substring(0, 200));
-          }
-        } else {
-          const errorText = await response.text();
-          console.warn("[generateImage] ❌ Google Gemini API error:", response.status, errorText.substring(0, 200));
-        }
-      } catch (geminiError: any) {
-        if (geminiError.name === 'AbortError') {
-          console.warn("[generateImage] ⏱️ Google Gemini request timed out");
-        } else {
-          console.warn("[generateImage] ❌ Google Gemini image generation failed:", geminiError?.message || geminiError);
-        }
-      }
-    } else {
-      console.warn("[generateImage] ⚠️ Google Gemini API key not found, skipping");
+    if (!hasGeminiKey || !apiKey) {
+      const errorMessage = "GEMINI_API_KEY or GOOGLE_API_KEY not found in environment variables";
+      console.error("[generateImage] ❌", errorMessage);
+      throw new Error(errorMessage);
     }
 
-    // Fallback: Try images service if available
-    if (env.imagesServiceUrl) {
-      try {
-        // Use improved prompt from old repository
-        const { buildImagePrompt } = await import("./contentGeneration/buildImagePrompt.js");
-        const imagePrompt = buildImagePrompt({
-          title: request.title,
-          description: request.description || null,
-          category: null
-        }, "hero");
+    try {
+      console.log("[generateImage] ✅ Using Google Gemini for image generation");
+      
+      // Step 1: Generate detailed scene description using OpenAI
+      console.log("[generateImage] 📝 Step 1: Generating detailed scene description...");
+      const { generateSceneDescription } = await import("./contentGeneration/generateSceneDescription.js");
+      
+      const sceneDescription = await generateSceneDescription({
+        title: request.title,
+        description: request.description,
+        projectContext: request.projectContext,
+        hypothesisContext: request.hypothesisContext,
+        icpContext: request.icpContext
+      });
+      
+      console.log("[generateImage] ✅ Scene description generated:", sceneDescription.substring(0, 150) + "...");
+      
+      // Step 2: Build image prompt from scene description
+      console.log("[generateImage] 🎨 Step 2: Building image prompt from scene description...");
+      const { buildImagePrompt } = await import("./contentGeneration/buildImagePrompt.js");
+      const imagePrompt = buildImagePrompt(sceneDescription, "hero");
+      
+      console.log("[generateImage] 📝 Prompt length:", imagePrompt.prompt.length, "chars");
+      console.log("[generateImage] 📝 Prompt preview:", imagePrompt.prompt.substring(0, 200) + "...");
+      
+      // Use correct Imagen API endpoint format
+      // Imagen 3.0 was shut down on Nov 10, 2025, using Imagen 4.0
+      // Use :predict endpoint with instances/parameters format
+      const model = "imagen-4.0-generate-001";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+      
+      // Build request body in correct format: instances + parameters
+      // Note: negativePrompt is no longer supported by Google Gemini Imagen API
+      const requestBody: any = {
+        instances: [{
+          prompt: imagePrompt.prompt
+        }],
+        parameters: {
+          sampleCount: 1
+        }
+      };
+      
+      // Add aspect ratio to parameters if available (may not be supported, but try)
+      if (imagePrompt.aspectRatio) {
+        // Try adding aspect ratio - if not supported, API will ignore it
+        requestBody.parameters.aspectRatio = imagePrompt.aspectRatio;
+      }
+      
+      // Note: negativePrompt is no longer supported - do not include it
+      
+      console.log("[generateImage] 🌐 Making request to Google Gemini API...");
+      console.log("[generateImage] 🌐 URL:", apiUrl.replace(apiKey, "***"));
+      console.log("[generateImage] 🌐 Request body keys:", Object.keys(requestBody));
+      
+      // Try Google Gemini Imagen API
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(30000)
+      });
+
+      console.log("[generateImage] 🌐 Google Gemini response status:", response.status, response.statusText);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[generateImage] 📦 Google Gemini response data keys:", Object.keys(data));
+        console.log("[generateImage] 📦 Response structure:", JSON.stringify(data).substring(0, 500));
         
-        const response = await fetch(`${env.imagesServiceUrl}/generate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            prompt: imagePrompt.prompt,
-            title: request.title,
-            negativePrompt: imagePrompt.negativePrompt,
-            style: imagePrompt.style,
-            aspectRatio: imagePrompt.aspectRatio
-          }),
-          signal: AbortSignal.timeout(30000) // 30 second timeout
+        // Check for different response formats (Imagen 4.0 format)
+        let imageBase64: string | null = null;
+        
+        // Format 1: Imagen 4.0 format - candidates[0].content.parts[0].inlineData.data
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+          const parts = data.candidates[0].content.parts;
+          if (parts && parts[0] && parts[0].inlineData && parts[0].inlineData.data) {
+            imageBase64 = parts[0].inlineData.data;
+          }
+        }
+        // Format 2: Direct b64_json in response
+        else if (data.b64_json) {
+          imageBase64 = data.b64_json;
+        }
+        // Format 3: In data array
+        else if (data.data && data.data[0] && data.data[0].b64_json) {
+          imageBase64 = data.data[0].b64_json;
+        }
+        // Format 4: Direct imageBase64
+        else if (data.imageBase64) {
+          imageBase64 = data.imageBase64;
+        }
+        // Format 5: In generatedImages array
+        else if (data.generatedImages && data.generatedImages[0] && data.generatedImages[0].imageBase64) {
+          imageBase64 = data.generatedImages[0].imageBase64;
+        }
+        // Format 6: In predictions array (old format)
+        else if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
+          imageBase64 = data.predictions[0].bytesBase64Encoded;
+        }
+        
+        if (imageBase64) {
+          console.log("[generateImage] ✅✅✅ Image generated via Google Gemini");
+          const imageDataLength = imageBase64.length;
+          console.log("[generateImage] 📊 Image data length:", imageDataLength, "chars");
+          // Convert base64 to data URL
+          return {
+            imageUrl: `data:image/png;base64,${imageBase64}`
+          };
+        } else {
+          const errorDetails = JSON.stringify(data).substring(0, 500);
+          console.warn("[generateImage] ⚠️ Google Gemini response OK but no image data:", errorDetails);
+          throw new Error(`Google Gemini API returned success but no image data. Response: ${errorDetails}`);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error("[generateImage] ❌ Google Gemini API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 500)
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.imageUrl || data.url) {
-            console.log("[generateImage] Image generated via images service:", data.imageUrl || data.url);
-            return {
-              imageUrl: data.imageUrl || data.url
-            };
+        
+        // Try to parse error JSON
+        let errorMessage = `Google Gemini API error: ${response.status} ${response.statusText}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.error?.message) {
+            errorMessage = `Google Gemini API error: ${errorJson.error.message}`;
           }
-        } else {
-          console.warn(`[generateImage] Images service returned ${response.status}: ${response.statusText}`);
+        } catch {
+          // Not JSON, use text as is
+          if (errorText) {
+            errorMessage = `Google Gemini API error: ${errorText.substring(0, 200)}`;
+          }
         }
-      } catch (serviceError: any) {
-        if (serviceError.name === 'AbortError') {
-          console.warn("[generateImage] Images service request timed out");
-        } else {
-          console.warn("[generateImage] Images service not available:", serviceError?.message || serviceError);
-        }
+        
+        throw new Error(errorMessage);
       }
-    } else {
-      console.warn("[generateImage] IMAGES_SERVICE_URL not configured");
-    }
-
-    // Fallback: Try OpenAI DALL-E if available
-    if (env.openAiApiKey) {
-      try {
-        console.log("[generateImage] 🔄 Falling back to OpenAI DALL-E (should not happen if Gemini works)");
-        const OpenAI = (await import("openai")).default;
-        const client = new OpenAI({ apiKey: env.openAiApiKey });
-        
-        // Use improved prompt from old repository
-        const { buildImagePrompt } = await import("./contentGeneration/buildImagePrompt.js");
-        const imagePrompt = buildImagePrompt({
-          title: request.title,
-          description: request.description || null,
-          category: null
-        }, "hero");
-        
-        console.log("[generateImage] ⚠️ Using OpenAI DALL-E as FALLBACK (Gemini should be used instead!)");
-        
-        const response = await client.images.generate({
-          model: "dall-e-3",
-          prompt: imagePrompt.prompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
+    } catch (geminiError: any) {
+      if (geminiError.name === 'AbortError') {
+        console.error("[generateImage] ⏱️ Google Gemini request timed out");
+        throw new Error("Google Gemini API request timed out after 30 seconds");
+      } else if (geminiError.message) {
+        // Re-throw if it's already our formatted error
+        throw geminiError;
+      } else {
+        console.error("[generateImage] ❌ Google Gemini image generation failed:", {
+          message: geminiError?.message,
+          stack: geminiError?.stack,
+          error: geminiError
         });
-
-        if (response.data && response.data[0]?.url) {
-          console.log("[generateImage] Image generated via OpenAI DALL-E");
-          const dallEUrl = response.data[0].url;
-          
-          // Download and save image to avoid expired Azure Blob Storage URLs
-          try {
-            console.log("[generateImage] Downloading DALL-E image from temporary URL...");
-            const imageResponse = await fetch(dallEUrl, {
-              signal: AbortSignal.timeout(30000) // 30 second timeout
-            });
-            
-            if (imageResponse.ok) {
-              const imageBuffer = await imageResponse.arrayBuffer();
-              const imageBase64 = Buffer.from(imageBuffer).toString('base64');
-              
-              // Convert to data URL for permanent storage
-              const contentType = imageResponse.headers.get('content-type') || 'image/png';
-              const dataUrl = `data:${contentType};base64,${imageBase64}`;
-              
-              console.log("[generateImage] ✅ DALL-E image downloaded and converted to data URL");
-              return {
-                imageUrl: dataUrl
-              };
-            } else {
-              console.warn("[generateImage] Failed to download DALL-E image:", imageResponse.status, imageResponse.statusText);
-              // Return original URL as fallback (might expire, but better than nothing)
-              return {
-                imageUrl: dallEUrl
-              };
-            }
-          } catch (downloadError: any) {
-            console.warn("[generateImage] Error downloading DALL-E image:", downloadError?.message || downloadError);
-            // Return original URL as fallback (might expire, but better than nothing)
-            return {
-              imageUrl: dallEUrl
-            };
-          }
-        }
-      } catch (openaiError: any) {
-        console.warn("[generateImage] OpenAI DALL-E image generation failed:", openaiError?.message || openaiError);
+        throw new Error(`Google Gemini image generation failed: ${geminiError?.message || String(geminiError)}`);
       }
     }
-
-    // Return placeholder if all methods fail
-    console.warn("All image generation methods failed, using placeholder");
-    // Use data URI instead of external placeholder service
-    return {
-      imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'%3E%3Crect fill='%23e5e7eb' width='1200' height='630'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='24' fill='%236b7280'%3EImage will be generated here%3C/text%3E%3C/svg%3E"
-    };
-  } catch (error) {
-    console.error("Error generating image:", error);
-    // Use data URI instead of external placeholder service
-    return {
-      imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'%3E%3Crect fill='%23e5e7eb' width='1200' height='630'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='24' fill='%236b7280'%3EImage will be generated here%3C/text%3E%3C/svg%3E"
-    };
+  } catch (error: any) {
+    console.error("[generateImage] ❌ Error generating image:", {
+      message: error.message,
+      stack: error.stack,
+      error
+    });
+    // Re-throw the error so it can be handled by the caller
+    throw error;
   }
 };
 

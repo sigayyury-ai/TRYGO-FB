@@ -1,6 +1,6 @@
 import { Schema, model, type Document, type Model } from "mongoose";
 
-export type BacklogIdeaStatus = "backlog" | "scheduled" | "archived";
+export type BacklogIdeaStatus = "backlog" | "scheduled" | "archived" | "pending" | "in_progress" | "completed" | "published";
 
 export interface SeoBacklogIdeaAttrs {
   projectId: string;
@@ -34,8 +34,8 @@ const SeoBacklogIdeaSchema = new Schema<SeoBacklogIdeaDoc>(
     },
     status: {
       type: String,
-      enum: ["backlog", "scheduled", "archived", "pending", "in_progress", "completed"],
-      default: "backlog",
+      enum: ["backlog", "scheduled", "archived", "pending", "in_progress", "completed", "published"],
+      default: "pending",
       index: true
     },
     scheduledDate: { type: Date },

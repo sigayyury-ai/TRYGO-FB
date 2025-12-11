@@ -26,19 +26,71 @@ const extractLanguage = (
   project: Record<string, any> | null,
   icp: Record<string, any> | null
 ): string | null => {
+  // CRITICAL: Only use language from project settings (global setting)
+  // Priority order: project.settings.language > project.language > project.info.language
+  // Ignore ICP language settings - use only project-level global setting
+  
   const candidates = [
-    icp?.language,
-    icp?.locale,
-    icp?.profileLanguage,
-    project?.language,
-    project?.info?.language,
-    project?.settings?.language
+    project?.settings?.language,  // Primary: global project settings
+    project?.language,             // Secondary: direct project language
+    project?.info?.language        // Tertiary: project info language
   ];
+  
+  // Log candidates for debugging
+  console.log("[seoContext] Language extraction (GLOBAL SETTINGS ONLY):", {
+    projectSettingsLanguage: project?.settings?.language,
+    projectLanguage: project?.language,
+    projectInfoLanguage: project?.info?.language,
+    ignoredIcpLanguage: icp?.language,
+    ignoredIcpLocale: icp?.locale
+  });
+  
   const language = candidates
-    .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
+    .map((candidate) => {
+      if (typeof candidate === "string") {
+        const trimmed = candidate.trim();
+        if (trimmed.length > 0) {
+          // Normalize language values: "en", "EN", "english", "English" -> "English"
+          const normalized = normalizeLanguage(trimmed);
+          return normalized;
+        }
+      }
+      return "";
+    })
     .find((candidate) => candidate.length > 0);
+  
+  if (language) {
+    console.log("[seoContext] Extracted language from global settings:", language);
+  } else {
+    console.warn("[seoContext] No language found in project global settings");
+  }
+  
   return language ?? null;
 };
+
+/**
+ * Normalize language values to standard format
+ * Maps common variations to standard names
+ */
+function normalizeLanguage(lang: string): string {
+  const lower = lang.toLowerCase().trim();
+  
+  // English variations
+  if (lower === "en" || lower === "english" || lower === "eng" || lower === "английский") {
+    return "English";
+  }
+  
+  // Russian variations
+  if (lower === "ru" || lower === "russian" || lower === "rus" || lower === "русский" || lower === "ru-ru") {
+    return "Russian";
+  }
+  
+  // Return capitalized version if not recognized (preserve original if already capitalized)
+  if (lang === lang.toUpperCase() || lang === lang.toLowerCase()) {
+    return lang.charAt(0).toUpperCase() + lang.slice(1).toLowerCase();
+  }
+  return lang; // Preserve original capitalization if mixed case
+}
 
 export const loadSeoContext = async (
   projectId: string,

@@ -8,6 +8,13 @@ export interface SeoSprintSettingsDocument extends mongoose.Document {
   timezone?: string | null;
   language?: string | null;
   updatedBy?: string | null;
+  // WordPress connection settings
+  wordpressBaseUrl?: string | null;
+  wordpressUsername?: string | null;
+  wordpressAppPassword?: string | null; // Encrypted in production
+  wordpressPostType?: string | null; // Post type (default: "post", can be "blog" or custom)
+  wordpressDefaultCategoryId?: number | null;
+  wordpressDefaultTagIds?: number[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,7 +35,14 @@ const SeoSprintSettingsSchema = new Schema<SeoSprintSettingsDocument>(
     },
     timezone: { type: String, default: "UTC" },
     language: { type: String, default: null },
-    updatedBy: { type: String, default: null }
+    updatedBy: { type: String, default: null },
+    // WordPress connection settings
+    wordpressBaseUrl: { type: String, default: null },
+    wordpressUsername: { type: String, default: null },
+    wordpressAppPassword: { type: String, default: null },
+    wordpressPostType: { type: String, default: null }, // Post type (default: "post", can be "blog" or custom)
+    wordpressDefaultCategoryId: { type: Number, default: null },
+    wordpressDefaultTagIds: { type: [Number], default: [] }
   },
   {
     timestamps: true

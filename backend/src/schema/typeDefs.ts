@@ -27,12 +27,7 @@ export const typeDefs = gql`
     COMPLETED
     ARCHIVED
     BACKLOG
-  }
-
-  enum BacklogContentType {
-    ARTICLE
-    COMMERCIAL_PAGE
-    LANDING_PAGE
+    PUBLISHED
   }
 
   enum ContentCategory {
@@ -45,29 +40,22 @@ export const typeDefs = gql`
     INFORMATIONAL
   }
 
-  enum ContentIdeaStatus {
-    NEW
-    ADDED_TO_BACKLOG
-    DISMISSED
-  }
-
-  enum ContentIdeaType {
+  enum ContentFormat {
     ARTICLE
+    BLOG
     COMMERCIAL_PAGE
     LANDING_PAGE
   }
 
   enum ContentStatus {
     DRAFT
-    REVIEW
     READY
     PUBLISHED
   }
 
-  enum ContentFormat {
-    BLOG
-    COMMERCIAL
-    FAQ
+  enum ContentType {
+    ARTICLE
+    COMMERCIAL_PAGE
   }
 
   type SeoCluster {
@@ -77,8 +65,8 @@ export const typeDefs = gql`
     title: String!
     intent: SeoClusterIntent!
     keywords: [String!]!
-    createdBy: ID!
-    updatedBy: ID!
+    createdBy: ID
+    updatedBy: ID
     createdAt: DateTime!
     updatedAt: DateTime!
   }
@@ -90,7 +78,7 @@ export const typeDefs = gql`
     clusterId: ID
     title: String!
     description: String
-    contentType: BacklogContentType!
+    contentType: ContentType!
     category: BacklogCategory
     status: BacklogStatus!
     scheduledDate: DateTime
@@ -103,14 +91,14 @@ export const typeDefs = gql`
   type ContentIdea {
     id: ID!
     projectId: ID!
-    hypothesisId: ID
+    hypothesisId: ID!
+    backlogIdeaId: ID
     title: String!
-    description: String
     category: ContentCategory!
-    contentType: ContentIdeaType!
-    clusterId: ID
-    status: ContentIdeaStatus!
-    dismissed: Boolean!
+    contentType: ContentType!
+    status: String!
+    isDismissed: Boolean!
+    isAddedToBacklog: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime!
   }
@@ -121,7 +109,7 @@ export const typeDefs = gql`
     hypothesisId: ID!
     backlogIdeaId: ID
     title: String!
-    category: BacklogCategory!
+    category: ContentCategory!
     format: ContentFormat!
     ownerId: ID
     reviewerId: ID
@@ -131,8 +119,8 @@ export const typeDefs = gql`
     imageUrl: String
     status: ContentStatus!
     dueDate: DateTime
-    createdBy: ID!
-    updatedBy: ID!
+    createdBy: ID
+    updatedBy: ID
     createdAt: DateTime!
     updatedAt: DateTime!
   }
@@ -143,70 +131,72 @@ export const typeDefs = gql`
     hypothesisId: ID
     weeklyPublishCount: Int!
     preferredDays: [String!]!
+    timezone: String
     autoPublishEnabled: Boolean!
     language: String
-    createdAt: DateTime!
-    updatedAt: DateTime!
+    wordpressBaseUrl: String
+    wordpressUsername: String
+    wordpressConnected: Boolean!
+    wordpressPostType: String
+    wordpressDefaultCategoryId: Int
+    wordpressDefaultTagIds: [Int!]!
+    updatedAt: DateTime
   }
 
   input ClusterInput {
-    id: ID
     projectId: ID!
     hypothesisId: ID!
     title: String!
     intent: SeoClusterIntent!
     keywords: [String!]!
-    userId: ID!
   }
 
   input BacklogIdeaInput {
-    id: ID
     projectId: ID!
     hypothesisId: ID
     clusterId: ID
     title: String!
     description: String
-    contentType: BacklogContentType!
     category: BacklogCategory
     status: BacklogStatus
     scheduledDate: DateTime
-    userId: ID
   }
 
   input SeoAgentBacklogIdeaInput {
-    title: String!
+    title: String
     description: String
-    contentType: BacklogContentType!
+    category: BacklogCategory
     status: BacklogStatus
-    clusterId: ID
     scheduledDate: DateTime
   }
 
   input AddContentIdeaToBacklogInput {
     contentIdeaId: ID!
-    title: String!
-    description: String
-    contentType: BacklogContentType!
-    clusterId: ID
+    projectId: ID!
+    hypothesisId: ID!
   }
 
   input CreateCustomContentIdeaInput {
     projectId: ID!
-    hypothesisId: ID
+    hypothesisId: ID!
     title: String!
-    description: String
     category: ContentCategory!
-    contentType: ContentIdeaType!
-    clusterId: ID
   }
 
   input PostingSettingsInput {
     projectId: ID!
     hypothesisId: ID
-    weeklyPublishCount: Int!
-    preferredDays: [String!]!
-    autoPublishEnabled: Boolean!
+    weeklyPublishCount: Int
+    preferredDays: [String!]
+    timezone: String
+    autoPublishEnabled: Boolean
     language: String
+    wordpressBaseUrl: String
+    wordpressUsername: String
+    wordpressAppPassword: String
+    wordpressPostType: String
+    wordpressDefaultCategoryId: Int
+    wordpressDefaultTagIds: [Int!]
   }
 
   input ContentItemInput {
@@ -215,7 +205,7 @@ export const typeDefs = gql`
     hypothesisId: ID!
     backlogIdeaId: ID
     title: String!
-    category: BacklogCategory!
+    category: ContentCategory!
     format: ContentFormat!
     ownerId: ID
     reviewerId: ID
@@ -225,13 +215,13 @@ export const typeDefs = gql`
     imageUrl: String
     status: ContentStatus
     dueDate: DateTime
-    userId: ID!
+    userId: String
   }
 
   input GenerateContentInput {
     backlogIdeaId: ID!
     projectId: ID!
-    hypothesisId: ID
+    hypothesisId: ID!
   }
 
   input GenerateImageInput {
@@ -246,16 +236,80 @@ export const typeDefs = gql`
     hypothesisId: ID
   }
 
+  input PublishToWordPressInput {
+    contentItemId: ID!
+    projectId: ID!
+    hypothesisId: ID
+    status: String
+  }
+
+  input TestWordPressConnectionInput {
+    wordpressBaseUrl: String!
+    wordpressUsername: String!
+    wordpressAppPassword: String!
+    postType: String
+  }
+
+  type PublishToWordPressResult {
+    success: Boolean!
+    wordPressPostId: Int
+    wordPressPostUrl: String
+    error: String
+  }
+
+  type TestWordPressConnectionResult {
+    success: Boolean!
+    message: String
+    error: String
+  }
+
+  type WordPressCategory {
+    id: Int!
+    name: String!
+    slug: String!
+    count: Int!
+  }
+
+  type WordPressTag {
+    id: Int!
+    name: String!
+    slug: String!
+    count: Int!
+  }
+
+  type WordPressPostType {
+    name: String!
+    label: String!
+    public: Boolean!
+  }
+
+  input RewriteTextSelectionInput {
+    contentItemId: ID!
+    selectedText: String!
+    contextBefore: String
+    contextAfter: String
+    instruction: String
+  }
+
+  type RewriteTextSelectionResult {
+    rewrittenText: String!
+    success: Boolean!
+    error: String
+  }
+
   type Query {
     _health: String!
-    seoClusters(projectId: ID!, hypothesisId: ID): [SeoCluster!]!
-    seoAgentClusters(projectId: ID!, hypothesisId: ID): [SeoCluster!]!
+    seoClusters(projectId: ID!, hypothesisId: ID!): [SeoCluster!]!
+    seoAgentClusters(projectId: ID!, hypothesisId: ID!): [SeoCluster!]!
     seoBacklog(projectId: ID!, hypothesisId: ID, status: BacklogStatus): [BacklogIdea!]!
     seoAgentBacklog(projectId: ID!, hypothesisId: ID): [BacklogIdea!]!
     seoAgentContentIdeas(projectId: ID!, hypothesisId: ID): [ContentIdea!]!
     seoAgentPostingSettings(projectId: ID!): PostingSettings
     seoContentQueue(projectId: ID!, hypothesisId: ID, status: ContentStatus): [ContentItem!]!
     contentItemByBacklogIdea(backlogIdeaId: ID!): ContentItem
+    wordpressCategories(input: TestWordPressConnectionInput!): [WordPressCategory!]!
+    wordpressTags(input: TestWordPressConnectionInput!): [WordPressTag!]!
+    wordpressPostTypes(input: TestWordPressConnectionInput!): [WordPressPostType!]!
   }
 
   type Mutation {
@@ -281,8 +335,11 @@ export const typeDefs = gql`
     generateContentForBacklogIdea(input: GenerateContentInput!): ContentItem!
     generateImageForContent(input: GenerateImageInput!): ContentItem!
     regenerateContent(id: ID!, promptPart: String): ContentItem!
+    rewriteTextSelection(input: RewriteTextSelectionInput!): RewriteTextSelectionResult!
     approveContentItem(input: ApproveContentItemInput!): ContentItem!
+    publishToWordPress(input: PublishToWordPressInput!): PublishToWordPressResult!
+    testWordPressConnection(input: TestWordPressConnectionInput!): TestWordPressConnectionResult!
     generateContentIdeas(projectId: ID!, hypothesisId: ID!, category: String): [ContentIdea!]!
+    logFrontendMessage(level: String!, message: String!, data: String): Boolean!
   }
 `;
-

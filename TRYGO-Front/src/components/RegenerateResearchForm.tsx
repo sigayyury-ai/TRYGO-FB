@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RefreshCw } from "lucide-react";
 import { useResearchStore } from "@/store/useResearchStore";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveHypothesisId } from "@/hooks/useActiveIds";
 import { useUserStore } from "@/store/useUserStore";
 import { useToast } from "@/hooks/use-toast";
 import { checkRegeneratePermission } from "@/utils/checkRegeneratePermission";
@@ -43,7 +43,7 @@ Response must be in human-readable format.`);
   const [isLoading, setIsLoading] = useState(false);
 
   const { regenerateHypothesesMarketResearch } = useResearchStore();
-  const { activeHypothesis } = useHypothesisStore();
+  const activeHypothesisId = useActiveHypothesisId();
   const { userData } = useUserStore();
   const { toast } = useToast();
 
@@ -53,7 +53,7 @@ Response must be in human-readable format.`);
   }
 
   const handleRegenerate = async () => {
-    if (!activeHypothesis?.id) {
+    if (!activeHypothesisId) {
       toast({
         title: "Error",
         description: "No active hypothesis found",
@@ -65,7 +65,7 @@ Response must be in human-readable format.`);
     setIsLoading(true);
     try {
       await regenerateHypothesesMarketResearch({
-        projectHypothesisId: activeHypothesis.id,
+        projectHypothesisId: activeHypothesisId,
         promptPart: promptPart.trim() || null,
       });
 

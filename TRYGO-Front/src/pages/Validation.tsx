@@ -7,7 +7,7 @@ import LoaderSpinner from "@/components/LoaderSpinner";
 import RegenerateHypothesesValidationForm from "@/components/RegenerateHypothesesValidationForm";
 import { Button } from "@/components/ui/button";
 import UploadeCustomerInterviewsModal from "@/components/UploadCustomerInterviewsModal";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
+import { useActiveProjectId, useActiveHypothesisId } from "@/hooks/useActiveIds";
 import {
   toggleUploadCustomerInsightsModal,
   toggleUploadJtbdInsightsModal,
@@ -36,9 +36,9 @@ const Validation = () => {
   const { hasFeatureAccess, currentPlan } = useSubscription();
   const hasValidationAccess = hasFeatureAccess('validation');
   
-  const activeHypothesisId = useHypothesisStore(
-    (state) => state.activeHypothesis.id
-  );
+  // Получаем проект и активную гипотезу из cookies (без stores)
+  const activeProjectId = useActiveProjectId();
+  const activeHypothesisId = useActiveHypothesisId();
 
   const loading = useValidationStore((state) => state.loading);
   const hypothesesValidation = useValidationStore(
@@ -134,11 +134,12 @@ const Validation = () => {
     }
   };
 
+  // Загружаем контент валидации на основе activeHypothesisId из cookies
   useEffect(() => {
     if (activeHypothesisId) {
       getHypothesesValidation(activeHypothesisId);
     }
-  }, [activeHypothesisId]);
+  }, [activeHypothesisId, getHypothesesValidation]);
 
   return (
     <>
