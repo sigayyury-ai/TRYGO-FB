@@ -1,0 +1,252 @@
+openapi: 3.0.0
+info:
+  title: Clusters REST API
+  description: REST API endpoints for cluster management (integrated from semantics-service)
+  version: 1.0.0
+servers:
+  - url: http://localhost:5001
+    description: Local development
+  - url: https://trygo-backend.onrender.com
+    description: Production
+
+paths:
+  /api/clusters:
+    get:
+      summary: List clusters
+      description: Get all clusters for a project and hypothesis
+      operationId: listClusters
+      tags:
+        - Clusters
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Project ID
+        - name: hypothesisId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Hypothesis ID
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cluster'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create cluster
+      description: Create a new cluster
+      operationId: createCluster
+      tags:
+        - Clusters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterInput'
+      responses:
+        '201':
+          description: Cluster created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/clusters/{id}:
+    put:
+      summary: Update cluster
+      description: Update an existing cluster
+      operationId: updateCluster
+      tags:
+        - Clusters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cluster ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterInput'
+      responses:
+        '200':
+          description: Cluster updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Cluster not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete cluster
+      description: Delete a cluster
+      operationId: deleteCluster
+      tags:
+        - Clusters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cluster ID
+      responses:
+        '200':
+          description: Cluster deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+        '404':
+          description: Cluster not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Cluster:
+      type: object
+      required:
+        - id
+        - projectId
+        - hypothesisId
+        - title
+        - intent
+        - keywords
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        hypothesisId:
+          type: string
+        title:
+          type: string
+        intent:
+          type: string
+          enum:
+            - commercial
+            - transactional
+            - informational
+            - navigational
+        keywords:
+          type: array
+          items:
+            type: string
+        createdBy:
+          type: string
+        updatedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ClusterInput:
+      type: object
+      required:
+        - projectId
+        - hypothesisId
+        - userId
+        - title
+        - intent
+      properties:
+        projectId:
+          type: string
+        hypothesisId:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        intent:
+          type: string
+          enum:
+            - commercial
+            - transactional
+            - informational
+            - navigational
+        keywords:
+          type: array
+          items:
+            type: string
+          default: []
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message

@@ -9,10 +9,7 @@ echo ""
 # Kill existing processes on ports
 echo "🧹 Cleaning up ports..."
 lsof -ti:5001 | xargs kill -9 2>/dev/null
-lsof -ti:4100 | xargs kill -9 2>/dev/null
-lsof -ti:4200 | xargs kill -9 2>/dev/null
-# Port 4300 no longer needed (images-service integrated into TRYGO-Backend)
-lsof -ti:4400 | xargs kill -9 2>/dev/null
+# Ports 4100, 4200, 4300, 4400 no longer needed (all services integrated into TRYGO-Backend)
 lsof -ti:8080 | xargs kill -9 2>/dev/null
 sleep 1
 
@@ -30,10 +27,8 @@ ensure_deps() {
 
 # Ensure dependencies are installed for all services
 ensure_deps "$SCRIPT_DIR/TRYGO-Backend" "package.json"
-ensure_deps "$SCRIPT_DIR/backend" "tslib/package.json"
+# backend, semantics-service, and website-pages-service are integrated into TRYGO-Backend - no separate installation needed
 ensure_deps "$SCRIPT_DIR/TRYGO-Front" "react/package.json"
-ensure_deps "$SCRIPT_DIR/semantics-service" "package.json"
-ensure_deps "$SCRIPT_DIR/website-pages-service" "package.json"
 
 # Start main TRYGO backend (port 5001) in background
 echo "🔧 Starting main TRYGO backend (port 5001)..."
@@ -51,38 +46,8 @@ if ! kill -0 $MAIN_BACKEND_PID 2>/dev/null; then
 fi
 echo "✅ Main backend is running"
 
-# Start SEO Agent backend (port 4100) in background
-echo "🔧 Starting SEO Agent backend (port 4100)..."
-cd "$SCRIPT_DIR/backend"
-npm run dev > "$SCRIPT_DIR/logs/backend.log" 2>&1 &
-BACKEND_PID=$!
-echo "SEO Agent Backend PID: $BACKEND_PID"
-
-# Wait for SEO Agent backend to start and check if it's still running
-sleep 3
-if ! kill -0 $BACKEND_PID 2>/dev/null; then
-  echo "❌ SEO Agent backend failed to start! Check logs:"
-  tail -20 "$SCRIPT_DIR/logs/backend.log"
-  exit 1
-fi
-echo "✅ SEO Agent backend is running"
-
-# Start semantics service
-echo "🧠 Starting semantics service..."
-cd "$SCRIPT_DIR/semantics-service"
-npm run dev > "$SCRIPT_DIR/logs/semantics.log" 2>&1 &
-SEMANTICS_PID=$!
-echo "Semantics PID: $SEMANTICS_PID"
-
-# Images service is now integrated into TRYGO-Backend (port 5001)
-# No separate images-service needed
-
-# Start website pages service
-echo "🧾 Starting website pages service..."
-cd "$SCRIPT_DIR/website-pages-service"
-npm run dev > "$SCRIPT_DIR/logs/website-pages.log" 2>&1 &
-WEBSITE_PAGES_PID=$!
-echo "Website pages PID: $WEBSITE_PAGES_PID"
+# SEO Agent backend, semantics-service, and website-pages-service are now integrated into TRYGO-Backend
+# No separate services needed - all functionality available through port 5001
 
 # Wait for services to warm up
 sleep 2
@@ -105,16 +70,13 @@ echo ""
 echo "✅ Servers started!"
 echo "📊 Main Backend:  http://localhost:5001/graphql"
 echo "   Images API:    http://localhost:5001/api/images/generate"
-echo "📊 SEO Backend:   http://localhost:4100/graphql"
-echo "🧠 Semantics:     http://localhost:4200"
-echo "🧾 Website:       http://localhost:4400"
+echo "   Clusters API:  http://localhost:5001/api/clusters"
+echo "   Website Pages:  http://localhost:5001/api/website-pages/generate"
+echo "   (SEO Agent, Images, Clusters, Website Pages integrated)"
 echo "🌐 Frontend:      http://localhost:8080"
 echo ""
 echo "📝 Logs:"
 echo "   Main Backend:  tail -f $SCRIPT_DIR/logs/main-backend.log"
-echo "   SEO Backend:   tail -f $SCRIPT_DIR/logs/backend.log"
-echo "   Semantics:     tail -f $SCRIPT_DIR/logs/semantics.log"
-echo "   Website Pages: tail -f $SCRIPT_DIR/logs/website-pages.log"
 echo "   Frontend:      tail -f $SCRIPT_DIR/logs/frontend.log"
 echo ""
 echo "🛑 To stop: $SCRIPT_DIR/stop-all.sh"

@@ -478,7 +478,7 @@ export const SeoPostingSettingsPanel = ({
       // Provide more helpful error message
       let errorMessage = "Connected to WordPress, but failed to load categories and tags";
       if (error.networkError || error.message?.includes("Failed to fetch")) {
-        errorMessage = "Network error: Cannot connect to backend server. Please check if the SEO Agent backend is running on port 4100.";
+        errorMessage = "Network error: Cannot connect to backend server. Please check if the main backend is running on port 5001.";
       } else if (error.graphQLErrors && error.graphQLErrors.length > 0) {
         errorMessage = error.graphQLErrors[0].message || errorMessage;
       } else if (error.message) {

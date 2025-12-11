@@ -120,6 +120,12 @@ async function startServer() {
         console.log('🖼️ Setting up routes...');
         // Images API routes
         app.use('/api/images', imagesRouter);
+        // Clusters REST API routes (from semantics-service)
+        const clustersRouter = await import('./routes/clusters');
+        app.use('/api/clusters', clustersRouter.default);
+        // Website Pages API routes (from website-pages-service)
+        const websitePagesRouter = await import('./routes/websitePages');
+        app.use('/api/website-pages', websitePagesRouter.default);
         // AWS routes disabled - not needed
         // app.use('/image', imageRoutes);
         // app.use('/file', fileRoutes);

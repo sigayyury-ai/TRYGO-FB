@@ -45,7 +45,7 @@ export async function generateImageForContent(
     
     try {
       // Generate detailed scene description using OpenAI (for better prompts)
-      const { generateSceneDescription } = await import("../../../../backend/src/services/contentGeneration/generateSceneDescription");
+      const { generateSceneDescription } = await import("../seoAgent/contentGeneration/generateSceneDescription");
       sceneDescription = await generateSceneDescription({
         title,
         description,
@@ -61,7 +61,7 @@ export async function generateImageForContent(
     }
 
     // Build image prompt from scene description (Gemini/Imagen format)
-    const { buildImagePrompt: buildGeminiPrompt } = await import("../../../../backend/src/services/contentGeneration/buildImagePrompt");
+    const { buildImagePrompt: buildGeminiPrompt } = await import("../seoAgent/contentGeneration/buildImagePrompt");
     const imagePrompt = buildGeminiPrompt(sceneDescription, variant);
 
     console.log(`[Image Service] 📝 Built prompt (${imagePrompt.prompt.length} chars)`);

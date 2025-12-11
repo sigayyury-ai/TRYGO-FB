@@ -48,4 +48,16 @@ export const config = {
         publicUrl: (process.env.PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:5001").replace(/\/$/, ""),
         storageRoot: process.env.STORAGE_ROOT || "./storage"
     },
+
+    // SEO Agent configuration (integrated from backend service)
+    SEO_AGENT: {
+        openAiApiKey: process.env.OPENAI_API_KEY,
+        openAiModel: process.env.OPENAI_MODEL || "gpt-4o",
+        geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        googleApiKey: process.env.GOOGLE_API_KEY,
+        wordpressBaseUrl: process.env.WORDPRESS_BASE_URL,
+        wordpressUsername: process.env.WORDPRESS_USERNAME,
+        wordpressAppPassword: process.env.WORDPRESS_APP_PASSWORD
+        // websitePagesServiceUrl removed - service integrated into TRYGO-Backend
+    },
 };

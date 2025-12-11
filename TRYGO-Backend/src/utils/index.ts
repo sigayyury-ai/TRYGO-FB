@@ -9,4 +9,4 @@ export * from './email/mailTrapUtils';
 export * from './pagination/getSkipCount';
 export * from './auth/generateResetCode';
 export * from './toFloat';
-// export * from './aws/uploadImageToS3'; // AWS disabled
+export * from './aws/uploadImageToS3';

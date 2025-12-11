@@ -4,8 +4,8 @@ import Cookies from 'js-cookie'
 import { getActiveIds } from '@/utils/activeState'
 import { useUserStore } from '@/store/useUserStore'
 
-// SEO Agent uses a separate backend service
-const seoAgentUrl = import.meta.env.VITE_SEO_AGENT_URL || 'http://localhost:4100/graphql'
+// SEO Agent uses consolidated backend service (integrated into TRYGO-Backend)
+const seoAgentUrl = import.meta.env.VITE_SEO_AGENT_URL || 'http://localhost:5001/graphql'
 
 const httpLink = new HttpLink({
   uri: seoAgentUrl,
