@@ -1,19 +1,15 @@
 # ============================================
 # TRYGO Platform - Render Deployment Configuration
+# ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - ЕДИНЫЙ API GATEWAY
 # ============================================
 # 
-# ОПТИМИЗИРОВАННАЯ КОНФИГУРАЦИЯ ДЛЯ МИНИМАЛЬНОЙ СТОИМОСТИ:
+# АРХИТЕКТУРА:
+# - trygo-main-backend: Единый API Gateway ($7/месяц) - все запросы идут через него
 # - trygo-frontend: БЕСПЛАТНО (static site)
-# - trygo-main-backend: $7/месяц (starter) - объединенный бэкенд (включает SEO Agent)
-# - website-pages-service: БЕСПЛАТНО (free plan)
-# - semantics-service: БЕСПЛАТНО (free plan)
-# - images-service: БЕСПЛАТНО (free plan)
-# ИТОГО: ~$7/месяц вместо $42/месяц
+# - Микросервисы (images, website-pages, semantics) можно объединить в trygo-main-backend
+#   или оставить как внутренние сервисы на free плане
 #
-# ВАЖНО:
-# - seo-agent-backend удален - его функции уже есть в trygo-main-backend
-# - Фронтенд использует один GraphQL endpoint (trygo-main-backend) для всех запросов
-# - Free план сервисы могут "засыпать" после 15 минут бездействия
+# ИТОГО: $7-14/месяц вместо $42/месяц
 #
 # Для деплоя:
 # 1. Подключите репозиторий в Render Dashboard
@@ -25,8 +21,8 @@
 
 services:
   # ============================================
-  # Main Backend (TRYGO-Backend)
-  # Основной бэкенд для авторизации, проектов, гипотез
+  # Main Backend (TRYGO-Backend) - ЕДИНЫЙ API GATEWAY
+  # Объединяет: авторизацию, проекты, гипотезы, SEO Agent
   # ============================================
   - type: web
     name: trygo-main-backend
@@ -99,16 +95,13 @@ services:
         sync: false
       - key: TG_ENABLED
         sync: false
-      # SEO Agent variables (если функции генерации контента будут добавлены в TRYGO-Backend)
+      # SEO Agent & микросервисы (если используются как внутренние сервисы)
       - key: SEMANTICS_SERVICE_URL
         sync: false
       - key: IMAGES_SERVICE_URL
         sync: false
       - key: WEBSITE_PAGES_SERVICE_URL
-        fromService:
-          type: web
-          name: website-pages-service
-          property: host
+        sync: false
       - key: WORDPRESS_BASE_URL
         sync: false
       - key: WORDPRESS_USERNAME
@@ -152,7 +145,7 @@ services:
         value: "false"
 
   # ============================================
-  # Website Pages Service
+  # Website Pages Service (опционально - можно объединить в trygo-main-backend)
   # Микросервис для генерации веб-страниц
   # ============================================
   - type: web
@@ -173,7 +166,7 @@ services:
         sync: false
 
   # ============================================
-  # Semantics Service
+  # Semantics Service (опционально - можно объединить в trygo-main-backend)
   # Микросервис для работы с семантическими кластерами
   # ============================================
   - type: web
@@ -199,7 +192,7 @@ services:
           property: host
 
   # ============================================
-  # Images Service
+  # Images Service (опционально - можно объединить в trygo-main-backend)
   # Микросервис для генерации изображений
   # ============================================
   - type: web
