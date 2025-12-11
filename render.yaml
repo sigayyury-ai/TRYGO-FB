@@ -2,10 +2,18 @@
 # TRYGO Platform - Render Deployment Configuration
 # ============================================
 # 
+# ОПТИМИЗИРОВАННАЯ КОНФИГУРАЦИЯ ДЛЯ МИНИМАЛЬНОЙ СТОИМОСТИ:
+# - trygo-frontend: БЕСПЛАТНО (static site)
+# - trygo-main-backend: $7/месяц (starter) - объединенный бэкенд (включает SEO Agent)
+# - website-pages-service: БЕСПЛАТНО (free plan)
+# - semantics-service: БЕСПЛАТНО (free plan)
+# - images-service: БЕСПЛАТНО (free plan)
+# ИТОГО: ~$7/месяц вместо $42/месяц
+#
 # ВАЖНО:
-# - semantics-service и images-service закомментированы (их нет в проекте)
-# - Если вы создадите эти сервисы, раскомментируйте соответствующие блоки
-# - SEMANTICS_SERVICE_URL и IMAGES_SERVICE_URL нужно установить вручную в Render Dashboard
+# - seo-agent-backend удален - его функции уже есть в trygo-main-backend
+# - Фронтенд использует один GraphQL endpoint (trygo-main-backend) для всех запросов
+# - Free план сервисы могут "засыпать" после 15 минут бездействия
 #
 # Для деплоя:
 # 1. Подключите репозиторий в Render Dashboard
