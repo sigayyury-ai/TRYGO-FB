@@ -33,32 +33,43 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
+        value: ""
         sync: false
       - key: OPENAI_API_KEY
+        value: ""
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: OPENAI_IMAGE_MODEL
         value: dall-e-2
       - key: FRONTEND_URL
+        value: ""
         sync: false
       - key: SEMANTICS_SERVICE_URL
+        value: ""
         sync: false
       - key: IMAGES_SERVICE_URL
+        value: ""
         sync: false
       - key: WEBSITE_PAGES_SERVICE_URL
+        value: ""
         sync: false
       - key: IMAGE_PROVIDER
         value: openai
       - key: WORDPRESS_BASE_URL
+        value: ""
         sync: false
       - key: WORDPRESS_USERNAME
+        value: ""
         sync: false
       - key: WORDPRESS_APP_PASSWORD
+        value: ""
         sync: false
       - key: GOOGLE_API_KEY
+        value: ""
         sync: false
       - key: GEMINI_API_KEY
+        value: ""
         sync: false
 
   # ============================================
@@ -78,54 +89,78 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
+        value: ""
         sync: false
       - key: OPENAI_API_KEY
+        value: ""
         sync: false
       - key: JWT_SECRET
+        value: ""
         sync: false
       - key: STRIPE_SECRET_KEY
+        value: ""
         sync: false
       - key: STRIPE_STARTER_MONTHLY_PRICE_ID
+        value: ""
         sync: false
       - key: STRIPE_PRO_MONTHLY_PRICE_ID
+        value: ""
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
+        value: ""
         sync: false
       - key: FRONTEND_URL
+        value: ""
         sync: false
       - key: DEVELOPMENT_FRONTEND_URL
+        value: ""
         sync: false
       - key: PRODUCTION_FRONTEND_URL
+        value: ""
         sync: false
       - key: CORS_ENABLED
         value: "true"
       - key: GOOGLE_AUTH_CLIENT_ID
+        value: ""
         sync: false
       - key: GOOGLE_AUTH_CLIENT_SECRET
+        value: ""
         sync: false
       - key: AWS_ACCESS_KEY
+        value: ""
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
+        value: ""
         sync: false
       - key: AWS_REGION
+        value: ""
         sync: false
       - key: AWS_BUCKET_NAME
+        value: ""
         sync: false
       - key: MAILT_API_KEY
+        value: ""
         sync: false
       - key: MAILT_EMAIL_ADDRESS
+        value: ""
         sync: false
       - key: MAILT_FROM_NAME
+        value: ""
         sync: false
       - key: BOUNCER_CHECK_API_KEY
+        value: ""
         sync: false
       - key: TG_CHAT_ID_STATISTICS
+        value: ""
         sync: false
       - key: TG_CHAT_ID_ERROR
+        value: ""
         sync: false
       - key: TG_TOKEN_STATISTICS
+        value: ""
         sync: false
       - key: TG_ENABLED
+        value: ""
         sync: false
 
   # ============================================
@@ -142,12 +177,16 @@ services:
     startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
     envVars:
       - key: VITE_SERVER_URL
+        value: ""
         sync: false
       - key: VITE_SEO_AGENT_URL
+        value: ""
         sync: false
       - key: VITE_WS_SERVER_URL
+        value: ""
         sync: false
       - key: VITE_GOOGLE_CLIENT_ID
+        value: ""
         sync: false
       - key: VITE_SEO_AGENT_ENABLED
         value: "true"
@@ -175,6 +214,7 @@ services:
       - key: PORT
         value: "4400"
       - key: OPENAI_API_KEY
+        value: ""
         sync: false
 
   # ============================================
@@ -196,8 +236,10 @@ services:
       - key: PORT
         value: "4200"
       - key: MONGODB_URI
+        value: ""
         sync: false
       - key: SEMANTICS_SERVICE_ORIGIN
+        value: ""
         sync: false
 
   # ============================================
@@ -219,8 +261,10 @@ services:
       - key: PORT
         value: "4300"
       - key: OPENAI_API_KEY
+        value: ""
         sync: false
       - key: GEMINI_API_KEY
+        value: ""
         sync: false
       - key: IMAGE_PROVIDER
         value: openai
@@ -231,6 +275,7 @@ services:
       - key: GEMINI_API_BASE_URL
         value: https://generativelanguage.googleapis.com/v1beta
       - key: PUBLIC_URL
+        value: ""
         sync: false
       - key: STORAGE_ROOT
         value: ./storage
