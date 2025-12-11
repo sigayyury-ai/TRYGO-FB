@@ -105,7 +105,7 @@ services:
       - key: TG_ENABLED
         sync: false
 
-  # Frontend (Web Service)
+  # Frontend - Web Service (NOT static site)
   - type: web
     name: trygo-frontend
     env: node
