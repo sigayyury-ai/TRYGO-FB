@@ -15,17 +15,27 @@ class AuthService {
     }
 
     generateToken(id: string): string {
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            throw new Error('JWT_SECRET environment variable is not set. Please set it in Render Dashboard.');
+        }
+
         const payload: Payload = { id };
 
-        return jwt.sign(payload, process.env.JWT_SECRET!, {
+        return jwt.sign(payload, jwtSecret, {
             expiresIn: EXPIRE_TIME_TOKEN,
         });
     }
 
     generateResetToken(email: string, resetCode: number): string {
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            throw new Error('JWT_SECRET environment variable is not set. Please set it in Render Dashboard.');
+        }
+
         const payload: ResetCodePayload = { email, resetCode };
 
-        return jwt.sign(payload, process.env.JWT_SECRET!, {
+        return jwt.sign(payload, jwtSecret, {
             expiresIn: EXPIRE_TIME_TOKEN,
         });
     }
@@ -71,7 +81,11 @@ class AuthService {
 
     verifyToken(token: string): boolean | null {
         try {
-            jwt.verify(token, process.env.JWT_SECRET!);
+            const jwtSecret = process.env.JWT_SECRET;
+            if (!jwtSecret) {
+                throw new Error('JWT_SECRET environment variable is not set. Please set it in Render Dashboard.');
+            }
+            jwt.verify(token, jwtSecret);
 
             return true;
         } catch (err) {
