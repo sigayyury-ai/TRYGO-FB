@@ -5,23 +5,31 @@ export const config = {
 
     isCorsEnabled: process.env.CORS_ENABLED === 'true',
 
-    PRODUCTION_PORTS: [
-        process.env.DEVELOPMENT_FRONTEND_URL
-            ? (process.env.DEVELOPMENT_FRONTEND_URL.startsWith('http')
-                ? process.env.DEVELOPMENT_FRONTEND_URL
-                : `https://${process.env.DEVELOPMENT_FRONTEND_URL}`)
-            : '',
-        process.env.PRODUCTION_FRONTEND_URL
-            ? (process.env.PRODUCTION_FRONTEND_URL.startsWith('http')
-                ? process.env.PRODUCTION_FRONTEND_URL
-                : `https://${process.env.PRODUCTION_FRONTEND_URL}`)
-            : '',
-        process.env.FRONTEND_URL
-            ? (process.env.FRONTEND_URL.startsWith('http')
-                ? process.env.FRONTEND_URL
-                : `https://${process.env.FRONTEND_URL}`)
-            : '',
-    ].filter(Boolean), // Remove empty strings
+    PRODUCTION_PORTS: (() => {
+        const origins: string[] = [];
+        
+        // Helper to normalize URL
+        const normalizeUrl = (url: string | undefined): string | null => {
+            if (!url) return null;
+            // Remove trailing slash
+            const cleanUrl = url.trim().replace(/\/$/, '');
+            // Add https:// if no protocol
+            if (cleanUrl && !cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+                return `https://${cleanUrl}`;
+            }
+            return cleanUrl || null;
+        };
+        
+        const devUrl = normalizeUrl(process.env.DEVELOPMENT_FRONTEND_URL);
+        const prodUrl = normalizeUrl(process.env.PRODUCTION_FRONTEND_URL);
+        const frontendUrl = normalizeUrl(process.env.FRONTEND_URL);
+        
+        if (devUrl) origins.push(devUrl);
+        if (prodUrl && prodUrl !== devUrl) origins.push(prodUrl);
+        if (frontendUrl && !origins.includes(frontendUrl)) origins.push(frontendUrl);
+        
+        return origins;
+    })(),
 
     MAIL_TRAP: {
         apiKey: process.env.MAILT_API_KEY || '',
