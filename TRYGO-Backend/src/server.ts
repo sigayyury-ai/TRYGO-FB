@@ -185,7 +185,11 @@ async function startServer() {
         });
 
         console.log('⏰ Starting Agenda jobs...');
-        await agenda.start();
+        // Start agenda but don't wait for jobs to complete
+        agenda.start().catch((error) => {
+            console.error('❌ Error starting Agenda:', error);
+            // Don't block server startup if Agenda fails
+        });
         console.log('✅ Agenda started');
 
         // Telegram инициализация опциональна
