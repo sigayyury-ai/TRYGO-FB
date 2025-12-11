@@ -41,13 +41,25 @@ services:
       - key: OPENAI_IMAGE_MODEL
         value: dall-e-2
       - key: FRONTEND_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-frontend
+          property: host
       - key: SEMANTICS_SERVICE_URL
-        sync: false
+        fromService:
+          type: web
+          name: semantics-service
+          property: host
       - key: IMAGES_SERVICE_URL
-        sync: false
+        fromService:
+          type: web
+          name: images-service
+          property: host
       - key: WEBSITE_PAGES_SERVICE_URL
-        sync: false
+        fromService:
+          type: web
+          name: website-pages-service
+          property: host
       - key: IMAGE_PROVIDER
         value: openai
       - key: WORDPRESS_BASE_URL
@@ -92,11 +104,20 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: FRONTEND_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-frontend
+          property: host
       - key: DEVELOPMENT_FRONTEND_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-frontend
+          property: host
       - key: PRODUCTION_FRONTEND_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-frontend
+          property: host
       - key: CORS_ENABLED
         value: "true"
       - key: GOOGLE_AUTH_CLIENT_ID
@@ -142,11 +163,20 @@ services:
     startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
     envVars:
       - key: VITE_SERVER_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-main-backend
+          property: host
       - key: VITE_SEO_AGENT_URL
-        sync: false
+        fromService:
+          type: web
+          name: seo-agent-backend
+          property: host
       - key: VITE_WS_SERVER_URL
-        sync: false
+        fromService:
+          type: web
+          name: trygo-main-backend
+          property: host
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
       - key: VITE_SEO_AGENT_ENABLED
@@ -198,7 +228,10 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: SEMANTICS_SERVICE_ORIGIN
-        sync: false
+        fromService:
+          type: web
+          name: trygo-frontend
+          property: host
 
   # ============================================
   # Images Service
