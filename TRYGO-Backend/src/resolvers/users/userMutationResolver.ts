@@ -2,6 +2,7 @@ import userService from '../../services/UserService';
 import { elevateError } from '../../errors/elevateError';
 import {
     AuthThrowThirdPartyInput,
+    ChangeEmailInput,
     ChangePasswordInput,
     GenerateTokenThrowEmailInput,
     LoginInput,
@@ -9,6 +10,7 @@ import {
     UserRole,
 } from '../../generated/graphql';
 import authService from '../../services/AuthService';
+import { IContext } from '../../types/IContext';
 
 const userMutationResolvers = {
     Mutation: {
@@ -81,6 +83,23 @@ const userMutationResolvers = {
                     user.id,
                     input.jwtSecret,
                 );
+            } catch (err) {
+                elevateError(err);
+            }
+        },
+
+        async changeEmail(
+            _: unknown,
+            { input }: { input: ChangeEmailInput },
+            context: IContext
+        ) {
+            try {
+                // Проверяем, что пользователь авторизован
+                const token = authService.checkToken(context.token);
+                const userId = authService.getUserIdFromToken(token);
+
+                // Выполняем смену email
+                return await userService.changeEmail(userId, input.newEmail);
             } catch (err) {
                 elevateError(err);
             }

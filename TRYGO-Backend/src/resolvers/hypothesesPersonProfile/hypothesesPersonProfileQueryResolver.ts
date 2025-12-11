@@ -10,7 +10,7 @@ const hypothesesPersonProfileQueryResolver = {
             context: IContext
         ) {
             try {
-                console.log(`[getAllHypothesesPersonProfiles resolver] Request for projectHypothesisId: ${projectHypothesisId}, userId: ${context.userId}`);
+                // Removed verbose logging
                 const profiles = await hypothesesPersonProfileService.getAllHypothesesPersonProfiles(
                     projectHypothesisId,
                     context.userId

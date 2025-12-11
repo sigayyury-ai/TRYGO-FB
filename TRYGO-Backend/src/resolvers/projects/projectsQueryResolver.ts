@@ -8,7 +8,7 @@ const projectsQueryResolver = {
         async getProjects(_: never, __: unknown, context: IContext) {
             try {
                 const userId = authService.getUserIdFromToken(context.token);
-                console.log('[getProjects resolver] Request from userId:', userId);
+                // Removed verbose logging
 
                 return await projectService.getProjects(userId);
             } catch (err) {

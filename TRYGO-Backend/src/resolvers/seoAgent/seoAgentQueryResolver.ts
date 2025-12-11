@@ -129,7 +129,7 @@ const seoAgentQueryResolver = {
         ) {
             try {
                 const userId = authService.getUserIdFromToken(context.token);
-                console.log(`[seoAgentClusters] projectId: ${args.projectId}, hypothesisId: ${args.hypothesisId}, userId: ${userId}`);
+                // Removed verbose logging
                 
                 // Verify user has access to this project
                 await projectService.getProjectById(args.projectId, userId);
@@ -142,7 +142,7 @@ const seoAgentQueryResolver = {
                     query.hypothesisId = args.hypothesisId;
                 }
 
-                console.log(`[seoAgentClusters] Query:`, JSON.stringify(query));
+                // Removed verbose logging
                 
                 // First, try exact match
                 let clusters = await SeoCluster.find(query)
@@ -154,7 +154,7 @@ const seoAgentQueryResolver = {
                 // If no clusters found and hypothesisId is provided, try without hypothesisId filter
                 // This helps with migration scenarios where hypothesisId might have changed
                 if (clusters.length === 0 && args.hypothesisId) {
-                    console.log(`[seoAgentClusters] No clusters found with hypothesisId, trying without hypothesisId filter`);
+                    // Removed verbose logging
                     const queryWithoutHypothesis = { projectId: args.projectId };
                     clusters = await SeoCluster.find(queryWithoutHypothesis)
                         .sort({ updatedAt: -1 })
@@ -165,7 +165,7 @@ const seoAgentQueryResolver = {
                 // Log sample cluster data for debugging migration issues
                 if (clusters.length > 0) {
                     const sample = clusters[0];
-                    console.log(`[seoAgentClusters] Sample cluster:`, {
+                    // Removed verbose logging - sample cluster
                         id: sample._id.toString(),
                         projectId: sample.projectId,
                         projectIdType: typeof sample.projectId,
@@ -176,7 +176,7 @@ const seoAgentQueryResolver = {
                 } else {
                     // Check if any clusters exist for this project at all
                     const totalClustersForProject = await SeoCluster.countDocuments({ projectId: args.projectId }).exec();
-                    console.log(`[seoAgentClusters] Total clusters for project ${args.projectId}: ${totalClustersForProject}`);
+                    // Removed verbose logging
                     
                     if (totalClustersForProject > 0 && args.hypothesisId) {
                         // Log sample clusters to see what hypothesisIds exist
@@ -216,7 +216,7 @@ const seoAgentQueryResolver = {
         ) {
             try {
                 const userId = authService.getUserIdFromToken(context.token);
-                console.log(`[seoAgentBacklog] projectId: ${args.projectId}, hypothesisId: ${args.hypothesisId}, userId: ${userId}`);
+                // Removed verbose logging
                 
                 // Verify user has access to this project
                 await projectService.getProjectById(args.projectId, userId);
@@ -229,7 +229,7 @@ const seoAgentQueryResolver = {
                     query.hypothesisId = args.hypothesisId;
                 }
 
-                console.log(`[seoAgentBacklog] Query:`, JSON.stringify(query));
+                // Removed verbose logging
                 
                 // Use new integrated model
                 const backlogItems = await SeoBacklogIdea.find(query)
