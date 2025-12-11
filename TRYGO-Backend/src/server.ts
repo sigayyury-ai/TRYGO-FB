@@ -131,6 +131,16 @@ async function startServer() {
         // app.use('/file', fileRoutes);
         console.log('✅ Routes set up');
 
+        // 404 handler for unknown routes
+        app.use((req, res) => {
+            console.warn(`⚠️  404: ${req.method} ${req.path}`);
+            res.status(404).json({ 
+                error: 'Not Found', 
+                path: req.path,
+                method: req.method 
+            });
+        });
+
         console.log('⏰ Starting Agenda jobs...');
         await agenda.start();
         console.log('✅ Agenda started');
