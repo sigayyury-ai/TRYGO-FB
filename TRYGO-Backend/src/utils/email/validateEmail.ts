@@ -7,6 +7,12 @@ export const validateEmail = async (email: string): Promise<boolean> => {
         email.toLowerCase();
         await emailValidate(email);
 
+        // Bouncer проверка опциональна - если API ключ не установлен, пропускаем
+        if (!config.BOUNCER_CHECK_API_KEY) {
+            console.log('Bouncer API key not configured, skipping email validation');
+            return true;
+        }
+
         const response = await axios.get(
             `https://api.usebouncer.com/v1.1/email/verify?email=${email}`,
             {

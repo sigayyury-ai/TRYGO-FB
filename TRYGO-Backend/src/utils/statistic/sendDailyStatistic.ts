@@ -55,7 +55,10 @@ D14 - ${newUsersByDay[14]}
 D30 - ${newUsersByDay[30]}
         `.trim();
 
-        TgApi.sendMessage(Number(config.TG_STATISTICS.CHAT_ID), message);
+        // Отправляем статистику только если Telegram настроен
+        if (config.TG_STATISTICS.TOKEN && config.TG_STATISTICS.CHAT_ID) {
+            TgApi.sendMessage(Number(config.TG_STATISTICS.CHAT_ID), message);
+        }
     } catch (error) {
         elevateError(error);
     }

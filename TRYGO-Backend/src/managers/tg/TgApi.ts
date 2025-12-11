@@ -12,7 +12,7 @@ export class TgApi {
 
     static initialize(): void {
         try {
-            if (config.TG_STATISTICS.ENABLED === 'false') {
+            if (config.TG_STATISTICS.ENABLED === 'false' || !config.TG_STATISTICS.TOKEN) {
                 return;
             }
             TgApi.botInstance = new TelegramBot(config.TG_STATISTICS.TOKEN);

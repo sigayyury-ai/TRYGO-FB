@@ -31,7 +31,7 @@ router.post(
                 ...req.file,
                 originalname: webpFileName,
                 buffer: req.file.buffer,
-            } as Express.Multer.File;
+            } as Express.Multer.File & { buffer: Buffer };
 
             const url = await uploadImageToS3(webpFile);
             res.json({ message: 'Successfully uploaded image.', url });

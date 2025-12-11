@@ -72,30 +72,19 @@ services:
         sync: false
       - key: GOOGLE_AUTH_CLIENT_SECRET
         sync: false
-      - key: AWS_ACCESS_KEY
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_REGION
-        sync: false
-      - key: AWS_BUCKET_NAME
-        sync: false
-      - key: MAILT_API_KEY
-        sync: false
-      - key: MAILT_EMAIL_ADDRESS
-        sync: false
-      - key: MAILT_FROM_NAME
-        sync: false
-      - key: BOUNCER_CHECK_API_KEY
-        sync: false
-      - key: TG_CHAT_ID_STATISTICS
-        sync: false
-      - key: TG_CHAT_ID_ERROR
-        sync: false
-      - key: TG_TOKEN_STATISTICS
-        sync: false
-      - key: TG_ENABLED
-        sync: false
+      # AWS и Telegram отключены - не нужны пока
+      # - key: AWS_ACCESS_KEY
+      # - key: AWS_SECRET_ACCESS_KEY
+      # - key: AWS_REGION
+      # - key: AWS_BUCKET_NAME
+      # - key: MAILT_API_KEY
+      # - key: MAILT_EMAIL_ADDRESS
+      # - key: MAILT_FROM_NAME
+      # - key: BOUNCER_CHECK_API_KEY
+      # - key: TG_CHAT_ID_STATISTICS
+      # - key: TG_CHAT_ID_ERROR
+      # - key: TG_TOKEN_STATISTICS
+      # - key: TG_ENABLED
       # SEO Agent integrated - no separate backend service needed
       # Semantics service integrated - clusters API available at /api/clusters
       - key: IMAGES_SERVICE_URL

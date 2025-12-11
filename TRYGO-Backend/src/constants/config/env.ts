@@ -11,21 +11,21 @@ export const config = {
     ],
 
     MAIL_TRAP: {
-        apiKey: process.env.MAILT_API_KEY!,
-        emailAddress: process.env.MAILT_EMAIL_ADDRESS!,
-        fromName: process.env.MAILT_FROM_NAME!,
+        apiKey: process.env.MAILT_API_KEY || '',
+        emailAddress: process.env.MAILT_EMAIL_ADDRESS || '',
+        fromName: process.env.MAILT_FROM_NAME || '',
     },
 
-    BOUNCER_CHECK_API_KEY: process.env.BOUNCER_CHECK_API_KEY!,
-
+    BOUNCER_CHECK_API_KEY: process.env.BOUNCER_CHECK_API_KEY || '',
 
     GOOGLE_AUTH_CLIENT_ID: process.env.GOOGLE_AUTH_CLIENT_ID!,
     GOOGLE_AUTH_CLIENT_SECRET: process.env.GOOGLE_AUTH_CLIENT_SECRET!,
 
-    AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY!,
-    AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY!,
-    AWS_REGION: process.env.AWS_REGION!,
-    AWS_BUCKET_NAME: process.env.AWS_BUCKET_NAME!,
+    // AWS отключен - не нужен пока
+    AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY || '',
+    AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
+    AWS_REGION: process.env.AWS_REGION || '',
+    AWS_BUCKET_NAME: process.env.AWS_BUCKET_NAME || '',
 
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
     FRONTEND_URL: process.env.FRONTEND_URL!,
@@ -33,11 +33,12 @@ export const config = {
     STRIPE_PRO_MONTHLY_PRICE_ID: process.env.STRIPE_PRO_MONTHLY_PRICE_ID!,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET!,
 
+    // Telegram отключен - не нужен пока
     TG_STATISTICS: {
-        CHAT_ID: process.env.TG_CHAT_ID_STATISTICS!,
-        ERROR_CHAT_ID: process.env.TG_CHAT_ID_ERROR!,
-        TOKEN: process.env.TG_TOKEN_STATISTICS!,
-        ENABLED: process.env.TG_ENABLED!,
+        CHAT_ID: process.env.TG_CHAT_ID_STATISTICS || '',
+        ERROR_CHAT_ID: process.env.TG_CHAT_ID_ERROR || '',
+        TOKEN: process.env.TG_TOKEN_STATISTICS || '',
+        ENABLED: process.env.TG_ENABLED || 'false',
     },
 
     IMAGE_CONFIG: {

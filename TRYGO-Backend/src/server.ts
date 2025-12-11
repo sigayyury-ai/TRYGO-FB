@@ -135,10 +135,15 @@ async function startServer() {
         await agenda.start();
         console.log('✅ Agenda started');
 
-        console.log('📱 Initializing Telegram API...');
-        TgApi.initialize();
-        await agenda.every('0 0 * * *', 'sendDailyStatistic');
-        console.log('✅ Telegram API initialized');
+        // Telegram инициализация опциональна
+        if (config.TG_STATISTICS.TOKEN && config.TG_STATISTICS.ENABLED !== 'false') {
+            console.log('📱 Initializing Telegram API...');
+            TgApi.initialize();
+            await agenda.every('0 0 * * *', 'sendDailyStatistic');
+            console.log('✅ Telegram API initialized');
+        } else {
+            console.log('⏭️  Telegram API skipped (not configured)');
+        }
 
         console.log('🔌 Setting up Socket.io...');
         setupSocketIOServer(httpServer);
