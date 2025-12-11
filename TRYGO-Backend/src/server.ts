@@ -39,6 +39,10 @@ app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
 });
 
+app.head('/health', (_req, res) => {
+    res.status(200).end();
+});
+
 app.use(bodyParser.json());
 
 const httpServer = createServer(app);
