@@ -1,7 +1,11 @@
 import Stripe from 'stripe';
 import { config } from '../../constants/config/env';
 import { SubscriptionType } from '../../generated/graphql';
-const stripe = new Stripe(config.STRIPE_SECRET_KEY as string);
+
+// Stripe инициализируется только если ключ установлен
+const stripe = config.STRIPE_SECRET_KEY 
+    ? new Stripe(config.STRIPE_SECRET_KEY as string)
+    : null;
 
 const defaultFields = (
     clientReferenceId: string,
@@ -22,6 +26,9 @@ class StripeService {
         email: string,
         type: SubscriptionType
     ) {
+        if (!stripe) {
+            throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+        }
         try {
             if (type === SubscriptionType.Starter) {
                 return await stripe.checkout.sessions.create({
@@ -51,6 +58,9 @@ class StripeService {
     }
 
     async createStripeBillingPortal(stripeCustomerId: string) {
+        if (!stripe) {
+            throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+        }
         try {
             return await stripe.billingPortal.sessions.create({
                 customer: stripeCustomerId,
@@ -66,6 +76,9 @@ class StripeService {
         stripeSubscriptionId: string,
         type: SubscriptionType
     ) {
+        if (!stripe) {
+            throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+        }
         try {
             const existingSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 

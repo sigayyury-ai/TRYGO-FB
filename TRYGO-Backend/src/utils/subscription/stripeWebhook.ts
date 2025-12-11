@@ -2,9 +2,16 @@ import Stripe from 'stripe';
 import subscriptionService from '../../services/subscription/SubscriptionService';
 import { config } from '../../constants/config/env';
 
-const stripe = new Stripe(config.STRIPE_SECRET_KEY);
+// Stripe инициализируется только если ключ установлен
+const stripe = config.STRIPE_SECRET_KEY 
+    ? new Stripe(config.STRIPE_SECRET_KEY)
+    : null;
 
 export const stripeWebhook = async (req: any, res: any) => {
+    if (!stripe || !config.STRIPE_WEBHOOK_SECRET) {
+        return res.status(503).send('Stripe webhook is not configured');
+    }
+    
     let event;
 
     try {
