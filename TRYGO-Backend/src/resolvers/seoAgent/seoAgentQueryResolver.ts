@@ -357,7 +357,10 @@ const seoAgentQueryResolver = {
                 }
 
                 const userId = authService.getUserIdFromToken(context.token);
-                console.log(`[contentItemByBacklogIdea] backlogIdeaId: ${args.backlogIdeaId}, userId: ${userId}`);
+                // Log only in development
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log(`[contentItemByBacklogIdea] backlogIdeaId: ${args.backlogIdeaId}, userId: ${userId}`);
+                }
                 
                 // Find content item by backlogIdeaId
                 const contentItem = await SeoContentItem.findOne({
@@ -372,7 +375,7 @@ const seoAgentQueryResolver = {
                 // Verify user has access to this project
                 await projectService.getProjectById(contentItem.projectId, userId);
 
-                console.log(`[contentItemByBacklogIdea] Found content item: ${contentItem._id.toString()}`);
+                // Removed verbose logging - only log errors in production
                 return mapContentItem(contentItem);
             } catch (err: any) {
                 console.error('[contentItemByBacklogIdea] Error:', err);
