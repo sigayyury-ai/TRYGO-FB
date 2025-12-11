@@ -1,0 +1,30 @@
+type HypothesesPacking {
+    id: ID!
+    userId: ID!
+    projectHypothesisId: ID!
+    threadId: String!
+    summary: String!
+}
+
+type Query {
+    getHypothesesPacking(
+        projectHypothesisId: ID!
+    ): HypothesesPacking
+}
+
+input ChangeHypothesesPackingInput {
+    id: ID!
+    summary: String!
+}
+
+type Mutation {
+    changeHypothesesPacking(
+        input: ChangeHypothesesPackingInput!
+    ): HypothesesPacking!
+    createHypothesesPacking(
+        projectHypothesisId: ID!
+    ): HypothesesPacking!
+    regenerateHypothesesPacking(
+        input: ProjectHypothesisIdPromptPartInput!
+    ): HypothesesPacking!
+}

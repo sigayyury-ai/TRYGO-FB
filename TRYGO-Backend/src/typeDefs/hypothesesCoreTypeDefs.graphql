@@ -1,0 +1,77 @@
+type HypothesesCore {
+    id: ID!
+    userId: ID!
+    projectHypothesisId: ID!
+    problems: [String!]!
+    customerSegments: [CustomerSegment!]!
+    uniqueProposition: String!
+    solutions: [String!]!
+    keyMetrics: [String!]!
+    channels: [Channel!]!
+    costStructure: String!
+    revenueStream: String!
+    unfairAdvantages: [String!]!
+    threadId: String!
+}
+
+type CustomerSegment {
+    id: ID!
+    name: String!
+    description: String!
+}
+
+type Channel {
+    channelType: ChannelType!
+    variants: [ChannelVariant!]!
+}
+
+enum ChannelType {
+    ORGANIC_SEARCH
+    PAID_SEARCH
+    ORGANIC_SOCIAL_MEDIA
+    PAID_SOCIAL_MEDIA
+    PARTNERS
+}
+
+type ChannelVariant {
+    name: String!
+    url: String
+}
+
+type Query {
+    getHypothesesCore(projectHypothesisId: ID!): HypothesesCore!
+}
+
+input CustomerSegmentInput {
+    id: ID
+    name: String!
+    description: String!
+}
+
+input ChannelInput {
+    channelType: ChannelType!
+    variants: [ChannelVariantInput!]!
+}
+
+input ChannelVariantInput {
+    name: String!
+    url: String
+}
+
+input ChangeHypothesesCoreInput {
+    id: ID!
+    problems: [String!]
+    customerSegments: [CustomerSegmentInput!]
+    uniqueProposition: String
+    solutions: [String!]
+    keyMetrics: [String!]
+    channels: [ChannelInput!]
+    costStructure: String
+    revenueStream: String
+    unfairAdvantages: [String]
+}
+
+type Mutation {
+    changeHypothesesCore(input: ChangeHypothesesCoreInput!): HypothesesCore!
+    regenerateHypothesesCore(input: ProjectHypothesisIdPromptPartInput!): HypothesesCore!
+}

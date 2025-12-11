@@ -1,0 +1,23 @@
+type ProjectHypotheses {
+    id: ID!
+    userId: ID!
+    projectId: ID!
+    title: String!
+    description: String!
+    createdAt: Date!
+}
+
+type Query {
+    getProjectHypotheses(projectId: ID!): [ProjectHypotheses!]!
+}
+
+input ChangeProjectHypothesisInput {
+    id: ID!
+    title: String
+    description: String
+}
+
+type Mutation {
+    changeProjectHypothesis(input: ChangeProjectHypothesisInput!): ProjectHypotheses!
+    deleteProjectHypothesis(id: ID!): Boolean!
+}

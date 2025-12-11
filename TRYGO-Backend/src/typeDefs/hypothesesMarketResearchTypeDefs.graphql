@@ -1,0 +1,30 @@
+type HypothesesMarketResearch {
+    id: ID!
+    userId: ID!
+    projectHypothesisId: ID!
+    threadId: String!
+    summary: String!
+}
+
+type Query {
+    getHypothesesMarketResearch(
+        projectHypothesisId: ID!
+    ): HypothesesMarketResearch
+}
+
+input ChangeHypothesesMarketResearchInput {
+    id: ID!
+    summary: String!
+}
+
+type Mutation {
+    changeHypothesesMarketResearch(
+        input: ChangeHypothesesMarketResearchInput!
+    ): HypothesesMarketResearch!
+    createHypothesesMarketResearch(
+        projectHypothesisId: ID!
+    ): HypothesesMarketResearch!
+    regenerateHypothesesMarketResearch(
+        input: ProjectHypothesisIdPromptPartInput!
+    ): HypothesesMarketResearch!
+}

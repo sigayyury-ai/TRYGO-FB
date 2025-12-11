@@ -1,0 +1,31 @@
+enum ProjectStartType{
+	URL_IMPORT
+	START_FROM_SCRATCH
+}
+
+enum ProjectGenerationStatus{
+	IN_PROGRESS
+	GENERATED
+}
+
+type Project{
+	id: ID!
+	userId: ID!
+    title: String!
+    generationStatus: ProjectGenerationStatus!
+	startType: ProjectStartType!
+	info: String!
+	url: String
+	assistantId: String!
+}
+
+type ProjectDto{
+	id: ID!
+	userId: ID!
+    title: String!
+    generationStatus: ProjectGenerationStatus!
+}
+
+type Query {
+    getProjects: [ProjectDto!]!
+}

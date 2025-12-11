@@ -1,0 +1,86 @@
+type HypothesesPersonProfile {
+    id: ID!
+    userId: ID!
+    projectHypothesisId: ID!
+    customerSegmentId: ID!
+    name: String!
+    avatarUrl: String
+    description: String!
+    platforms: [String!]!
+    age: Int!
+    location: String!
+    education: String!
+    userGoals: [String!]!
+    userPains: [String!]!
+    userGains: [String!]!
+    userTriggers: [String!]!
+    jbtd: Jbtd
+    cjm: Cjm
+}
+
+type Cjm {
+    awareness: CjmPart
+    consideration: CjmPart
+    acquisition: CjmPart
+    service: CjmPart
+    loyalty: CjmPart
+}
+
+type CjmPart {
+    opportunities: String
+    barriers: String
+}
+
+type Jbtd {
+    functionalAspects: String
+    personalDimension: String
+    socialDimension: String
+}
+
+type Query {
+    getAllHypothesesPersonProfiles(
+        projectHypothesisId: ID!
+    ): [HypothesesPersonProfile!]!
+}
+
+input ChangeHypothesesPersonProfileInput {
+    id: ID!
+    name: String
+    avatarUrl: String
+    description: String
+    platforms: [String!]
+    age: Int
+    location: String
+    education: String
+    userGoals: [String!]
+    userPains: [String!]
+    userGains: [String!]
+    userTriggers: [String!]
+    jbtd: JbtdInput
+    cjm: CjmInput
+}
+
+input JbtdInput {
+    functionalAspects: String
+    personalDimension: String
+    socialDimension: String
+}
+
+input CjmInput {
+    awareness: CjmPartInput
+    consideration: CjmPartInput
+    acquisition: CjmPartInput
+    service: CjmPartInput
+    loyalty: CjmPartInput
+}
+
+input CjmPartInput {
+    opportunities: String
+    barriers: String
+}
+
+type Mutation {
+    changeHypothesesPersonProfile(
+        input: ChangeHypothesesPersonProfileInput!
+    ): HypothesesPersonProfile!
+}

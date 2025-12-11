@@ -1,0 +1,19 @@
+type ProjectAssistant {
+    id: ID!
+    userId: ID!
+    projectId: ID!
+    systemInstruction: String!
+}
+
+type Query {
+    getProjectAssistant(projectId: ID!): ProjectAssistant!
+}
+
+input ChangeProjectAssistantInput {
+    projectId: ID!
+    systemInstruction: String!
+}
+
+type Mutation {
+    changeProjectAssistant(input: ChangeProjectAssistantInput!): String!
+}

@@ -1,0 +1,47 @@
+import { SubscriptionType } from '../../generated/graphql';
+import subscriptionService from '../../services/subscription/SubscriptionService';
+
+export enum GenerationType {
+    MARKET_RESEARCH = 'MARKET_RESEARCH',
+    VALIDATION = 'VALIDATION',
+    PACKING = 'PACKING',
+}
+
+export const checkIfGenerationAllowed = async (
+    userId: string,
+    generationType: GenerationType
+) => {
+    try {
+        let generationAllowed = false;
+        const subscription = await subscriptionService.getSubscription(userId);
+
+        switch (generationType) {
+            case GenerationType.MARKET_RESEARCH:
+            case GenerationType.VALIDATION:
+                if (subscription?.type === SubscriptionType.Pro) {
+                    generationAllowed = true;
+                } else {
+                    generationAllowed = false;
+                }
+                break;
+            case GenerationType.PACKING:
+                if (
+                    subscription?.type === SubscriptionType.Starter ||
+                    subscription?.type === SubscriptionType.Pro
+                ) {
+                    generationAllowed = true;
+                } else {
+                    generationAllowed = false;
+                }
+                break;
+        }
+        if (!generationAllowed) {
+            throw new Error('Generation not allowed for this subscription');
+        }
+
+        return generationAllowed;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};

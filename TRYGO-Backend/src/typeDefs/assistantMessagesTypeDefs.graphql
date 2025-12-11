@@ -1,0 +1,9 @@
+type AssistantMessages {
+    generatedMessages: Int!
+    userId: ID!
+    createdAt: Date!
+}
+
+type Query {
+    getAssistantMessages: AssistantMessages!
+}

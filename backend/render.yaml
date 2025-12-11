@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: seo-agent-backend
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_IMAGE_MODEL
+        value: dall-e-2
+      - key: FRONTEND_URL
+        sync: false
+      - key: SEMANTICS_SERVICE_URL
+        sync: false
+      - key: IMAGES_SERVICE_URL
+        sync: false
+      - key: WEBSITE_PAGES_SERVICE_URL
+        sync: false
+      - key: IMAGE_PROVIDER
+        value: openai
+      - key: WORDPRESS_BASE_URL
+        sync: false
+      - key: WORDPRESS_USERNAME
+        sync: false
+      - key: WORDPRESS_APP_PASSWORD
+        sync: false
+
