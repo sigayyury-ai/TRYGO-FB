@@ -78,8 +78,13 @@ app.post(
 app.use(bodyParser.json());
 
 // CORS must be set up early, before other middleware
+// For production on Render, if CORS origins are empty, allow all origins as fallback
+const corsOrigins = config.isCorsEnabled && config.PRODUCTION_PORTS.length > 0 
+    ? config.PRODUCTION_PORTS 
+    : '*';
+
 const corsOptions = {
-    origin: config.isCorsEnabled ? config.PRODUCTION_PORTS : '*',
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-project-id', 'x-hypothesis-id', 'x-user-id'],
@@ -87,14 +92,15 @@ const corsOptions = {
     optionsSuccessStatus: 204
 };
 
-if (config.isCorsEnabled) {
-    console.log('🌐 CORS enabled for origins:', config.PRODUCTION_PORTS);
-    console.log('🌐 CORS_ENABLED:', process.env.CORS_ENABLED);
-    console.log('🌐 FRONTEND_URL:', process.env.FRONTEND_URL);
-    console.log('🌐 DEVELOPMENT_FRONTEND_URL:', process.env.DEVELOPMENT_FRONTEND_URL);
-    console.log('🌐 PRODUCTION_FRONTEND_URL:', process.env.PRODUCTION_FRONTEND_URL);
-} else {
-    console.log('🌐 CORS enabled for all origins (*)');
+// Detailed CORS logging for debugging
+console.log('🌐 [CORS_CONFIG] CORS_ENABLED:', process.env.CORS_ENABLED);
+console.log('🌐 [CORS_CONFIG] FRONTEND_URL:', process.env.FRONTEND_URL || '(not set)');
+console.log('🌐 [CORS_CONFIG] DEVELOPMENT_FRONTEND_URL:', process.env.DEVELOPMENT_FRONTEND_URL || '(not set)');
+console.log('🌐 [CORS_CONFIG] PRODUCTION_FRONTEND_URL:', process.env.PRODUCTION_FRONTEND_URL || '(not set)');
+console.log('🌐 [CORS_CONFIG] PRODUCTION_PORTS array:', config.PRODUCTION_PORTS);
+console.log('🌐 [CORS_CONFIG] Final CORS origins:', corsOrigins);
+if (config.isCorsEnabled && config.PRODUCTION_PORTS.length === 0) {
+    console.warn('⚠️  [CORS_CONFIG] CORS_ENABLED=true but no origins configured! Using * as fallback');
 }
 
 // Apply CORS middleware early
