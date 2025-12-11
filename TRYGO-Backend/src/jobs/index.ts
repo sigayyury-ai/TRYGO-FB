@@ -3,7 +3,7 @@ import allDefinitions from './definitions';
 
 // establised a connection to our mongoDB database.
 const connectionOpts = {
-    db: { address: process.env.MONGODB_URI || process.env.MONGO_URI || '', collection: 'agendaJobs' },
+    db: { address: process.env.MONGODB_URI || '', collection: 'agendaJobs' },
 };
 
 const agenda = new Agenda(connectionOpts);
