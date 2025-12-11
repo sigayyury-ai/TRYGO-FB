@@ -60,6 +60,12 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization', 'x-project-id', 'x-hypothesis-id', 'x-user-id'],
 };
 
+if (config.isCorsEnabled) {
+    console.log('🌐 CORS enabled for origins:', config.PRODUCTION_PORTS);
+} else {
+    console.log('🌐 CORS enabled for all origins (*)');
+}
+
 app.use(cors(corsOptions));
 
 // Static file serving for generated images (before GraphQL middleware)
