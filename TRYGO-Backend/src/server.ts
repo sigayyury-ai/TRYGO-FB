@@ -29,13 +29,8 @@ import imagesRouter from './routes/images';
 const app = express();
 const PORT = process.env.PORT || 5001; // Changed from 4000 to avoid conflicts with SEO Agent backend (4100) and macOS ControlCenter (5000)
 
-app.post(
-    '/api/webhook',
-    express.raw({ type: 'application/json' }),
-    stripeWebhook
-);
-
 // Health check endpoint - must respond quickly for Render
+// This allows Render to verify the service is up before full initialization
 app.get('/health', (_req, res) => {
     res.status(200).json({ 
         status: 'ok',
@@ -51,6 +46,25 @@ app.head('/health', (_req, res) => {
 app.options('/health', (_req, res) => {
     res.status(200).end();
 });
+
+// Root endpoint - some health checks use root path
+app.get('/', (_req, res) => {
+    res.status(200).json({ 
+        status: 'ok',
+        service: 'trygo-main-backend',
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.head('/', (_req, res) => {
+    res.status(200).end();
+});
+
+app.post(
+    '/api/webhook',
+    express.raw({ type: 'application/json' }),
+    stripeWebhook
+);
 
 app.use(bodyParser.json());
 
@@ -157,9 +171,12 @@ async function startServer() {
         // app.use('/file', fileRoutes);
         console.log('✅ Routes set up');
 
-        // 404 handler for unknown routes
+        // 404 handler for unknown routes (skip health check and root paths)
         app.use((req, res) => {
-            console.warn(`⚠️  404: ${req.method} ${req.path}`);
+            // Don't log health check requests as warnings
+            if (req.path !== '/health' && req.path !== '/') {
+                console.warn(`⚠️  404: ${req.method} ${req.path}`);
+            }
             res.status(404).json({ 
                 error: 'Not Found', 
                 path: req.path,
