@@ -5,11 +5,11 @@
 # 
 # АРХИТЕКТУРА:
 # - trygo-main-backend: Единый API Gateway ($7/месяц) - все запросы идут через него
+#   Включает: авторизацию, проекты, гипотезы, SEO Agent, Images API (интегрирован)
 # - trygo-frontend: БЕСПЛАТНО (static site)
-# - Микросервисы (images, website-pages, semantics) можно объединить в trygo-main-backend
-#   или оставить как внутренние сервисы на free плане
+# - Микросервисы (website-pages, semantics) на free плане
 #
-# ИТОГО: $7-14/месяц вместо $42/месяц
+# ИТОГО: $7/месяц (images-service интегрирован в trygo-main-backend)
 #
 # Для деплоя:
 # 1. Подключите репозиторий в Render Dashboard
@@ -108,6 +108,22 @@ services:
         sync: false
       - key: WORDPRESS_APP_PASSWORD
         sync: false
+      # Image generation configuration (integrated into TRYGO-Backend)
+      # Uses Google Gemini/Imagen for image generation
+      - key: IMAGE_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_IMAGE_MODEL
+        value: imagen-4.0-generate-001
+      - key: GEMINI_API_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta
+      - key: PUBLIC_URL
+        sync: false
+      - key: STORAGE_ROOT
+        value: ./storage
 
   # ============================================
   # Frontend (React SPA)
@@ -191,37 +207,3 @@ services:
           name: trygo-frontend
           property: host
 
-  # ============================================
-  # Images Service (опционально - можно объединить в trygo-main-backend)
-  # Микросервис для генерации изображений
-  # ============================================
-  - type: web
-    name: images-service
-    runtime: node
-    region: frankfurt
-    plan: free
-    rootDir: images-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "4300"
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: IMAGE_PROVIDER
-        value: openai
-      - key: OPENAI_IMAGE_MODEL
-        value: dall-e-2
-      - key: GEMINI_IMAGE_MODEL
-        value: gemini-2.5-flash-image
-      - key: GEMINI_API_BASE_URL
-        value: https://generativelanguage.googleapis.com/v1beta
-      - key: PUBLIC_URL
-        sync: false
-      - key: STORAGE_ROOT
-        value: ./storage

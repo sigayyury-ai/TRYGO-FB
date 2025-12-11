@@ -24,6 +24,7 @@ import SentryErrHandler from './errors/sentryErrHandler';
 import { sendErrorToTg } from './utils/sendErrorToTg';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
 import { setupSocketIOServer } from './utils/socketIO/setupSocketIOServer';
+import imagesRouter from './routes/images';
 
 const app = express();
 const PORT = process.env.PORT || 5001; // Changed from 4000 to avoid conflicts with SEO Agent backend (4100) and macOS ControlCenter (5000)
@@ -57,6 +58,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Static file serving for generated images (before GraphQL middleware)
+app.use('/media', express.static('./storage'));
 
 const server = new ApolloServer({
     schema,
@@ -114,6 +118,8 @@ async function startServer() {
         console.log('✅ GraphQL middleware set up');
 
         console.log('🖼️ Setting up routes...');
+        // Images API routes
+        app.use('/api/images', imagesRouter);
         // AWS routes disabled - not needed
         // app.use('/image', imageRoutes);
         // app.use('/file', fileRoutes);

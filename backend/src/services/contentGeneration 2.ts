@@ -405,16 +405,17 @@ export const generateImage = async (
   request: ImageGenerationRequest
 ): Promise<ImageGenerationResponse> => {
   try {
-    // Try images service first
+    // Try images service first (now integrated into TRYGO-Backend)
     try {
-      const response = await fetch(`${env.imagesServiceUrl}/generate`, {
+      const response = await fetch(`${env.trygoBackendUrl}/api/images/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          prompt: request.description || request.title,
-          title: request.title
+          contentItemId: request.contentItemId || "unknown",
+          title: request.title,
+          description: request.description
         })
       });
 

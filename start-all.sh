@@ -11,7 +11,7 @@ echo "🧹 Cleaning up ports..."
 lsof -ti:5001 | xargs kill -9 2>/dev/null
 lsof -ti:4100 | xargs kill -9 2>/dev/null
 lsof -ti:4200 | xargs kill -9 2>/dev/null
-lsof -ti:4300 | xargs kill -9 2>/dev/null
+# Port 4300 no longer needed (images-service integrated into TRYGO-Backend)
 lsof -ti:4400 | xargs kill -9 2>/dev/null
 lsof -ti:8080 | xargs kill -9 2>/dev/null
 sleep 1
@@ -33,7 +33,6 @@ ensure_deps "$SCRIPT_DIR/TRYGO-Backend" "package.json"
 ensure_deps "$SCRIPT_DIR/backend" "tslib/package.json"
 ensure_deps "$SCRIPT_DIR/TRYGO-Front" "react/package.json"
 ensure_deps "$SCRIPT_DIR/semantics-service" "package.json"
-ensure_deps "$SCRIPT_DIR/images-service" "package.json"
 ensure_deps "$SCRIPT_DIR/website-pages-service" "package.json"
 
 # Start main TRYGO backend (port 5001) in background
@@ -75,12 +74,8 @@ npm run dev > "$SCRIPT_DIR/logs/semantics.log" 2>&1 &
 SEMANTICS_PID=$!
 echo "Semantics PID: $SEMANTICS_PID"
 
-# Start images service
-echo "🖼️ Starting images service..."
-cd "$SCRIPT_DIR/images-service"
-npm run dev > "$SCRIPT_DIR/logs/images.log" 2>&1 &
-IMAGES_PID=$!
-echo "Images PID: $IMAGES_PID"
+# Images service is now integrated into TRYGO-Backend (port 5001)
+# No separate images-service needed
 
 # Start website pages service
 echo "🧾 Starting website pages service..."
@@ -109,9 +104,9 @@ fi
 echo ""
 echo "✅ Servers started!"
 echo "📊 Main Backend:  http://localhost:5001/graphql"
+echo "   Images API:    http://localhost:5001/api/images/generate"
 echo "📊 SEO Backend:   http://localhost:4100/graphql"
 echo "🧠 Semantics:     http://localhost:4200"
-echo "🖼️ Images:        http://localhost:4300"
 echo "🧾 Website:       http://localhost:4400"
 echo "🌐 Frontend:      http://localhost:8080"
 echo ""
@@ -119,7 +114,7 @@ echo "📝 Logs:"
 echo "   Main Backend:  tail -f $SCRIPT_DIR/logs/main-backend.log"
 echo "   SEO Backend:   tail -f $SCRIPT_DIR/logs/backend.log"
 echo "   Semantics:     tail -f $SCRIPT_DIR/logs/semantics.log"
-echo "   Images:        tail -f $SCRIPT_DIR/logs/images.log"
+echo "   Website Pages: tail -f $SCRIPT_DIR/logs/website-pages.log"
 echo "   Frontend:      tail -f $SCRIPT_DIR/logs/frontend.log"
 echo ""
 echo "🛑 To stop: $SCRIPT_DIR/stop-all.sh"

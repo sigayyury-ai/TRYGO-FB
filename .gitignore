@@ -4,3 +4,7 @@ dist/
 .env*
 logs/
 *.log
+
+# Storage directories (keep structure, ignore files)
+TRYGO-Backend/storage/draft-images/*
+!TRYGO-Backend/storage/draft-images/.gitkeep

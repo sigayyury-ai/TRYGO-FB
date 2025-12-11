@@ -32,6 +32,7 @@ export interface ImageGenerationRequest {
   title: string;
   description?: string;
   content?: string;
+  contentItemId?: string; // For new integrated API
   // Audience context for better image generation
   projectContext?: {
     title?: string;
@@ -548,6 +549,34 @@ export { convertJsonToMarkdown };
 export const generateImage = async (
   request: ImageGenerationRequest
 ): Promise<ImageGenerationResponse> => {
+  // Try new integrated images API first (in TRYGO-Backend)
+  try {
+    const response = await fetch(`${env.trygoBackendUrl}/api/images/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contentItemId: request.contentItemId || "unknown",
+        title: request.title,
+        description: request.description
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.imageUrl) {
+        console.log("[generateImage] ✅ Image generated via TRYGO-Backend API");
+        return {
+          imageUrl: data.imageUrl
+        };
+      }
+    }
+  } catch (serviceError) {
+    console.warn("[generateImage] ⚠️ TRYGO-Backend images API not available, falling back to Gemini:", serviceError);
+  }
+
+  // Fallback to Google Gemini (original implementation)
   try {
     // Use Google Gemini only
     const hasGeminiKey = !!(env.geminiApiKey || env.googleApiKey);

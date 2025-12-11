@@ -1508,6 +1508,7 @@ export const resolvers = {
           title,
           description,
           content: (contentItem as any).content,
+          contentItemId, // Pass contentItemId for new integrated API
           projectContext,
           hypothesisContext,
           icpContext

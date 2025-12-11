@@ -39,4 +39,13 @@ export const config = {
         TOKEN: process.env.TG_TOKEN_STATISTICS!,
         ENABLED: process.env.TG_ENABLED!,
     },
+
+    IMAGE_CONFIG: {
+        provider: (process.env.IMAGE_PROVIDER || "gemini") as "gemini",
+        geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+        geminiImageModel: process.env.GEMINI_IMAGE_MODEL || "imagen-4.0-generate-001",
+        geminiApiBaseUrl: process.env.GEMINI_API_BASE_URL || "https://generativelanguage.googleapis.com/v1beta",
+        publicUrl: (process.env.PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:5001").replace(/\/$/, ""),
+        storageRoot: process.env.STORAGE_ROOT || "./storage"
+    },
 };
