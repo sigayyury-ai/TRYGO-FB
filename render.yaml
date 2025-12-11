@@ -106,7 +106,7 @@ services:
         sync: false
 
   # Frontend (Static Site)
-  - type: static
+  - type: web
     name: trygo-frontend
     env: static
     region: frankfurt
