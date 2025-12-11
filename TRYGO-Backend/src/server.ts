@@ -49,15 +49,19 @@ app.options('/health', (_req, res) => {
 
 // Root endpoint - some health checks use root path
 app.get('/', (req, res) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ✅ [ROOT_ENDPOINT] GET / - OK`);
     res.status(200).json({ 
         status: 'ok',
         service: 'trygo-main-backend',
-        timestamp: new Date().toISOString(),
+        timestamp: timestamp,
         path: req.path || '/'
     });
 });
 
-app.head('/', (_req, res) => {
+app.head('/', (req, res) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ✅ [ROOT_ENDPOINT] HEAD / - OK`);
     res.status(200).end();
 });
 
@@ -126,19 +130,34 @@ const server = new ApolloServer({
     ],
 });
 
+// Helper function for structured logging
+const logStep = (step: string, status: 'start' | 'success' | 'error', details?: string) => {
+    const timestamp = new Date().toISOString();
+    const emoji = status === 'start' ? '🔄' : status === 'success' ? '✅' : '❌';
+    const message = `[${timestamp}] ${emoji} [${step}] ${status.toUpperCase()}${details ? `: ${details}` : ''}`;
+    
+    if (status === 'error') {
+        console.error(message);
+    } else {
+        console.log(message);
+    }
+};
+
 async function startServer() {
+    const startTime = Date.now();
+    
     try {
-        console.log('🚀 Starting server...');
+        logStep('SERVER_STARTUP', 'start', 'Initializing server...');
         
-        console.log('📊 Starting Apollo Server...');
+        logStep('APOLLO_SERVER', 'start', 'Starting Apollo Server...');
         await server.start();
-        console.log('✅ Apollo Server started');
+        logStep('APOLLO_SERVER', 'success', 'Apollo Server started');
 
-        console.log('🔌 Connecting to MongoDB...');
+        logStep('MONGODB_CONNECTION', 'start', 'Connecting to MongoDB...');
         await connectMainDB();
-        console.log('✅ MongoDB connected');
+        logStep('MONGODB_CONNECTION', 'success', 'MongoDB connected');
 
-        console.log('📝 Setting up GraphQL middleware...');
+        logStep('GRAPHQL_MIDDLEWARE', 'start', 'Setting up GraphQL middleware...');
         app.use(
             '/graphql',
             expressMiddleware(server, {
@@ -160,9 +179,9 @@ async function startServer() {
                 },
             })
         );
-        console.log('✅ GraphQL middleware set up');
+        logStep('GRAPHQL_MIDDLEWARE', 'success', 'GraphQL middleware set up');
 
-        console.log('🖼️ Setting up routes...');
+        logStep('ROUTES_SETUP', 'start', 'Setting up routes...');
         // Images API routes
         app.use('/api/images', imagesRouter);
         // Clusters REST API routes (from semantics-service)
@@ -171,17 +190,14 @@ async function startServer() {
         // Website Pages API routes (from website-pages-service)
         const websitePagesRouter = await import('./routes/websitePages');
         app.use('/api/website-pages', websitePagesRouter.default);
-        // AWS routes disabled - not needed
-        // app.use('/image', imageRoutes);
-        // app.use('/file', fileRoutes);
-        console.log('✅ Routes set up');
+        logStep('ROUTES_SETUP', 'success', 'Routes set up');
 
         // 404 handler for unknown routes (skip health check and root paths)
         app.use((req, res) => {
             const path = req.path || req.url || '/';
             // Don't log health check requests as warnings
             if (path !== '/health' && path !== '/') {
-                console.warn(`⚠️  404: ${req.method} ${path || '(empty)'}`);
+                logStep('404_NOT_FOUND', 'error', `${req.method} ${path || '(empty)'}`);
             }
             res.status(404).json({ 
                 error: 'Not Found', 
@@ -191,38 +207,43 @@ async function startServer() {
             });
         });
 
-        console.log('⏰ Starting Agenda jobs...');
+        logStep('AGENDA_JOBS', 'start', 'Starting Agenda jobs...');
         // Start agenda asynchronously to not block server startup
         agenda.start().then(() => {
-            console.log('✅ Agenda started');
+            logStep('AGENDA_JOBS', 'success', 'Agenda started');
         }).catch((error) => {
-            console.error('❌ Error starting Agenda:', error);
+            logStep('AGENDA_JOBS', 'error', `Error: ${error.message}`);
             // Don't block server startup if Agenda fails
         });
         // Don't await - let server start immediately
-        console.log('✅ Agenda initialization started (non-blocking)');
+        logStep('AGENDA_JOBS', 'success', 'Agenda initialization started (non-blocking)');
 
         // Telegram инициализация опциональна
         if (config.TG_STATISTICS.TOKEN && config.TG_STATISTICS.ENABLED !== 'false') {
-            console.log('📱 Initializing Telegram API...');
+            logStep('TELEGRAM_API', 'start', 'Initializing Telegram API...');
             TgApi.initialize();
             await agenda.every('0 0 * * *', 'sendDailyStatistic');
-            console.log('✅ Telegram API initialized');
+            logStep('TELEGRAM_API', 'success', 'Telegram API initialized');
         } else {
-            console.log('⏭️  Telegram API skipped (not configured)');
+            logStep('TELEGRAM_API', 'success', 'Skipped (not configured)');
         }
 
-        console.log('🔌 Setting up Socket.io...');
+        logStep('SOCKET_IO', 'start', 'Setting up Socket.io...');
         setupSocketIOServer(httpServer);
-        console.log('✅ Socket.io set up');
+        logStep('SOCKET_IO', 'success', 'Socket.io set up');
         
-        console.log(`🌐 Starting HTTP server on port ${PORT}...`);
+        logStep('HTTP_SERVER', 'start', `Starting HTTP server on port ${PORT}...`);
         httpServer.listen(PORT, () => {
-            console.log(`✅ Server is running on http://localhost:${PORT}`);
+            const startupTime = Date.now() - startTime;
+            logStep('HTTP_SERVER', 'success', `Server is running on http://localhost:${PORT}`);
+            logStep('SERVER_STARTUP', 'success', `Server fully started in ${startupTime}ms`);
             console.log(`📊 GraphQL endpoint: http://localhost:${PORT}/graphql`);
+            console.log(`📊 Health check: http://localhost:${PORT}/health`);
+            console.log(`📊 Root endpoint: http://localhost:${PORT}/`);
         });
     } catch (error: any) {
-        console.error('❌ Error starting server:', error);
+        const startupTime = Date.now() - startTime;
+        logStep('SERVER_STARTUP', 'error', `Failed after ${startupTime}ms: ${error.message}`);
         console.error('Stack:', error.stack);
         process.exit(1);
     }

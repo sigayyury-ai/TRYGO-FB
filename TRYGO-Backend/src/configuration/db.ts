@@ -18,8 +18,10 @@ const connectMainDB = async () => {
 
         await mongoose.connect(mongoUri);
         
-        console.log('✅ Mongoose Connected');
-        console.log(`   Database: ${mongoose.connection.db?.databaseName || 'unknown'}`);
+        const timestamp = new Date().toISOString();
+        const dbName = mongoose.connection.db?.databaseName || 'unknown';
+        console.log(`[${timestamp}] ✅ [MONGODB] Connected successfully`);
+        console.log(`[${timestamp}] 📊 [MONGODB] Database: ${dbName}`);
 
         // Handle connection events
         mongoose.connection.on('error', (error) => {
