@@ -41,10 +41,14 @@ class AuthService {
     }
 
     getDataFromResetToken(resetToken: string): ResetCodePayload {
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            throw new Error('JWT_SECRET environment variable is not set. Please set it in Render Dashboard.');
+        }
         try {
             const decoded = jwt.verify(
                 resetToken,
-                process.env.JWT_SECRET!
+                jwtSecret
             ) as ResetCodePayload;
 
             if (!decoded) throw new Error('Invalid resed token');
@@ -57,10 +61,14 @@ class AuthService {
     }
 
     getDataFromToken(token: string) {
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            throw new Error('JWT_SECRET environment variable is not set. Please set it in Render Dashboard.');
+        }
         try {
             const decoded = jwt.verify(
                 token,
-                process.env.JWT_SECRET!
+                jwtSecret
             ) as Payload;
 
             if (!decoded) throw new Error('Invalid token');
