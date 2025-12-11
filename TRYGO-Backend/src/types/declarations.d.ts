@@ -28,6 +28,7 @@ declare module 'node-telegram-bot-api' {
         chat: any;
         text?: string;
     }
+    
 
     export default class TelegramBot {
         constructor(token: string, options?: any);
@@ -91,4 +92,38 @@ declare namespace Express {
             buffer: Buffer;
         }
     }
+    
+    interface Request {
+        file?: Express.Multer.File;
+        files?: Express.Multer.File[];
+    }
+}
+
+declare module 'jsonwebtoken' {
+    export interface SignOptions {
+        expiresIn?: string | number;
+        algorithm?: string;
+        issuer?: string;
+        subject?: string;
+        audience?: string;
+    }
+    
+    export interface VerifyOptions {
+        algorithms?: string[];
+        issuer?: string;
+        subject?: string;
+        audience?: string;
+    }
+    
+    export interface JwtPayload {
+        [key: string]: any;
+        id?: string;
+        email?: string;
+        iat?: number;
+        exp?: number;
+    }
+    
+    export function sign(payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions): string;
+    export function verify(token: string, secretOrPublicKey: string, options?: VerifyOptions): JwtPayload | string;
+    export function decode(token: string, options?: any): JwtPayload | string | null;
 }

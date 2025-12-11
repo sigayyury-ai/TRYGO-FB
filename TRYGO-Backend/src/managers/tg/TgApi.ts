@@ -1,4 +1,4 @@
-import TelegramBot from 'node-telegram-bot-api';
+import TelegramBot, { Message } from 'node-telegram-bot-api';
 import { config } from '../../constants/config/env';
 import {
     SendTgMessageBotToken,
@@ -84,7 +84,7 @@ export class TgApi {
         }
     }
 
-    static handleMessages(handler: (msg: TelegramBot.Message) => void): void {
+    static handleMessages(handler: (msg: Message) => void): void {
         try {
             if (config.TG_STATISTICS.ENABLED === 'false') {
                 return;
