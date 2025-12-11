@@ -1,0 +1,201 @@
+services:
+  # SEO Agent Backend
+  - type: web
+    name: seo-agent-backend
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_IMAGE_MODEL
+        value: dall-e-2
+      - key: FRONTEND_URL
+        sync: false
+      - key: SEMANTICS_SERVICE_URL
+        sync: false
+      - key: IMAGES_SERVICE_URL
+        sync: false
+      - key: WEBSITE_PAGES_SERVICE_URL
+        sync: false
+      - key: IMAGE_PROVIDER
+        value: openai
+      - key: WORDPRESS_BASE_URL
+        sync: false
+      - key: WORDPRESS_USERNAME
+        sync: false
+      - key: WORDPRESS_APP_PASSWORD
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # Main TRYGO Backend
+  - type: web
+    name: trygo-main-backend
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: TRYGO-Backend
+    buildCommand: npm install && npm run build && npm run codegen
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: DEVELOPMENT_FRONTEND_URL
+        sync: false
+      - key: PRODUCTION_FRONTEND_URL
+        sync: false
+      - key: CORS_ENABLED
+        value: "true"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GOOGLE_AUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_AUTH_CLIENT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_STARTER_MONTHLY_PRICE_ID
+        sync: false
+      - key: STRIPE_PRO_MONTHLY_PRICE_ID
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: AWS_ACCESS_KEY
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_BUCKET_NAME
+        sync: false
+      - key: MAILT_API_KEY
+        sync: false
+      - key: MAILT_EMAIL_ADDRESS
+        sync: false
+      - key: MAILT_FROM_NAME
+        sync: false
+      - key: BOUNCER_CHECK_API_KEY
+        sync: false
+      - key: TG_CHAT_ID_STATISTICS
+        sync: false
+      - key: TG_CHAT_ID_ERROR
+        sync: false
+      - key: TG_TOKEN_STATISTICS
+        sync: false
+      - key: TG_ENABLED
+        sync: false
+
+  # Frontend (Static Site)
+  - type: static
+    name: trygo-frontend
+    env: static
+    region: frankfurt
+    plan: starter
+    rootDir: TRYGO-Front
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_SERVER_URL
+        sync: false
+      - key: VITE_SEO_AGENT_URL
+        sync: false
+      - key: VITE_WS_SERVER_URL
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+      - key: VITE_SEO_AGENT_ENABLED
+        value: "true"
+      - key: VITE_SEO_AGENT_DEV_SHELL
+        value: "false"
+      - key: VITE_SEO_AGENT_UI_TESTING
+        value: "false"
+
+  # Images Service
+  - type: web
+    name: images-service
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: images-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4300"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: IMAGE_PROVIDER
+        value: openai
+      - key: OPENAI_IMAGE_MODEL
+        value: dall-e-2
+      - key: GEMINI_IMAGE_MODEL
+        value: gemini-2.5-flash-image
+      - key: GEMINI_API_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta
+      - key: PUBLIC_URL
+        sync: false
+      - key: STORAGE_ROOT
+        value: ./storage
+
+  # Website Pages Service
+  - type: web
+    name: website-pages-service
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: website-pages-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4400"
+      - key: OPENAI_API_KEY
+        sync: false
+
+  # Semantics Service
+  - type: web
+    name: semantics-service
+    env: node
+    region: frankfurt
+    plan: starter
+    rootDir: semantics-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4200"
+      - key: MONGODB_URI
+        sync: false
+      - key: SEMANTICS_SERVICE_ORIGIN
+        sync: false

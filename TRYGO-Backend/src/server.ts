@@ -34,6 +34,10 @@ app.post(
     stripeWebhook
 );
 
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+});
+
 app.use(bodyParser.json());
 
 const httpServer = createServer(app);
