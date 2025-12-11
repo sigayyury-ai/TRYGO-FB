@@ -97,11 +97,14 @@
 
 ### ✅ ОБЯЗАТЕЛЬНЫЕ переменные
 
-| Переменная | Описание | Значение |
-|-----------|----------|----------|
-| `VITE_SERVER_URL` | GraphQL endpoint основного бэкенда | `https://trygo-main-backend.onrender.com/graphql` (обновить после деплоя бэкенда) |
+**⚠️ ВАЖНО:** URL бэкенда вы узнаете только ПОСЛЕ деплоя `trygo-main-backend`. 
+Сначала установите placeholder значения, затем обновите их после деплоя.
+
+| Переменная | Описание | Начальное значение (placeholder) |
+|-----------|----------|----------------------------------|
+| `VITE_SERVER_URL` | GraphQL endpoint основного бэкенда | `https://trygo-main-backend.onrender.com/graphql` (замените на реальный URL после деплоя) |
 | `VITE_SEO_AGENT_URL` | GraphQL endpoint для SEO Agent | `https://trygo-main-backend.onrender.com/graphql` (тот же URL, так как интегрирован) |
-| `VITE_WS_SERVER_URL` | WebSocket URL для real-time обновлений | `wss://trygo-main-backend.onrender.com` (обновить после деплоя) |
+| `VITE_WS_SERVER_URL` | WebSocket URL для real-time обновлений | `wss://trygo-main-backend.onrender.com` (замените на реальный URL после деплоя) |
 | `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID (тот же что в backend) | [Google Cloud Console](https://console.cloud.google.com/) → OAuth 2.0 Client ID |
 
 ### ⚙️ АВТОМАТИЧЕСКИЕ переменные
@@ -127,13 +130,17 @@ GOOGLE_AUTH_CLIENT_ID=...
 GOOGLE_AUTH_CLIENT_SECRET=...
 ```
 
-**trygo-frontend:**
+**trygo-frontend (placeholder значения, обновить после деплоя бэкенда):**
 ```
 VITE_SERVER_URL=https://trygo-main-backend.onrender.com/graphql
 VITE_SEO_AGENT_URL=https://trygo-main-backend.onrender.com/graphql
 VITE_WS_SERVER_URL=wss://trygo-main-backend.onrender.com
 VITE_GOOGLE_CLIENT_ID=<тот же что в backend>
 ```
+
+**⚠️ После деплоя `trygo-main-backend`:**
+1. Откройте Render Dashboard → `trygo-main-backend` → скопируйте его URL
+2. Обновите в `trygo-frontend` все три URL на реальный URL из шага 1
 
 ### Шаг 2: После деплоя
 
