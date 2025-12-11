@@ -48,15 +48,20 @@ app.options('/health', (_req, res) => {
 });
 
 // Root endpoint - some health checks use root path
-app.get('/', (_req, res) => {
+app.get('/', (req, res) => {
     res.status(200).json({ 
         status: 'ok',
         service: 'trygo-main-backend',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        path: req.path || '/'
     });
 });
 
 app.head('/', (_req, res) => {
+    res.status(200).end();
+});
+
+app.options('/', (_req, res) => {
     res.status(200).end();
 });
 
@@ -173,14 +178,16 @@ async function startServer() {
 
         // 404 handler for unknown routes (skip health check and root paths)
         app.use((req, res) => {
+            const path = req.path || req.url || '/';
             // Don't log health check requests as warnings
-            if (req.path !== '/health' && req.path !== '/') {
-                console.warn(`⚠️  404: ${req.method} ${req.path}`);
+            if (path !== '/health' && path !== '/') {
+                console.warn(`⚠️  404: ${req.method} ${path || '(empty)'}`);
             }
             res.status(404).json({ 
                 error: 'Not Found', 
-                path: req.path,
-                method: req.method 
+                path: path,
+                method: req.method,
+                url: req.url
             });
         });
 
