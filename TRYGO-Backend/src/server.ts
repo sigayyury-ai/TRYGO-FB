@@ -55,6 +55,9 @@ const schema = makeExecutableSchema({
 
 const corsOptions = {
     origin: config.isCorsEnabled ? config.PRODUCTION_PORTS : '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-project-id', 'x-hypothesis-id', 'x-user-id'],
 };
 
 app.use(cors(corsOptions));

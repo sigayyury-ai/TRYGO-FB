@@ -6,17 +6,22 @@ export const config = {
     isCorsEnabled: process.env.CORS_ENABLED === 'true',
 
     PRODUCTION_PORTS: [
-        process.env.DEVELOPMENT_FRONTEND_URL 
-            ? (process.env.DEVELOPMENT_FRONTEND_URL.startsWith('http') 
-                ? process.env.DEVELOPMENT_FRONTEND_URL 
-                : `https://${process.env.DEVELOPMENT_FRONTEND_URL}`) 
+        process.env.DEVELOPMENT_FRONTEND_URL
+            ? (process.env.DEVELOPMENT_FRONTEND_URL.startsWith('http')
+                ? process.env.DEVELOPMENT_FRONTEND_URL
+                : `https://${process.env.DEVELOPMENT_FRONTEND_URL}`)
             : '',
-        process.env.PRODUCTION_FRONTEND_URL 
-            ? (process.env.PRODUCTION_FRONTEND_URL.startsWith('http') 
-                ? process.env.PRODUCTION_FRONTEND_URL 
-                : `https://${process.env.PRODUCTION_FRONTEND_URL}`) 
+        process.env.PRODUCTION_FRONTEND_URL
+            ? (process.env.PRODUCTION_FRONTEND_URL.startsWith('http')
+                ? process.env.PRODUCTION_FRONTEND_URL
+                : `https://${process.env.PRODUCTION_FRONTEND_URL}`)
             : '',
-    ],
+        process.env.FRONTEND_URL
+            ? (process.env.FRONTEND_URL.startsWith('http')
+                ? process.env.FRONTEND_URL
+                : `https://${process.env.FRONTEND_URL}`)
+            : '',
+    ].filter(Boolean), // Remove empty strings
 
     MAIL_TRAP: {
         apiKey: process.env.MAILT_API_KEY || '',
