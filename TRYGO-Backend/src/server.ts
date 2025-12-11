@@ -62,6 +62,10 @@ const corsOptions = {
 
 if (config.isCorsEnabled) {
     console.log('🌐 CORS enabled for origins:', config.PRODUCTION_PORTS);
+    console.log('🌐 CORS_ENABLED:', process.env.CORS_ENABLED);
+    console.log('🌐 FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('🌐 DEVELOPMENT_FRONTEND_URL:', process.env.DEVELOPMENT_FRONTEND_URL);
+    console.log('🌐 PRODUCTION_FRONTEND_URL:', process.env.PRODUCTION_FRONTEND_URL);
 } else {
     console.log('🌐 CORS enabled for all origins (*)');
 }
