@@ -34,6 +34,7 @@ services:
     buildCommand: npm ci && npm run codegen && npm run build
     startCommand: npm start
     healthCheckPath: /health
+    healthCheckGracePeriodSeconds: 60
     envVars:
       - key: NODE_ENV
         value: production

@@ -35,11 +35,20 @@ app.post(
     stripeWebhook
 );
 
+// Health check endpoint - must respond quickly for Render
 app.get('/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    res.status(200).json({ 
+        status: 'ok',
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.head('/health', (_req, res) => {
+    res.status(200).end();
+});
+
+// Also support OPTIONS for CORS preflight
+app.options('/health', (_req, res) => {
     res.status(200).end();
 });
 
