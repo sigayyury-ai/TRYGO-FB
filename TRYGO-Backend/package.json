@@ -9,7 +9,7 @@
         "build": "tsc",
         "format": "prettier --write \"src/**/*.{ts,tsx,json}\"",
         "test": "cross-env NODE_ENV=test jest",
-        "codegen": "node node_modules/@graphql-codegen/cli/cjs/bin.js",
+        "codegen": "npx graphql-codegen",
         "launch": "npm i && npm run build && npm run codegen",
         "fast": "npm run build && npm run start",
         "fastT": "npm run codegen && npm run build && npm run start",
