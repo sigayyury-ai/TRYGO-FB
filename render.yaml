@@ -105,15 +105,15 @@ services:
       - key: TG_ENABLED
         sync: false
 
-  # Frontend (Static Site)
+  # Frontend (Web Service)
   - type: web
     name: trygo-frontend
-    env: static
+    env: node
     region: frankfurt
     plan: starter
     rootDir: TRYGO-Front
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
     envVars:
       - key: VITE_SERVER_URL
         sync: false
