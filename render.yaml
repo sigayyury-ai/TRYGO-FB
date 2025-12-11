@@ -134,9 +134,7 @@ services:
   # ============================================
   - type: web
     name: trygo-frontend
-    env: static
-    region: frankfurt
-    plan: starter
+    runtime: static
     rootDir: TRYGO-Front
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
