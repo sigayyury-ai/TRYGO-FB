@@ -62,12 +62,28 @@ class StripeService {
             throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
         }
         try {
+            // Check if customer exists in Stripe before creating portal session
+            // This handles cases where customerId is invalid (e.g., manual_customer_* or deleted customer)
+            if (stripeCustomerId.startsWith('manual_customer_')) {
+                throw new Error(`Invalid Stripe customer ID: ${stripeCustomerId}. This appears to be a manual/test customer ID. Please contact support.`);
+            }
+            
+            try {
+                // Verify customer exists in Stripe
+                await stripe.customers.retrieve(stripeCustomerId);
+            } catch (retrieveError: any) {
+                if (retrieveError?.code === 'resource_missing') {
+                    throw new Error(`Stripe customer not found: ${stripeCustomerId}. The customer may have been deleted or the email may have changed.`);
+                }
+                throw retrieveError;
+            }
+            
             return await stripe.billingPortal.sessions.create({
                 customer: stripeCustomerId,
                 return_url: config.FRONTEND_URL,
             });
         } catch (err) {
-            console.error(err);
+            console.error('[StripeService] Error creating billing portal:', err);
             throw err;
         }
     }

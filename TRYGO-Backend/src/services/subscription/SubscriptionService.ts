@@ -49,19 +49,33 @@ class SubscriptionService {
                 throw new Error('Subscription not found');
             }
 
-            const portalSession = await stripeService.createStripeBillingPortal(
-                subscription.customerId
-            );
-
-            if (!portalSession) {
-                throw new Error(
-                    `Failed to create a stripe portal session for user with ID: ${userId}`
-                );
+            // Validate customerId before attempting to create portal session
+            if (!subscription.customerId || subscription.customerId.startsWith('manual_customer_')) {
+                throw new Error(`Invalid Stripe customer ID. Please contact support to resolve this issue.`);
             }
 
-            return portalSession.url;
+            try {
+                const portalSession = await stripeService.createStripeBillingPortal(
+                    subscription.customerId
+                );
+
+                if (!portalSession) {
+                    throw new Error(
+                        `Failed to create a stripe portal session for user with ID: ${userId}`
+                    );
+                }
+
+                return portalSession.url;
+            } catch (error: any) {
+                // If customer not found, it might be due to email change
+                if (error?.message?.includes('customer not found') || error?.code === 'resource_missing') {
+                    console.error(`[SubscriptionService] Stripe customer not found: ${subscription.customerId}. This may be due to email change.`);
+                    throw new Error('Stripe customer not found. This may happen if your email was changed. Please contact support.');
+                }
+                throw error;
+            }
         } catch (error) {
-            console.error(error);
+            console.error('[SubscriptionService] Error getting Stripe session URL:', error);
             throw error;
         }
     }
@@ -101,21 +115,33 @@ class SubscriptionService {
         try {
             const subscription =
                 await stripe.subscriptions.retrieve(subscriptionId);
-            console.log('subscription', subscription);
             const customer = (await stripe.customers.retrieve(
                 subscription.customer as string
             )) as any;
-            console.log('customer', customer);
             const email = customer.email as string;
-            const user = await userService.getUserByEmail(email as string);
+            
+            // Try to find user by email
+            let user = await userService.getUserByEmail(email as string);
+            
+            // If user not found by email, try to find by customer ID in existing subscription
+            // This handles the case where email was changed
             if (!user) {
-                throw new Error('User not found');
+                const existingSubscription = await this.model.findOne({ 
+                    customerId: subscription.customer as string 
+                });
+                if (existingSubscription) {
+                    user = await userService.getUserById(existingSubscription.userId.toString());
+                }
             }
-            console.log('user', user);
+            
+            if (!user) {
+                throw new Error(`User not found for email: ${email}. If you changed your email, please contact support.`);
+            }
+            
             await this.deleteSubscriptionsByUserId(user.id);
             await this.createSubscriptionModel(stripe, subscriptionId, user.id);
         } catch (err) {
-            console.error('Error:', err);
+            console.error('[SubscriptionService] Error approving subscription payment:', err);
             throw err;
         }
     }
