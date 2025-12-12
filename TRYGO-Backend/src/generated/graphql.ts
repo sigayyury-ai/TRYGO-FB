@@ -379,6 +379,25 @@ export type CustomerSegmentInput = {
   name: Scalars['String']['input'];
 };
 
+export type EmbeddedOnboardingInput = {
+  email: Scalars['String']['input'];
+  embedSource?: InputMaybe<Scalars['String']['input']>;
+  info: Scalars['String']['input'];
+  startType: ProjectStartType;
+  url?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EmbeddedOnboardingResponse = {
+  errorCode?: Maybe<Scalars['String']['output']>;
+  errorMessage?: Maybe<Scalars['String']['output']>;
+  isNewAccount: Scalars['Boolean']['output'];
+  passwordSent: Scalars['Boolean']['output'];
+  projectId?: Maybe<Scalars['ID']['output']>;
+  subscriptionLimitReached?: Maybe<Scalars['Boolean']['output']>;
+  success: Scalars['Boolean']['output'];
+  userId?: Maybe<Scalars['ID']['output']>;
+};
+
 export type GenerateContentInput = {
   backlogIdeaId: Scalars['ID']['input'];
   hypothesisId: Scalars['ID']['input'];
@@ -648,6 +667,7 @@ export type Mutation = {
   regenerateHypothesesValidation: HypothesesValidation;
   register: AuthResponse;
   rewriteTextSelection: RewriteTextSelectionResult;
+  submitEmbeddedOnboarding: EmbeddedOnboardingResponse;
   testWordPressConnection: TestWordPressConnectionResult;
   updateSeoAgentBacklogIdea: BacklogIdea;
   updateSeoAgentCluster: SeoCluster;
@@ -938,6 +958,11 @@ export type MutationRegisterArgs = {
 
 export type MutationRewriteTextSelectionArgs = {
   input: RewriteTextSelectionInput;
+};
+
+
+export type MutationSubmitEmbeddedOnboardingArgs = {
+  input: EmbeddedOnboardingInput;
 };
 
 
@@ -1552,6 +1577,8 @@ export type ResolversTypes = {
   CustomerSegmentInput: CustomerSegmentInput;
   Date: ResolverTypeWrapper<Scalars['Date']['output']>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
+  EmbeddedOnboardingInput: EmbeddedOnboardingInput;
+  EmbeddedOnboardingResponse: ResolverTypeWrapper<EmbeddedOnboardingResponse>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   GenerateContentInput: GenerateContentInput;
   GenerateHypothesesGtmDetailedChannelContentIdeaInput: GenerateHypothesesGtmDetailedChannelContentIdeaInput;
@@ -1669,6 +1696,8 @@ export type ResolversParentTypes = {
   CustomerSegmentInput: CustomerSegmentInput;
   Date: Scalars['Date']['output'];
   DateTime: Scalars['DateTime']['output'];
+  EmbeddedOnboardingInput: EmbeddedOnboardingInput;
+  EmbeddedOnboardingResponse: EmbeddedOnboardingResponse;
   Float: Scalars['Float']['output'];
   GenerateContentInput: GenerateContentInput;
   GenerateHypothesesGtmDetailedChannelContentIdeaInput: GenerateHypothesesGtmDetailedChannelContentIdeaInput;
@@ -1854,6 +1883,18 @@ export interface DateScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime';
 }
+
+export type EmbeddedOnboardingResponseResolvers<ContextType = any, ParentType extends ResolversParentTypes['EmbeddedOnboardingResponse'] = ResolversParentTypes['EmbeddedOnboardingResponse']> = {
+  errorCode?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  errorMessage?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  isNewAccount?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  passwordSent?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  projectId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  subscriptionLimitReached?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  userId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
 
 export type GtmChannelActionPlanResolvers<ContextType = any, ParentType extends ResolversParentTypes['GtmChannelActionPlan'] = ResolversParentTypes['GtmChannelActionPlan']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -2051,6 +2092,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   regenerateHypothesesValidation?: Resolver<ResolversTypes['HypothesesValidation'], ParentType, ContextType, RequireFields<MutationRegenerateHypothesesValidationArgs, 'input'>>;
   register?: Resolver<ResolversTypes['AuthResponse'], ParentType, ContextType, RequireFields<MutationRegisterArgs, 'input'>>;
   rewriteTextSelection?: Resolver<ResolversTypes['RewriteTextSelectionResult'], ParentType, ContextType, RequireFields<MutationRewriteTextSelectionArgs, 'input'>>;
+  submitEmbeddedOnboarding?: Resolver<ResolversTypes['EmbeddedOnboardingResponse'], ParentType, ContextType, RequireFields<MutationSubmitEmbeddedOnboardingArgs, 'input'>>;
   testWordPressConnection?: Resolver<ResolversTypes['TestWordPressConnectionResult'], ParentType, ContextType, RequireFields<MutationTestWordPressConnectionArgs, 'input'>>;
   updateSeoAgentBacklogIdea?: Resolver<ResolversTypes['BacklogIdea'], ParentType, ContextType, RequireFields<MutationUpdateSeoAgentBacklogIdeaArgs, 'id' | 'input'>>;
   updateSeoAgentCluster?: Resolver<ResolversTypes['SeoCluster'], ParentType, ContextType, RequireFields<MutationUpdateSeoAgentClusterArgs, 'id' | 'input'>>;
@@ -2308,6 +2350,7 @@ export type Resolvers<ContextType = any> = {
   CustomerSegment?: CustomerSegmentResolvers<ContextType>;
   Date?: GraphQLScalarType;
   DateTime?: GraphQLScalarType;
+  EmbeddedOnboardingResponse?: EmbeddedOnboardingResponseResolvers<ContextType>;
   GtmChannelActionPlan?: GtmChannelActionPlanResolvers<ContextType>;
   GtmChannelContentIdea?: GtmChannelContentIdeaResolvers<ContextType>;
   GtmChannelMetricsAndKpis?: GtmChannelMetricsAndKpisResolvers<ContextType>;

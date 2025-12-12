@@ -1,0 +1,27 @@
+# GraphQL Schema: Embedded Onboarding Widget
+
+# Input type for embedded onboarding submission
+input EmbeddedOnboardingInput {
+  email: String!
+  startType: ProjectStartType!
+  info: String!
+  url: String
+  embedSource: String  # Optional: Origin/URL of embedding page
+}
+
+# Response type for embedded onboarding submission
+type EmbeddedOnboardingResponse {
+  success: Boolean!
+  userId: ID
+  projectId: ID
+  isNewAccount: Boolean!
+  passwordSent: Boolean!
+  errorCode: String
+  errorMessage: String
+  subscriptionLimitReached: Boolean
+}
+
+# Mutation for embedded onboarding submission
+extend type Mutation {
+  submitEmbeddedOnboarding(input: EmbeddedOnboardingInput!): EmbeddedOnboardingResponse!
+}
