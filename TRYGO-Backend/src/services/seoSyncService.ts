@@ -96,7 +96,7 @@ export class SeoSyncService {
   // Полная синхронизация проекта/гипотезы
   private async performFullSync(projectId: string, hypothesisId: string) {
     try {
-      console.log(`Starting full sync for project ${projectId}, hypothesis ${hypothesisId}`);
+      // Removed verbose logging
 
       // Синхронизация кластеров
       await this.syncClusters(projectId, hypothesisId);
@@ -107,7 +107,7 @@ export class SeoSyncService {
       // Синхронизация контента
       await this.syncContent(projectId, hypothesisId);
 
-      console.log(`Full sync completed for project ${projectId}, hypothesis ${hypothesisId}`);
+      // Removed verbose logging
     } catch (error) {
       console.error('Full sync failed:', error);
       throw error;

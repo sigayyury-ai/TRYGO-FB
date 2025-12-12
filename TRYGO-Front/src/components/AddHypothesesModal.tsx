@@ -24,6 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSocketStore } from "@/store/useSocketStore";
 import { useToast } from "@/hooks/use-toast";
 import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 import LoaderSpinner from "./LoaderSpinner";
 import useSubscription from "@/hooks/use-subscription";
 import UpgradeModal from "./UpgradeModal";
@@ -61,6 +62,7 @@ export const AddHypothesesModal: FC<{
     generatedHypothesisId,
   } = useSocketStore();
   const { activeProject } = useProjects();
+  const { hypotheses } = useHypotheses({ projectId: activeProject?.id });
 
   useEffect(() => {
     if (generatedHypothesisId) {

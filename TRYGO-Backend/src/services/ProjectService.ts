@@ -28,10 +28,7 @@ class ProjectService {
     async getProjects(userId: string): Promise<IProject[]> {
         try {
             const projects = await this.model.find({ userId });
-            console.log(`[ProjectService] getProjects for userId: ${userId}, found ${projects.length} projects`);
-            projects.forEach((p, i) => {
-                console.log(`[ProjectService]   ${i + 1}. ${p.title} (ID: ${p._id})`);
-            });
+            // Removed verbose logging - only log errors
             return projects;
         } catch (error) {
             console.error(error);

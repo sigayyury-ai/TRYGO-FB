@@ -25,15 +25,11 @@ class HypothesesPersonProfileService {
         userId: string
     ): Promise<IHypothesesPersonProfile[]> {
         try {
-            console.log(`[HypothesesPersonProfileService] getAllHypothesesPersonProfiles for projectHypothesisId: ${projectHypothesisId}, userId: ${userId}`);
             const profiles = await this.model.find({
                 projectHypothesisId,
                 userId,
             });
-            console.log(`[HypothesesPersonProfileService] Found ${profiles.length} ICP profiles`);
-            profiles.forEach((profile, i) => {
-                console.log(`[HypothesesPersonProfileService]   ${i + 1}. ${profile.name || 'Unnamed'} (ID: ${profile._id}, segmentId: ${profile.customerSegmentId})`);
-            });
+            // Removed verbose logging
             return profiles;
         } catch (error) {
             console.error(`[HypothesesPersonProfileService] Error getting profiles:`, error);

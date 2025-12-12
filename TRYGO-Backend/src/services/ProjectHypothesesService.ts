@@ -27,10 +27,7 @@ class ProjectHypothesesService {
             }
             
             const hypotheses = await this.model.find(query);
-            console.log(`[ProjectHypothesesService] getProjectHypotheses for projectId: ${projectId}, userId: ${userId}, found ${hypotheses.length} hypotheses`);
-            hypotheses.forEach((h, i) => {
-                console.log(`[ProjectHypothesesService]   ${i + 1}. ${h.title} (ID: ${h._id})`);
-            });
+            // Removed verbose logging - only log errors
             return hypotheses;
         } catch (error) {
             console.error(error);

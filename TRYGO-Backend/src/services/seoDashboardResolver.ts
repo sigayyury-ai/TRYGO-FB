@@ -2,7 +2,7 @@
 const seoDashboardResolver = {
   Query: {
     async seoDashboard(_: never, { projectId, hypothesisId }: { projectId: string; hypothesisId: string }) {
-      console.log('SEO Dashboard called with:', { projectId, hypothesisId });
+      // Removed verbose logging
 
       // Return real project data
       return {

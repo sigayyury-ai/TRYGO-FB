@@ -34,7 +34,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    console.log(`[Clusters API] GET /api/clusters - projectId: ${projectId}, hypothesisId: ${hypothesisId}`);
+    // Removed verbose logging
 
     const clusters = await SeoCluster.find({
       projectId: String(projectId),
@@ -84,7 +84,7 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    console.log(`[Clusters API] PUT /api/clusters/${id} - projectId: ${projectId}, hypothesisId: ${hypothesisId}`);
+    // Removed verbose logging
 
     const cluster = await SeoCluster.findOne({
       _id: id,
