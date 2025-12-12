@@ -180,9 +180,12 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       .map((item, index) => {
         let scheduledDate: Date;
         if (item.scheduledDate) {
+          // CRITICAL: Use the scheduledDate from the item (from server)
+          // This ensures items appear in the date they were scheduled for
           scheduledDate = new Date(item.scheduledDate);
         } else {
-          // Assign to next available preferred day slot
+          // Only assign to next available preferred day slot if scheduledDate is missing
+          // This should only happen for items that were scheduled before scheduledDate was added
           // Distribute items across weeks, starting from first week
           const weekIndex = Math.min(Math.floor(index / weeklyPublishCount), 3); // Max 4 weeks (0-3)
           const slotIndex = index % weeklyPublishCount;
@@ -199,10 +202,10 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
         }
         
         return {
-      id: item.id,
-      title: item.title,
+          id: item.id,
+          title: item.title,
           date: scheduledDate,
-      backlogItemId: item.id,
+          backlogItemId: item.id,
           contentType: item.contentType,
           description: item.description,
           status: item.status, // Include status to show visual difference
@@ -395,6 +398,7 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
   ) => {
       try {
         // Update backlog item status to SCHEDULED with scheduledDate
+        // CRITICAL: slotDate is the exact date the user selected from the dialog
         await updateBacklogItem(
           backlogItem.id,
           backlogItem.title,
@@ -402,42 +406,46 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
           backlogItem.contentType,
           BacklogStatus.SCHEDULED,
           backlogItem.clusterId,
-          slotDate.toISOString()
+          slotDate.toISOString() // This is the date the user selected
         );
         
-      // Add to local state with the scheduled date
+        // Add to local state immediately with the selected date for instant UI feedback
         const newItem: ScheduledItem = {
           id: backlogItem.id,
           title: backlogItem.title,
-        date: slotDate,
+          date: slotDate, // Use the exact date the user selected
           backlogItemId: backlogItem.id,
-        contentType: backlogItem.contentType,
-        description: backlogItem.description,
-        status: BacklogStatus.SCHEDULED, // New items are scheduled
+          contentType: backlogItem.contentType,
+          description: backlogItem.description,
+          status: BacklogStatus.SCHEDULED,
         };
-      setScheduledItems(items => [...items, newItem].sort((a, b) => a.date.getTime() - b.date.getTime()));
+        setScheduledItems(items => {
+          // Remove item if it already exists (to avoid duplicates)
+          const filtered = items.filter(i => i.id !== backlogItem.id);
+          return [...filtered, newItem].sort((a, b) => a.date.getTime() - b.date.getTime());
+        });
         
         toast({
-        title: "Scheduled",
-        description: `"${backlogItem.title}" scheduled for ${formatDate(slotDate)}`,
+          title: "Элемент запланирован",
+          description: `"${backlogItem.title}" добавлен в расписание на ${formatDate(slotDate)}`,
         });
-      
-      setOpenDialog(null);
-      } catch (error: any) {
-        console.error("➕ [ADD_TO_SPRINT] ===== ОШИБКА ДОБАВЛЕНИЯ =====");
-        console.error("➕ [ADD_TO_SPRINT] Ошибка:", error);
-        console.error("➕ [ADD_TO_SPRINT] Детали:", {
-          message: error.message,
-          stack: error.stack
-        });
-        console.error("➕ [ADD_TO_SPRINT] ===== КОНЕЦ ОШИБКИ =====");
         
+        // CRITICAL: Refresh backlog from server to sync with server state
+        // The useEffect will then update scheduledItems using scheduledDate from server
+        // which should match the slotDate we just sent
+        if (onBacklogUpdated) {
+          await onBacklogUpdated();
+        }
+        
+        setOpenDialog(null);
+      } catch (error) {
+        console.error('[MonthlySchedule] Error scheduling item:', error);
         toast({
-          title: "Error",
-          description: error.message || "Failed to schedule item",
+          title: "Ошибка",
+          description: error instanceof Error ? error.message : "Не удалось запланировать элемент",
           variant: "destructive",
         });
-    }
+      }
   };
 
   const visibleWeeks = useMemo(() => weeks.slice(0, visibleWeeksCount), [weeks, visibleWeeksCount]);

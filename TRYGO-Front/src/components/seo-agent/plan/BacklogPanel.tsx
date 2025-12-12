@@ -37,6 +37,8 @@ interface ContentItem {
   outline?: string;
   status: string;
   backlogIdeaId?: string;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 type SortOption = "newest" | "oldest" | "title";
@@ -59,24 +61,39 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
   const [checkingContent, setCheckingContent] = useState(true); // Track if we're still checking for existing content
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState<{ item: BacklogIdeaDto } | null>(null);
   const scrollPositionRef = useRef<number | null>(null);
+  const hasCheckedContentRef = useRef<Set<string>>(new Set()); // Track which items we've already checked
 
-  // Check for existing content items on mount and when backlog items change
-  // Use useMemo to track backlog item IDs to avoid unnecessary re-checks
-  const backlogItemIds = useMemo(() => 
-    backlogItems.filter(i => i.status === BacklogStatus.PENDING).map(i => i.id).join(','),
+  // Check for existing content items only once per item ID
+  // This prevents repeated checks when backlog items array reference changes but IDs are the same
+  const pendingItemIds = useMemo(() => 
+    backlogItems
+      .filter(i => i.status === BacklogStatus.PENDING)
+      .map(i => i.id)
+      .sort()
+      .join(','),
     [backlogItems]
   );
   
   useEffect(() => {
     const checkContentItems = async () => {
-      setCheckingContent(true);
-      const map = new Map<string, ContentItem>();
       const pendingItems = backlogItems.filter(i => i.status === BacklogStatus.PENDING);
+      
+      // Find items that haven't been checked yet
+      const itemsToCheck = pendingItems.filter(item => !hasCheckedContentRef.current.has(item.id));
+      
+      // If no new items to check and we already have data, skip
+      if (itemsToCheck.length === 0 && contentItemsMap.size > 0) {
+        setCheckingContent(false);
+        return;
+      }
+      
+      setCheckingContent(true);
+      const map = new Map<string, ContentItem>(contentItemsMap); // Start with existing data
       
       // Limit concurrent requests to prevent memory issues
       const BATCH_SIZE = 10;
-      for (let i = 0; i < pendingItems.length; i += BATCH_SIZE) {
-        const batch = pendingItems.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < itemsToCheck.length; i += BATCH_SIZE) {
+        const batch = itemsToCheck.slice(i, i + BATCH_SIZE);
         const checks = batch.map(async (item) => {
           try {
             const { data } = await getContentItemByBacklogIdeaQuery(item.id);
@@ -97,8 +114,13 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                   outline: contentItem.outline,
                   status: contentItem.status,
                   backlogIdeaId: contentItem.backlogIdeaId || item.id, // Use from API response or fallback to item.id
+                  updatedAt: contentItem.updatedAt,
+                  createdAt: contentItem.createdAt,
                 });
               }
+              
+              // Mark as checked
+              hasCheckedContentRef.current.add(item.id);
             }
           } catch (error: any) {
             // Log error for debugging but don't break the flow
@@ -119,13 +141,27 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                 backlogIdeaId: item.id
               });
             }
+            
+            // Mark as checked even on error to avoid repeated failed requests
+            hasCheckedContentRef.current.add(item.id);
           }
         });
         
         await Promise.all(checks);
       }
       
-      setContentItemsMap(map);
+      // Remove items that are no longer in pending list
+      const currentPendingIds = new Set(pendingItems.map(i => i.id));
+      const cleanedMap = new Map<string, ContentItem>();
+      for (const [id, item] of map.entries()) {
+        if (currentPendingIds.has(id)) {
+          cleanedMap.set(id, item);
+        } else {
+          hasCheckedContentRef.current.delete(id);
+        }
+      }
+      
+      setContentItemsMap(cleanedMap);
       setCheckingContent(false);
     };
     
@@ -135,9 +171,10 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
     } else {
       setContentItemsMap(new Map());
       setCheckingContent(false);
+      hasCheckedContentRef.current.clear();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backlogItemIds]); // Use memoized IDs string instead of full array
+  }, [pendingItemIds]); // Only re-check when the set of pending item IDs actually changes
 
   const displayedItems = useMemo(() => {
     // CRITICAL: Only show PENDING items in backlog
@@ -215,10 +252,8 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
       await updateSeoAgentBacklogItemMutation(item.id, {
         title: editTitle,
         description: editDescription || undefined,
-        contentType: item.contentType,
         status: item.status,
-        clusterId: item.clusterId,
-        scheduledDate: item.scheduledDate,
+        scheduledDate: item.scheduledDate || undefined,
       });
       setEditingId(null);
       toast({
@@ -354,6 +389,8 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
           outline: contentItem.outline || undefined,
           status: contentItem.status,
           backlogIdeaId: contentItem.backlogIdeaId || item.id, // Use from API response or fallback to item.id
+          updatedAt: contentItem.updatedAt,
+          createdAt: contentItem.createdAt,
         };
         
         // Update content items map
@@ -601,11 +638,30 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                             From Cluster
                           </Badge>
                         )}
-                        {contentItemsMap.has(item.id) && (
-                          <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-                            Content Ready
-                          </Badge>
-                        )}
+                        {contentItemsMap.has(item.id) && (() => {
+                          const contentItem = contentItemsMap.get(item.id);
+                          const isEdited = contentItem?.updatedAt && contentItem?.createdAt && 
+                            new Date(contentItem.updatedAt).getTime() > new Date(contentItem.createdAt).getTime() + 1000; // 1 second threshold
+                          const isReady = contentItem?.status === "ready";
+                          
+                          return (
+                            <>
+                              <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                                Content Ready
+                              </Badge>
+                              {isEdited && (
+                                <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                                  Edited
+                                </Badge>
+                              )}
+                              {isReady && !isEdited && (
+                                <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">
+                                  Approved
+                                </Badge>
+                              )}
+                            </>
+                          );
+                        })()}
                         <span className="text-xs text-gray-400">
                           {new Date(item.createdAt).toLocaleDateString()}
                         </span>
@@ -723,6 +779,8 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                         outline: data.contentItemByBacklogIdea.outline,
                         status: data.contentItemByBacklogIdea.status,
                         backlogIdeaId: data.contentItemByBacklogIdea.backlogIdeaId || backlogItem.id, // Use from API or fallback
+                        updatedAt: data.contentItemByBacklogIdea.updatedAt,
+                        createdAt: data.contentItemByBacklogIdea.createdAt,
                       });
                     }
                     return newMap;
@@ -767,15 +825,17 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
                 if (data?.contentItemByBacklogIdea) {
                   setContentItemsMap(prev => {
                     const newMap = new Map(prev);
-                    newMap.set(itemToSchedule.id, {
-                      id: data.contentItemByBacklogIdea.id,
-                      title: data.contentItemByBacklogIdea.title,
-                      content: data.contentItemByBacklogIdea.content,
-                      imageUrl: data.contentItemByBacklogIdea.imageUrl,
-                      outline: data.contentItemByBacklogIdea.outline,
-                      status: data.contentItemByBacklogIdea.status,
-                      backlogIdeaId: data.contentItemByBacklogIdea.backlogIdeaId || itemToSchedule.id,
-                    });
+                  newMap.set(itemToSchedule.id, {
+                    id: data.contentItemByBacklogIdea.id,
+                    title: data.contentItemByBacklogIdea.title,
+                    content: data.contentItemByBacklogIdea.content,
+                    imageUrl: data.contentItemByBacklogIdea.imageUrl,
+                    outline: data.contentItemByBacklogIdea.outline,
+                    status: data.contentItemByBacklogIdea.status,
+                    backlogIdeaId: data.contentItemByBacklogIdea.backlogIdeaId || itemToSchedule.id,
+                    updatedAt: data.contentItemByBacklogIdea.updatedAt,
+                    createdAt: data.contentItemByBacklogIdea.createdAt,
+                  });
                     return newMap;
                   });
                 }

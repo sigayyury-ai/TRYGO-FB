@@ -139,37 +139,62 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
         clusterId?: string,
         scheduledDate?: string
       ) => {
-        console.log("🔄 [UPDATE_STATUS] ===== ОБНОВЛЕНИЕ СТАТУСА =====");
-        console.log("🔄 [UPDATE_STATUS] Параметры:", {
-          id,
-          title,
-          newStatus: status,
-          scheduledDate,
-          currentStatus: get().backlogItems.find(item => item.id === id)?.status
-        });
-        
         set({ loading: true, error: null });
         try {
-          const currentItem = get().backlogItems.find(item => item.id === id);
-          if (!currentItem) {
-            console.error("🔄 [UPDATE_STATUS] ❌ Backlog item не найден!");
-            throw new Error('Backlog item not found');
-          }
+          let currentItem = get().backlogItems.find(item => item.id === id);
           
-          console.log("🔄 [UPDATE_STATUS] Текущий элемент:", {
-            id: currentItem.id,
-            title: currentItem.title,
-            currentStatus: currentItem.status,
-            currentScheduledDate: currentItem.scheduledDate
-          });
+          // If item not found in store, try to refresh from server
+          if (!currentItem) {
+            // Try to get projectId and hypothesisId from last loaded data
+            const lastProjectId = get().lastProjectId;
+            const lastHypothesisId = get().lastHypothesisId;
+            
+            if (lastProjectId) {
+              // Refresh backlog from server
+              await get().getBacklog(lastProjectId, lastHypothesisId || undefined);
+              // Try to find item again after refresh
+              currentItem = get().backlogItems.find(item => item.id === id);
+            }
+            
+            // If still not found, we can still try to update using provided data
+            if (!currentItem) {
+              // Build input from provided parameters only
+              // NOTE: SeoAgentBacklogIdeaInput only supports: title, description, category, status, scheduledDate
+              const input: any = {
+                title,
+                ...(description !== undefined && { description }),
+                ...(status !== undefined && { status }),
+                ...(scheduledDate !== undefined && { scheduledDate: scheduledDate || null }),
+              };
+              
+              // Try to update anyway - server might have the item
+              const { data } = await updateSeoAgentBacklogItemMutation(id, input);
+              const updatedItem = data.updateSeoAgentBacklogIdea;
+              
+              // Add to store if update was successful
+              set((state) => ({
+                backlogItems: state.backlogItems.some(item => item.id === id)
+                  ? state.backlogItems.map(item => item.id === id ? updatedItem : item)
+                  : [...state.backlogItems, updatedItem],
+                loading: false,
+              }));
+              
+              // Refresh backlog to ensure consistency
+              if (lastProjectId) {
+                await get().getBacklog(lastProjectId, lastHypothesisId || undefined);
+              }
+              
+              return;
+            }
+          }
 
           // Build input with scheduledDate support
+          // NOTE: SeoAgentBacklogIdeaInput only supports: title, description, category, status, scheduledDate
+          // contentType and clusterId are not part of the input type
           const input: any = {
             title,
             description: description ?? currentItem.description,
-            contentType: contentType ?? currentItem.contentType,
             status: status ?? currentItem.status,
-            clusterId: clusterId ?? currentItem.clusterId,
           };
           
           // Add scheduledDate if provided or if clearing it
@@ -183,57 +208,38 @@ export const useSeoAgentBacklogStore = create<SeoAgentBacklogState>()(
             input.scheduledDate = null;
           }
 
-          console.log("🔄 [UPDATE_STATUS] Шаг 1: Вызов API обновления...");
           const { data } = await updateSeoAgentBacklogItemMutation(id, input);
-
           const updatedItem = data.updateSeoAgentBacklogIdea;
-          console.log("🔄 [UPDATE_STATUS] ✅ API вернул обновленный элемент:", {
-            id: updatedItem.id,
-            title: updatedItem.title,
-            newStatus: updatedItem.status,
-            newScheduledDate: updatedItem.scheduledDate
-          });
           
           // Save projectId and hypothesisId for refresh before updating state
           const projectIdForRefresh = currentItem.projectId;
           const hypothesisIdForRefresh = currentItem.hypothesisId;
           
-          console.log("🔄 [UPDATE_STATUS] Шаг 2: Обновление локального состояния...");
-          set((state) => {
-            const newItems = state.backlogItems.map(item =>
+          // Update local state immediately with the updated item
+          set((state) => ({
+            backlogItems: state.backlogItems.map(item =>
               item.id === id ? updatedItem : item
-            );
-            
-            console.log("🔄 [UPDATE_STATUS] ✅ Локальное состояние обновлено");
-            console.log("🔄 [UPDATE_STATUS] Новый статус элемента:", updatedItem.status);
-            
-            return {
-              backlogItems: newItems,
+            ),
             loading: false,
-            };
-          });
+          }));
           
           // Refresh backlog to ensure we have latest data from server
-          console.log("🔄 [UPDATE_STATUS] Шаг 3: Обновление данных с сервера...");
+          // This is critical to ensure the item appears in the correct panel (backlog vs sprint)
           if (projectIdForRefresh) {
             await get().getBacklog(projectIdForRefresh, hypothesisIdForRefresh);
-            console.log("🔄 [UPDATE_STATUS] ✅ Данные обновлены с сервера");
           }
-          console.log("🔄 [UPDATE_STATUS] ===== ОБНОВЛЕНИЕ ЗАВЕРШЕНО =====");
         } catch (error: unknown) {
-          console.error("🔄 [UPDATE_STATUS] ===== ОШИБКА ОБНОВЛЕНИЯ =====");
-          console.error("🔄 [UPDATE_STATUS] Ошибка:", error);
           let errorMessage = "Failed to update backlog item";
           if (error instanceof Error) {
             errorMessage = error.message;
-            console.error("🔄 [UPDATE_STATUS] Сообщение об ошибке:", errorMessage);
+            console.error('[useSeoAgentBacklogStore] Error updating backlog item:', error);
           }
-          console.error("🔄 [UPDATE_STATUS] ===== КОНЕЦ ОШИБКИ =====");
           
           set({
             error: errorMessage,
             loading: false,
           });
+          throw error; // Re-throw to allow caller to handle
         }
       },
 

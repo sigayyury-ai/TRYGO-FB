@@ -20,13 +20,13 @@ export const UPDATE_SEO_AGENT_BACKLOG_ITEM = gql`
   }
 `;
 
+// NOTE: SeoAgentBacklogIdeaInput only supports: title, description, category, status, scheduledDate
+// contentType and clusterId are NOT part of the input type (they are read-only fields)
 export interface UpdateSeoAgentBacklogItemInput {
-  title: string;
+  title?: string;
   description?: string;
-  contentType: BacklogContentType;
-  status: BacklogStatus;
-  clusterId?: string;
-  scheduledDate?: string;
+  status?: BacklogStatus;
+  scheduledDate?: string | null;
 }
 
 export interface UpdateSeoAgentBacklogItemResponse {

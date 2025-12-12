@@ -33,7 +33,7 @@ const mapBacklogIdea = (doc: SeoBacklogIdeaDoc) => ({
     contentType: "ARTICLE" as const, // Default, can be extended later
     category: doc.category ? toUpperEnum(doc.category) : null,
     status: mapBacklogStatus(doc.status),
-    scheduledDate: (doc as any).scheduledDate ?? null,
+    scheduledDate: doc.scheduledDate ? doc.scheduledDate.toISOString() : null,
     createdBy: doc.createdBy ?? null,
     updatedBy: doc.updatedBy ?? null,
     createdAt: doc.createdAt,

@@ -12,6 +12,7 @@ export const GET_SEO_AGENT_BACKLOG = gql`
       contentType
       clusterId
       status
+      scheduledDate
       createdAt
       updatedAt
     }

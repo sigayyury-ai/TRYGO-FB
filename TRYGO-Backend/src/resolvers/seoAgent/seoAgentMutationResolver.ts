@@ -366,11 +366,10 @@ const seoAgentMutationResolver = {
             args: {
                 id: string;
                 input: {
-                    title: string;
+                    title?: string;
                     description?: string;
-                    contentType: string;
-                    status: string;
-                    clusterId?: string;
+                    status?: string;
+                    scheduledDate?: string | null;
                 };
             },
             context: IContext
@@ -387,17 +386,30 @@ const seoAgentMutationResolver = {
 
                 await projectService.getProjectById(backlogItem.projectId, userId);
 
-                // Map GraphQL status to database status
-                const statusLower = args.input.status.toLowerCase();
-                const validStatuses = ["backlog", "scheduled", "archived", "pending", "in_progress", "completed", "published"];
-                if (!validStatuses.includes(statusLower)) {
-                    throw new Error(`Invalid status: ${args.input.status}`);
+                // Update fields if provided
+                if (args.input.title !== undefined) {
+                    backlogItem.title = args.input.title;
                 }
-
-                backlogItem.title = args.input.title || backlogItem.title;
-                backlogItem.description = args.input.description !== undefined ? args.input.description : backlogItem.description;
-                backlogItem.status = statusLower as any;
-                backlogItem.clusterId = args.input.clusterId !== undefined ? args.input.clusterId : backlogItem.clusterId;
+                if (args.input.description !== undefined) {
+                    backlogItem.description = args.input.description;
+                }
+                
+                // Map GraphQL status to database status
+                if (args.input.status !== undefined) {
+                    const statusLower = args.input.status.toLowerCase();
+                    const validStatuses = ["backlog", "scheduled", "archived", "pending", "in_progress", "completed", "published"];
+                    if (!validStatuses.includes(statusLower)) {
+                        throw new Error(`Invalid status: ${args.input.status}`);
+                    }
+                    backlogItem.status = statusLower as any;
+                }
+                
+                // CRITICAL: Handle scheduledDate - this is the date the user selected
+                if (args.input.scheduledDate !== undefined) {
+                    // Set to Date or undefined (Mongoose will handle null/undefined the same way)
+                    backlogItem.scheduledDate = args.input.scheduledDate ? new Date(args.input.scheduledDate) : undefined;
+                }
+                
                 backlogItem.updatedBy = userId;
 
                 const updatedItem = await backlogItem.save();
@@ -411,6 +423,7 @@ const seoAgentMutationResolver = {
                     contentType: "ARTICLE" as const,
                     clusterId: updatedItem.clusterId || null,
                     status: mapBacklogStatus(updatedItem.status),
+                    scheduledDate: updatedItem.scheduledDate ? updatedItem.scheduledDate.toISOString() : null,
                     createdAt: updatedItem.createdAt.toISOString(),
                     updatedAt: updatedItem.updatedAt.toISOString(),
                 };

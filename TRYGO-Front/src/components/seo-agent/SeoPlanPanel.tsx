@@ -188,9 +188,8 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
               }
             }}
             onBacklogUpdated={async () => {
-              console.log("🔄 [BACKLOG_UPDATE] Обновление беклога после изменений...");
+              // Force reload backlog from server to ensure status changes are reflected
               await loadBacklog();
-              console.log("🔄 [BACKLOG_UPDATE] ✅ Беклог обновлен");
             }}
           />
         </CardContent>
