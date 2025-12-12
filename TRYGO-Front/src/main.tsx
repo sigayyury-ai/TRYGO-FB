@@ -23,6 +23,8 @@ initTranslationErrorHandlers();
 
 // Suppress React removeChild errors caused by browser translators
 const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
 console.error = (...args) => {
   const firstArg = args[0];
   
@@ -37,6 +39,20 @@ console.error = (...args) => {
   }
   
   originalConsoleError.apply(console, args);
+};
+
+// Suppress react-quill DOMNodeInserted deprecation warning
+// This is a known issue in react-quill@2.0.0 that uses Quill 1.3.7 internally
+// The warning doesn't affect functionality, and will be fixed in future versions
+console.warn = (...args) => {
+  const firstArg = args[0];
+  
+  if (typeof firstArg === 'string' && firstArg.includes('DOMNodeInserted')) {
+    // Suppress react-quill deprecation warning
+    return;
+  }
+  
+  originalConsoleWarn.apply(console, args);
 };
 
 createRoot(document.getElementById('root')!).render(

@@ -168,15 +168,20 @@ const Validation = () => {
               <Button
                 variant={"default"}
                 size="sm"
-                disabled={loading}
+                disabled={loading || !activeHypothesisId}
                 onClick={() => {
                   if (!hasValidationAccess) {
                     setShowUpgradeModal(true);
-                  } else {
-                    createHypothesesValidation(activeHypothesisId);
+                    return;
                   }
+                  
+                  if (!activeHypothesisId) {
+                    return;
+                  }
+                  
+                  createHypothesesValidation(activeHypothesisId);
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white mt-4"
+                className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Generating..." : "Generate Data"}
               </Button>

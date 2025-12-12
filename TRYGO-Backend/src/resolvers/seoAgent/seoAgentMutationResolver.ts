@@ -41,6 +41,21 @@ const mapContentCategory = (category: string): string => {
     return categoryMap[category.toLowerCase()] || toUpperEnum(category);
 };
 
+// Reverse mapping: GraphQL enum -> MongoDB enum
+const mapContentCategoryToDb = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+        "PAINS": "pain",
+        "GOALS": "goal",
+        "TRIGGERS": "trigger",
+        "PRODUCT_FEATURES": "feature",
+        "BENEFITS": "benefit",
+        "FAQS": "faq",
+        "INFORMATIONAL": "info"
+    };
+    const upperCategory = category.toUpperCase();
+    return categoryMap[upperCategory] || category.toLowerCase();
+};
+
 const mapContentType = (format: string): string => {
     const formatMap: Record<string, string> = {
         blog: "ARTICLE",
@@ -651,7 +666,7 @@ const seoAgentMutationResolver = {
                 await projectService.getProjectById(args.input.projectId, userId);
 
                 // Map GraphQL enums to database format
-                const categoryLower = toLowerEnum(args.input.category);
+                const categoryLower = mapContentCategoryToDb(args.input.category);
                 const formatLower = toLowerEnum(args.input.format);
                 const statusLower = args.input.status ? toLowerEnum(args.input.status) : "draft";
 
@@ -887,9 +902,10 @@ Please rewrite ONLY the selected text according to the instruction. Return only 
 
                 // Generate ideas
                 const category = args.category || "INFORMATIONAL";
+                const categoryForDb = mapContentCategoryToDb(category);
                 const ideas = await generateIdeasFromOpenAI({
                     context: seoContext,
-                    category: category.toLowerCase(),
+                    category: categoryForDb,
                     count: 5,
                     language: seoContext.language || "English"
                 });
@@ -913,7 +929,7 @@ Please rewrite ONLY the selected text according to the instruction. Return only 
                             projectId: args.projectId,
                             hypothesisId: args.hypothesisId,
                             title: idea.title,
-                            category: category.toLowerCase() as any,
+                            category: categoryForDb as any,
                             format: "blog",
                             outline: idea.summary,
                             status: "draft",
@@ -1067,19 +1083,9 @@ Please rewrite ONLY the selected text according to the instruction. Return only 
                 const logLevel = args.level.toUpperCase();
                 const logData = args.data ? JSON.parse(args.data) : undefined;
 
-                // Log to console based on level
-                switch (logLevel) {
-                    case "ERROR":
-                        console.error("[Frontend]", args.message, logData);
-                        break;
-                    case "WARN":
-                        console.warn("[Frontend]", args.message, logData);
-                        break;
-                    case "INFO":
-                        console.log("[Frontend]", args.message, logData);
-                        break;
-                    default:
-                        console.log("[Frontend]", args.message, logData);
+                // Only log errors to console
+                if (logLevel === "ERROR") {
+                    console.error("[Frontend]", args.message, logData);
                 }
 
                 return true;

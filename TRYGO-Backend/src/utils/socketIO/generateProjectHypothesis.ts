@@ -4,6 +4,7 @@ import { createHypothesesParts } from '../hypothesis/createHypothesesParts';
 import projectService from '../../services/ProjectService';
 import { EVENT_NAMES } from '../../constants/socketIO/eventNames';
 import { checkIfHypothesisGenerationAllowed } from '../subscription/checkIfHypothesisGenerationAllowed';
+import { safeEmit } from './safeEmit';
 
 export interface GenerateProjectHypothesisInput {
     title: string;
@@ -42,7 +43,7 @@ export const generateProjectHypothesis = async ({
             userId,
         });
 
-        socket.emit(EVENT_NAMES.projectHypothesisGenerated, {
+        safeEmit(socket, EVENT_NAMES.projectHypothesisGenerated, {
             projectHypothesisId: projectHypothesis._id.toString(),
         });
     } catch (error) {

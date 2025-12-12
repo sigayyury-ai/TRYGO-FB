@@ -15,6 +15,10 @@ const hypothesesPackingMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 return await hypothesesPackingService.changeHypothesesPacking(
                     input,
                     context.userId
@@ -29,11 +33,41 @@ const hypothesesPackingMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
+                // First check if it already exists
+                const existing = await hypothesesPackingService.getHypothesesPacking(
+                    projectHypothesisId,
+                    context.userId
+                );
+                
+                if (existing) {
+                    return existing;
+                }
+
+                // If not exists, create new
                 return await hypothesesPackingService.createHypothesesPacking(
                     projectHypothesisId,
                     context.userId
                 );
             } catch (error) {
+                // If error is "already exists", try to return existing data
+                if (error instanceof Error && error.message.includes('already exists')) {
+                    try {
+                        const existing = await hypothesesPackingService.getHypothesesPacking(
+                            projectHypothesisId,
+                            context.userId
+                        );
+                        if (existing) {
+                            return existing;
+                        }
+                    } catch (fetchError) {
+                        // Silent fail, throw original error
+                    }
+                }
+                
                 throw elevateError(error);
             }
         },
@@ -44,6 +78,10 @@ const hypothesesPackingMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 await hypothesesPackingService.deleteHypothesesPacking(
                     input.projectHypothesisId,
                     context.userId

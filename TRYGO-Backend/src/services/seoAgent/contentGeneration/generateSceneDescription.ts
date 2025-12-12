@@ -52,142 +52,128 @@ export async function generateSceneDescription(
   const client = getOpenAIClient();
   const model = config.SEO_AGENT.openAiModel || "gpt-4o";
 
-  // Build audience context
-  let audienceContext = "";
-  if (icpContext) {
-    const persona = icpContext.persona || "";
-    const pains = Array.isArray(icpContext.pains) ? icpContext.pains : [];
-    const goals = Array.isArray(icpContext.goals) ? icpContext.goals : [];
-    const triggers = Array.isArray(icpContext.triggers) ? icpContext.triggers : [];
+  // Note: We'll build creative context inline in the prompt instead of literal context blocks
 
-    if (persona || pains.length > 0 || goals.length > 0 || triggers.length > 0) {
-      audienceContext = "\n\n## Target Audience Context\n";
-      if (persona) {
-        audienceContext += `Target Persona: ${persona}\n`;
+  // Build creative inspiration from context (not literal instructions)
+  let creativeContext = "";
+  if (icpContext || projectContext || hypothesisContext) {
+    creativeContext = "\n\n## Creative Inspiration (use as mood/theme, not literal requirements)\n";
+    
+    if (icpContext) {
+      const persona = icpContext.persona || "";
+      const pains = Array.isArray(icpContext.pains) ? icpContext.pains : [];
+      const goals = Array.isArray(icpContext.goals) ? icpContext.goals : [];
+      
+      if (persona || pains.length > 0 || goals.length > 0) {
+        creativeContext += "Think about the emotional tone and visual metaphors that would resonate with this audience. ";
+        if (persona) creativeContext += `Consider what visuals would speak to ${persona}. `;
+        if (pains.length > 0) creativeContext += `The image might subtly reflect themes of challenge, growth, or transformation. `;
+        if (goals.length > 0) creativeContext += `Consider visuals that evoke aspiration, progress, or achievement. `;
+        creativeContext += "But don't be literal—use these as creative inspiration, not strict requirements.\n";
       }
-      if (pains.length > 0) {
-        audienceContext += `Their Pain Points: ${pains.join(", ")}\n`;
-      }
-      if (goals.length > 0) {
-        audienceContext += `Their Goals: ${goals.join(", ")}\n`;
-      }
-      if (triggers.length > 0) {
-        audienceContext += `Their Triggers: ${triggers.join(", ")}\n`;
-      }
-      audienceContext += "\nThe image should resonate with this audience and reflect their context, challenges, and aspirations.";
+    }
+    
+    if (projectContext?.leanCanvas?.uniqueValueProposition) {
+      creativeContext += `The article relates to: ${projectContext.leanCanvas.uniqueValueProposition}. Use this as thematic inspiration, not a literal scene requirement.\n`;
     }
   }
 
-  // Build project context
-  let projectInfo = "";
-  if (projectContext) {
-    const projectTitle = projectContext.title || "";
-    const problems = Array.isArray(projectContext.leanCanvas?.problems) 
-      ? projectContext.leanCanvas.problems 
-      : [];
-    const solutions = Array.isArray(projectContext.leanCanvas?.solutions) 
-      ? projectContext.leanCanvas.solutions 
-      : [];
-    const uvp = projectContext.leanCanvas?.uniqueValueProposition || "";
+  const prompt = `You are a creative visual director. Your task is to imagine a compelling, authentic photograph that would make someone want to read an article titled "${title}".
 
-    if (projectTitle || problems.length > 0 || solutions.length > 0 || uvp) {
-      projectInfo = "\n\n## Project Context\n";
-      if (projectTitle) {
-        projectInfo += `Project: ${projectTitle}\n`;
-      }
-      if (uvp) {
-        projectInfo += `Value Proposition: ${uvp}\n`;
-      }
-      if (problems.length > 0) {
-        projectInfo += `Problems Addressed: ${problems.join(", ")}\n`;
-      }
-      if (solutions.length > 0) {
-        projectInfo += `Solutions Offered: ${solutions.join(", ")}\n`;
-      }
-    }
-  }
+${description ? `Article theme: ${description}\n` : ""}
+${creativeContext}
 
-  // Build hypothesis context
-  let hypothesisInfo = "";
-  if (hypothesisContext) {
-    const hypothesisTitle = hypothesisContext.title || "";
-    const hypothesisDesc = hypothesisContext.description || "";
-    if (hypothesisTitle || hypothesisDesc) {
-      hypothesisInfo = "\n\n## Hypothesis Context\n";
-      if (hypothesisTitle) {
-        hypothesisInfo += `Hypothesis: ${hypothesisTitle}\n`;
-      }
-      if (hypothesisDesc) {
-        hypothesisInfo += `Description: ${hypothesisDesc}\n`;
-      }
-    }
-  }
+## CRITICAL: Balance Creativity with Relevance
 
-  const prompt = `You are a professional visual director and scene designer. Your task is to create a detailed, precise scene description for a realistic photograph that will illustrate an article.
+**The image must be BOTH:**
+1. **Relevant to the article topic** - it should clearly relate to and illustrate the subject matter
+2. **Creative and non-clichéd** - avoid the most obvious, overused visual interpretations
 
-## Article Information
-Title: "${title}"
-${description ? `Description: "${description}"` : ""}
-${audienceContext}
-${projectInfo}
-${hypothesisInfo}
+**Before describing the scene:**
+1. Identify the most literal/clichéd visual for this topic (e.g., "marketing" → person at desk with charts)
+2. Identify what the topic is REALLY about conceptually (e.g., "marketing challenges" → learning, strategy, growth, connection)
+3. Find a creative visual that connects the concept to the topic, but avoids the cliché
 
-## Your Task
-Create a comprehensive scene description that specifies EXACTLY what should appear in the image. This description will be used by an image generation AI to create a realistic photograph.
+**Universal clichés to avoid:**
+- ❌ Generic office/workplace scenes with people at desks
+- ❌ Stock photo-style poses and compositions
+- ❌ The same visual approach for similar topics
+- ❌ Repetitive imagery patterns (same angle, same setting, same subject type)
+- ❌ Completely abstract images that have no connection to the topic
 
-## Scene Description Requirements
+**Creative approaches that STILL relate to the topic:**
+- ✅ Visual metaphors that connect to the topic (e.g., "marketing challenges" → someone learning, studying, planning, connecting with others)
+- ✅ Environmental storytelling relevant to the topic (workspaces, learning spaces, collaborative spaces - but shown creatively)
+- ✅ Action and movement related to the topic (not just static sitting)
+- ✅ Different perspectives on the same subject (e.g., marketing → strategy session, learning moment, connection, growth)
+- ✅ Symbolic representations that clearly relate to the topic
+- ✅ Unique angles and compositions that show the topic in a new light
 
-Your description must include:
+## Your Creative Mission
 
-1. **Main Subject/Characters:**
-   - Who or what is the main focus? (if people: their approximate age, gender, appearance, clothing, posture, expression)
-   - Their position in the frame (foreground, center, background)
-   - What they are doing (specific actions, gestures, interactions)
+**First, understand the topic:** What is this article really about? What are the core concepts, themes, or ideas?
 
-2. **Environment & Setting:**
-   - Location type (office, home, outdoor, workspace, etc.)
-   - Specific details about the environment (furniture, equipment, natural elements, architectural features)
-   - Time of day and lighting conditions (natural light, artificial light, time of day)
-   - Weather or atmospheric conditions if relevant
+**Then, brainstorm 3-5 visual approaches that are BOTH creative AND relevant:**
+1. What's the most literal/clichéd approach? (Reject this, but note what it's trying to show)
+2. What's a creative metaphorical interpretation that STILL clearly relates to the topic?
+3. What's an environmental/contextual approach that shows the topic in a new way?
+4. What's a symbolic representation that connects to the topic's core concepts?
+5. What's an unexpected perspective that reveals something about the topic?
 
-3. **Composition & Layout:**
-   - Camera angle and perspective (eye-level, slightly elevated, close-up, wide shot)
-   - Foreground elements (what's closest to camera)
-   - Middle ground elements (main focus area)
-   - Background elements (what's in the distance)
-   - Depth of field (what's in focus vs blurred)
+**Choose the approach that:**
+- ✅ Clearly relates to and illustrates the article topic
+- ✅ Avoids clichés and obvious interpretations
+- ✅ Is visually interesting and engaging
+- ✅ Makes sense when someone reads the article title
 
-4. **Objects & Props:**
-   - Specific objects that should be visible (tools, devices, documents, items relevant to the topic)
-   - Their placement and arrangement
-   - Their state or condition (new, used, organized, etc.)
+Imagine a photograph that's visually interesting, authentic, and engaging—not generic or templated. Think about what would catch someone's eye and make them curious about the article.
 
-5. **Lighting & Mood:**
-   - Light source direction and quality (soft, harsh, natural, warm, cool)
-   - Shadows and highlights
-   - Overall mood and atmosphere (professional, friendly, energetic, calm, etc.)
-   - Color palette hints (warm tones, cool tones, neutral, vibrant)
+**Be creative and varied.** Consider:
+- Different visual metaphors and approaches (journey, puzzle, bridge, growth, connection, discovery, transformation)
+- Various moods and atmospheres (dramatic, peaceful, energetic, contemplative, mysterious, hopeful)
+- Different times of day, seasons, or settings (dawn, night, urban, nature, abstract spaces, interiors, exteriors)
+- Unique perspectives and compositions (bird's eye, worm's eye, close-up details, wide environmental, unusual angles)
+- Natural, unposed moments vs. staged scenes
+- Objects, environments, or abstract concepts as main subjects (not always people)
+- Different scales (macro details, wide landscapes, intimate moments)
 
-6. **Details & Textures:**
-   - Surface textures (wood, metal, fabric, paper, etc.)
-   - Material qualities (matte, glossy, rough, smooth)
-   - Small details that add realism and context
+## What to Describe
+
+Write a flowing, natural description in English. Include:
+- What's in the scene (be creative—avoid the most obvious/literal interpretation)
+- The mood and atmosphere you want to convey
+- Lighting and color tones that fit the theme
+- Composition style (vary it—don't always use the same angle or framing)
+- Key visual elements that relate to the article topic
+
+**Think metaphorically and symbolically, but stay connected to the topic.** 
+- If your first thought is the most literal interpretation, reject it
+- But don't go so abstract that the image has no connection to the article topic
+- Consider what the topic represents conceptually, then find a visual that represents that concept
+- Think about visual metaphors that capture the essence AND relate to the topic
+- Explore different ways to represent the same concept, but ensure the connection is clear
+- The image should make sense when someone sees it alongside the article title
 
 ## Important Guidelines
 
-- Be SPECIFIC and DETAILED - the more precise your description, the better the image will be
-- Focus on REALISTIC, NATURAL scenes - this is for a professional article
-- NO text, logos, UI elements, memes, or infographics should be mentioned
-- The scene should directly relate to and illustrate the article topic
-- Consider the target audience - the image should resonate with them
-- Think about what would make a reader stop and engage with the article
-- Use professional, cinematic language but keep it clear and actionable
+- **Stay relevant** - the image must clearly relate to and illustrate the article topic
+- **Be creative** - interpret the topic creatively, but don't lose the connection
+- **Vary your approach** - each image should feel unique, not like a template
+- **Natural and authentic** - avoid stock photo clichés
+- **NO text, logos, UI elements, or graphics** - pure photography
+- **Professional quality** - but with artistic vision
+- **Balance** - creative interpretation that still makes sense for the topic
+- **Challenge yourself** - if your first thought is a cliché, reject it, but ensure your alternative still relates to the topic
+- **Avoid repetition** - don't use the same visual approach for similar topics
+- **Test relevance** - if someone sees just the image, they should be able to guess it relates to the article topic
 
 ## Output Format
 
-Provide ONLY the scene description text. No markdown, no headers, no bullet points. Just a flowing, detailed description in English that an image generation AI can use directly.
+Write ONLY a flowing scene description in English. No markdown, no lists, no structure. Just natural, creative prose that an image AI can use. Make it vivid and specific, but let it breathe with creative freedom.
 
-Start your description now:`;
+**Remember: Find the sweet spot between creativity and relevance. Avoid clichés, but ensure the image clearly relates to the article topic. If the image could be for any random article, it's too abstract. If it's the most obvious interpretation, it's too clichéd.**
+
+Describe the scene:`;
 
   try {
     console.log("[generateSceneDescription] Generating scene description with OpenAI...");
@@ -199,14 +185,14 @@ Start your description now:`;
       messages: [
         {
           role: "system",
-          content: "You are a professional visual director specializing in creating detailed scene descriptions for realistic photography."
+          content: "You are a creative visual director who imagines compelling, varied, and authentic photographs. You balance creativity with relevance: you avoid clichés and templates, but ensure images clearly relate to and illustrate the article topic. You identify the most obvious/literal visual interpretation, reject it, then find a creative alternative that still clearly connects to the topic. You think creatively, use visual metaphors, explore different perspectives, and create unique concepts that make sense for the subject matter. Each description must feel fresh, creative, non-formulaic, AND relevant to the article topic."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.7,
+      temperature: 0.9, // Higher temperature for more creative variation
       max_tokens: 800
     });
 

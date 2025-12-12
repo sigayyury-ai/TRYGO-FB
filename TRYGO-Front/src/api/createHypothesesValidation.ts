@@ -39,9 +39,21 @@ export interface CreateHypothesesValidationResponse {
   createHypothesesValidation: CreateHypothesesValidationDto;
 }
 
-export const createHypothesesValidation = (projectHypothesisId: string) => {
-  return MUTATE<CreateHypothesesValidationResponse>({
-    mutation: CREATE_HYPOTHESES_VALIDATION,
-    variables: { projectHypothesisId },
-  });
+export const createHypothesesValidation = async (projectHypothesisId: string) => {
+  try {
+    const result = await MUTATE<CreateHypothesesValidationResponse>({
+      mutation: CREATE_HYPOTHESES_VALIDATION,
+      variables: { projectHypothesisId },
+    });
+    
+    if (result.errors && result.errors.length > 0) {
+      console.error('[createHypothesesValidation] GraphQL error:', result.errors[0].message);
+      throw new Error(result.errors[0].message || 'GraphQL error');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[createHypothesesValidation] Critical error:', error);
+    throw error;
+  }
 };

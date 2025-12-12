@@ -13,6 +13,7 @@ import { createGtmMessage } from './createGtmMessage';
 import { createGtmDetailedChannelMessage } from './createGtmDetailedChannelMessage';
 import { checkIfMessagesAllowed } from '../subscription/checkIfMessagesAllowed';
 import assistantMessagesService from '../../services/AssistantMessagesService';
+import { safeEmit } from './safeEmit';
 
 export interface CreateMessageInput {
     message: string;
@@ -99,7 +100,7 @@ export const createMessage = async ({
         await assistantMessagesService.incrementGeneratedMessages(userId);
 
         console.log('[createMessage] Отправка ответа клиенту');
-        socket.emit(EVENT_NAMES.answerCreated, {
+        safeEmit(socket, EVENT_NAMES.answerCreated, {
             message,
             id: input.id,
         });
@@ -114,7 +115,7 @@ export const createMessage = async ({
         });
         
         // Отправляем ошибку клиенту
-        socket.emit(EVENT_NAMES.answerCreated, {
+        safeEmit(socket, EVENT_NAMES.answerCreated, {
             message: `Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}. Пожалуйста, попробуйте еще раз.`,
             id: input.id,
         });

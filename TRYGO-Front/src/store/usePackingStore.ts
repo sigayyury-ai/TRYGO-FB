@@ -24,21 +24,69 @@ export const usePackingStore = create<PackingState>((set, get) => ({
   error: null,
 
   createHypothesesPacking: async (projectHypothesisId) => {
+    if (!projectHypothesisId) {
+      set({ error: "Project hypothesis ID is required", loading: false });
+      return;
+    }
+
     set({ loading: true, error: null });
 
     try {
-      const { data } = await createHypothesesPackingMutation(
+      // First, quickly check if data exists
+      const existingCheck = await getHypothesesPackingQuery(projectHypothesisId);
+      
+      // If data exists, we're done
+      if (existingCheck.data?.getHypothesesPacking) {
+        set({ 
+          hypothesesPacking: existingCheck.data.getHypothesesPacking,
+          loading: false, 
+          error: null 
+        });
+        return;
+      }
+
+      // If no data exists, create new
+      const { data, error: mutationError } = await createHypothesesPackingMutation(
         projectHypothesisId
       );
 
-      const hypothesesPacking = data.createHypothesesPacking;
+      if (mutationError) {
+        // If error is "already exists", try to fetch existing data
+        if (mutationError.message?.includes('already exists')) {
+          await get().getHypothesesPacking(projectHypothesisId);
+          set({ loading: false, error: null });
+          return;
+        }
+        
+        throw mutationError;
+      }
+
+      const hypothesesPacking = data?.createHypothesesPacking;
+
+      if (!hypothesesPacking) {
+        throw new Error('No data returned from createHypothesesPacking mutation');
+      }
 
       set({
         hypothesesPacking,
         loading: false,
+        error: null,
       });
     } catch (error: unknown) {
-      let errorMessage = "Failed to load hypotheses Market Research Data";
+      console.error('[usePackingStore] Error in createHypothesesPacking:', error);
+      
+      // If error is "already exists", try to fetch existing data
+      if (error instanceof Error && error.message?.includes('already exists')) {
+        try {
+          await get().getHypothesesPacking(projectHypothesisId);
+          set({ loading: false, error: null });
+          return;
+        } catch (fetchError) {
+          console.error('[usePackingStore] Error fetching existing data:', fetchError);
+        }
+      }
+      
+      let errorMessage = "Failed to create hypotheses Packing Data";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -50,22 +98,52 @@ export const usePackingStore = create<PackingState>((set, get) => ({
   },
 
   getHypothesesPacking: async (projectHypothesisId) => {
+    if (!projectHypothesisId) {
+      set({ hypothesesPacking: null, loading: false, error: null });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      const { data } = await getHypothesesPackingQuery(
+      const { data, error: queryError } = await getHypothesesPackingQuery(
         projectHypothesisId
       );
-      const hypothesesPacking = data.getHypothesesPacking;
+      
+      if (queryError) {
+        // Если это ошибка "not found" или null, просто устанавливаем null без ошибки
+        if (queryError.message?.includes('not found') || queryError.message?.includes('null')) {
+          set({
+            hypothesesPacking: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+        throw queryError;
+      }
+
+      const hypothesesPacking = data?.getHypothesesPacking || null;
 
       set({
         hypothesesPacking,
         loading: false,
+        error: null,
       });
     } catch (error: unknown) {
-      let errorMessage = "Failed to load hypotheses Market Research Data";
+      let errorMessage = "Failed to load hypotheses Packing Data";
       if (error instanceof Error) {
         errorMessage = error.message;
+        // Если это GraphQL ошибка "not found" или null, не показываем ошибку - просто нет данных
+        if (error.message.includes('not found') || error.message.includes('Cannot return null') || error.message.includes('null')) {
+          set({
+            hypothesesPacking: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
       }
+      console.error('[usePackingStore] Error loading packing:', error);
       set({
         error: errorMessage,
         loading: false,
@@ -74,16 +152,24 @@ export const usePackingStore = create<PackingState>((set, get) => ({
   },
   changeHypothesesPacking: async (summary) => {
     try {
-      const id = get().hypothesesPacking.id;
+      const currentData = get().hypothesesPacking;
+      if (!currentData?.id) {
+        throw new Error("No packing data available to update");
+      }
 
-      await changeHypothesesPackingMutation({
+      const { data } = await changeHypothesesPackingMutation({
         input: {
-          id,
+          id: currentData.id,
           summary,
         },
       });
+
+      // Update the state with the new data
+      set({
+        hypothesesPacking: data.changeHypothesesPacking,
+      });
     } catch (error: unknown) {
-      let errorMessage = "Failed to load hypotheses Market Research Data";
+      let errorMessage = "Failed to update hypotheses Packing Data";
       if (error instanceof Error) {
         errorMessage = error.message;
       }

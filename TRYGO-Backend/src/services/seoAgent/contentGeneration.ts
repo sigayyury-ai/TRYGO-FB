@@ -130,13 +130,6 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
     // For blog articles, use new prompt system if backlogIdeaId is provided
     if (request.backlogIdeaId && request.projectId && request.hypothesisId) {
       try {
-        console.log("[generateContent] Using new prompt system:", {
-          backlogIdeaId: request.backlogIdeaId,
-          projectId: request.projectId,
-          hypothesisId: request.hypothesisId,
-          title: request.title
-        });
-
         // Use new prompt system with content type detection
         const backlogIdea = await SeoBacklogIdea.findById(request.backlogIdeaId).exec();
         if (!backlogIdea) {
@@ -145,25 +138,14 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
 
         // Load SEO context
         const seoContext = await loadSeoContext(request.projectId, request.hypothesisId, request.userId);
-        console.log("[generateContent] SEO context loaded for:", {
-          project: seoContext.project?.title || "NOT FOUND",
-          hypothesis: seoContext.hypothesis?.title || "NOT FOUND",
-          hasICP: !!seoContext.icp,
-          hasLeanCanvas: !!seoContext.leanCanvas,
-          clustersCount: seoContext.clusters?.length || 0,
-          language: seoContext.language
-        });
 
         // Build prompt using new system
-        console.log("[generateContent] Building draft prompt...");
         const { prompt, detectedType } = buildDraftPrompt({
           context: seoContext,
           idea: backlogIdea,
           contentType: "article",
           language: seoContext.language
         });
-        console.log("[generateContent] Prompt built, detected type:", detectedType);
-        console.log("[generateContent] Prompt length:", prompt.length);
 
         const OpenAI = (await import("openai")).default;
         const apiKey = process.env.OPENAI_API_KEY || config.SEO_AGENT.openAiApiKey;
@@ -171,7 +153,6 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
           console.error("[generateContent] OPENAI_API_KEY is not set!");
           throw new Error("OPENAI_API_KEY is not set in environment variables");
         }
-        console.log("[generateContent] OpenAI API key found, creating client...");
         const client = new OpenAI({ apiKey });
 
       const model = config.SEO_AGENT.openAiModel || "gpt-4o";
@@ -197,7 +178,6 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
         console.error("[generateContent] OpenAI API error:", apiError.message);
         // Fallback to gpt-4o if model error
         if (model !== "gpt-4o") {
-          console.log("[generateContent] Trying fallback model gpt-4o...");
           response = await client.chat.completions.create({
             model: "gpt-4o",
             temperature: 0.7,
@@ -254,12 +234,12 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
     try {
       response = await client.chat.completions.create({
         model: model,
-        temperature: 0.7,
+        temperature: 0.85, // Higher temperature for more creative, less templated output
         max_tokens: 6000,
         messages: [
           {
             role: "system",
-            content: "You are a senior content writer and SEO specialist. You create comprehensive, well-researched blog articles that provide genuine value to readers while being optimized for search engines. Always respond with clean, well-structured Markdown content without any extra formatting, quotes, or meta-commentary."
+            content: "You are an expert content writer who creates deeply researched, naturally flowing articles. Your writing is authentic, insightful, and genuinely valuable—never templated or formulaic. You explore topics thoroughly, connect ideas meaningfully, and write in a conversational yet authoritative voice. Always respond with clean Markdown content without any extra formatting, quotes, or meta-commentary."
           },
           {
             role: "user",
@@ -271,15 +251,14 @@ ${result.payload.faq.map((faq: any) => `<h3>${escapeHtml(faq.question)}</h3>
       console.error("[generateContent] OpenAI API error (fallback):", apiError.message);
       // Fallback to gpt-4o if model error
       if (model !== "gpt-4o") {
-        console.log("[generateContent] Trying fallback model gpt-4o...");
         response = await client.chat.completions.create({
           model: "gpt-4o",
-          temperature: 0.7,
+          temperature: 0.85, // Higher temperature for more creative, less templated output
           max_tokens: 6000,
           messages: [
             {
               role: "system",
-              content: "You are a senior content writer and SEO specialist. You create comprehensive, well-researched blog articles that provide genuine value to readers while being optimized for search engines. Always respond with clean, well-structured Markdown content without any extra formatting, quotes, or meta-commentary."
+              content: "You are an expert content writer who creates deeply researched, naturally flowing articles. Your writing is authentic, insightful, and genuinely valuable—never templated or formulaic. You explore topics thoroughly, connect ideas meaningfully, and write in a conversational yet authoritative voice. Always respond with clean Markdown content without any extra formatting, quotes, or meta-commentary."
             },
             {
               role: "user",
@@ -367,105 +346,61 @@ function buildArticlePrompt(request: ContentGenerationRequest): string {
     ? cluster.keywords.join(", ")
     : "No specific keywords provided";
 
-  let prompt = `You are a senior content writer and SEO specialist with expertise in creating comprehensive, well-researched blog articles that rank well in search engines and provide genuine value to readers.
+  let prompt = `You are an expert content writer who creates deeply researched, engaging, and naturally flowing articles. Your writing feels authentic, insightful, and genuinely valuable—not templated or formulaic.
 
-Your task is to write a complete, publication-ready blog article based on the following specifications.
+Write a comprehensive article on: **${title}**
+${description ? `\nCore theme: ${description}` : ""}
 
-## Article Specifications
+## Your Mission
 
-**Title:** ${title}
-${description ? `**Description/Outline:** ${description}` : ""}
-**Content Category:** ${category}
+Go deep. Explore the topic from multiple angles, uncover insights, tell stories, and provide real value. Write as if you're sharing knowledge with a colleague who's genuinely interested—not following a template.
 
-## Context & Background
+## Context to Consider
 
-**Project:** ${projectTitle}
-**Hypothesis:** ${hypothesisTitle}
-${cluster ? `**Semantic Cluster:** ${cluster.title}` : ""}
-${cluster ? `**Cluster Intent:** ${cluster.intent}` : ""}
-${cluster ? `**Target Keywords:** ${keywords}` : ""}
+**Your audience cares about:**
+${pains !== "- Pain points not documented" ? pains : "Their challenges and goals"}
+${goals !== "- Goals not documented" ? `\n**They want to:**\n${goals}` : ""}
 
-**Target Audience Context:**
-**ICP Pain Points:**
-${pains}
+**Business context:**
+${problems !== "- Problems not specified" ? `Problems: ${problems}` : ""}
+${solutions !== "- Solutions not specified" ? `Solutions: ${solutions}` : ""}
+${uvp !== "Unique value proposition is not defined" ? `Value: ${uvp}` : ""}
 
-**ICP Goals & Desires:**
-${goals}
+${cluster ? `**Topic focus:** ${cluster.title}\n**Intent:** ${cluster.intent}\n**Keywords to naturally weave in:** ${keywords}` : keywords !== "No specific keywords provided" ? `**Keywords to naturally weave in:** ${keywords}` : ""}
 
-**Business Context:**
-**Lean Canvas Problems:**
-${problems}
+## Writing Principles (Not Rules)
 
-**Lean Canvas Solutions:**
-${solutions}
+**Depth over structure:** Don't count paragraphs or words. Focus on exploring the topic thoroughly. If a section needs 200 words, write 200. If it needs 800, write 800. Let the content determine the structure, not the other way around.
 
-**Unique Value Proposition:** ${uvp}
+**Natural flow:** Write like you're explaining something interesting to a friend. Use transitions that feel organic, not forced. Mix short and long paragraphs. Vary sentence length. Let the writing breathe.
 
-## Article Requirements
+**Real insights:** Don't just list facts. Connect ideas, show patterns, explain why things matter. Use examples, analogies, and stories when they add value—not because a template says so.
 
-### Structure & Length
-- **Total Length:** 1,500-2,500 words (aim for comprehensive coverage)
-- **Introduction:** 2-3 engaging paragraphs (150-250 words)
-  - Hook the reader with a relatable problem or compelling question
-  - Establish relevance to the target audience
-  - Preview what the article will cover
-- **Main Body:** 3-5 substantial sections with H2 headings
-  - Each section should be 300-500 words
-  - Use H3 subheadings where appropriate for better readability
-  - Include practical examples, case studies, or real-world scenarios
-  - Address the pain points and goals mentioned in the context
-- **Conclusion:** 1-2 paragraphs (100-200 words)
-  - Summarize key takeaways
-  - Include a clear call-to-action that aligns with the project's goals
-  - Encourage engagement or next steps
+**Conversational authority:** Be knowledgeable but approachable. Use "you" naturally. Ask questions when they help the reader think. Show empathy for their challenges.
 
-### Content Quality Standards
+**SEO naturally:** Weave keywords in where they fit naturally. Don't force them. Write for humans first—search engines will follow.
 
-1. **SEO Optimization:**
-   - Naturally incorporate the target keywords (${keywords}) throughout the article
-   - Use the primary keyword in the first paragraph and H2 headings where relevant
-   - Include semantic variations and related terms
-   - Write for humans first, search engines second
+## What to Avoid
 
-2. **Value & Actionability:**
-   - Provide actionable insights, tips, or strategies
-   - Include specific examples, step-by-step guides, or frameworks where applicable
-   - Address the reader's pain points directly
-   - Show how the content relates to achieving their goals
+- Rigid structure (don't force "3-5 sections" if the topic needs 2 or 7)
+- Template phrases ("In this article, we will...", "Let's dive in...", "In conclusion...")
+- Filler content to hit word counts
+- Over-structured lists when narrative works better
+- Salesy language or forced CTAs
 
-3. **Readability & Engagement:**
-   - Use clear, conversational language (avoid jargon unless necessary)
-   - Break up long paragraphs (3-4 sentences max)
-   - Use bullet points, numbered lists, and formatting to improve scanability
-   - Include transitions between sections for smooth flow
+## Format
 
-4. **Tone & Style:**
-   - Professional yet approachable
-   - Authoritative but not condescending
-   - Empathetic to the reader's challenges
-   - Aligned with the project's unique value proposition
+Use Markdown naturally:
+- \`# ${title}\` for the title
+- \`## Heading\` for main sections (create as many as the topic needs)
+- \`### Subheading\` when it helps organize
+- \`**bold**\` for emphasis
+- Lists when they genuinely help (not as filler)
+- Paragraphs of any length that serve the content
 
-### Markdown Formatting Requirements
+Return ONLY the article in clean Markdown. Start with the H1 title. No meta-commentary, no explanations, just the article.
 
-- Use proper Markdown syntax:
-  - H1 for title: \`# ${title}\`
-  - H2 for main sections: \`## Section Title\`
-  - H3 for subsections: \`### Subsection Title\`
-  - Use \`**bold**\` for emphasis
-  - Use \`- \` for bullet lists
-  - Use \`1. \` for numbered lists
-  - Use \`> \` for blockquotes when appropriate
-- Do NOT include:
-  - Extra quotes around the content
-  - Code blocks wrapping the entire article
-  - Any meta-commentary or notes about the generation process
-  - Placeholder text or "TODO" comments
-
-### Output Format
-
-Return ONLY the article content in clean Markdown format. Start directly with the H1 title, followed by the introduction, main sections, and conclusion. Do not include any preamble, explanation, or postscript.
-
-Begin writing the article now:`;
+Now write. Go deep. Be natural.`;
 
   return prompt;
 }
@@ -558,13 +493,12 @@ export const generateImage = async (
         title: request.title,
         description: request.description
       });
-      console.log("[generateImage] ✅ Image generated via integrated API");
       return {
         imageUrl
       };
     }
   } catch (serviceError) {
-    console.warn("[generateImage] ⚠️ Integrated images API not available, falling back to Gemini:", serviceError);
+    // Fallback to Gemini
   }
 
   // Fallback to Google Gemini (original implementation)
@@ -572,14 +506,6 @@ export const generateImage = async (
     // Use Google Gemini only
     const hasGeminiKey = !!(config.SEO_AGENT.geminiApiKey || config.SEO_AGENT.googleApiKey);
     const apiKey = config.SEO_AGENT.geminiApiKey || config.SEO_AGENT.googleApiKey;
-    
-    console.log("[generateImage] 🔍 Checking Google Gemini API key:", {
-      hasGeminiKey,
-      hasGeminiApiKey: !!config.SEO_AGENT.geminiApiKey,
-      hasGoogleApiKey: !!config.SEO_AGENT.googleApiKey,
-      apiKeyLength: apiKey?.length || 0,
-      apiKeyPrefix: apiKey ? `${apiKey.substring(0, 10)}...` : "none"
-    });
 
     if (!hasGeminiKey || !apiKey) {
       const errorMessage = "GEMINI_API_KEY or GOOGLE_API_KEY not found in environment variables";
@@ -588,10 +514,7 @@ export const generateImage = async (
     }
 
     try {
-      console.log("[generateImage] ✅ Using Google Gemini for image generation");
-      
       // Step 1: Generate detailed scene description using OpenAI
-      console.log("[generateImage] 📝 Step 1: Generating detailed scene description...");
       const { generateSceneDescription } = await import("./contentGeneration/generateSceneDescription");
       
       const sceneDescription = await generateSceneDescription({
@@ -602,15 +525,9 @@ export const generateImage = async (
         icpContext: request.icpContext
       });
       
-      console.log("[generateImage] ✅ Scene description generated:", sceneDescription.substring(0, 150) + "...");
-      
       // Step 2: Build image prompt from scene description
-      console.log("[generateImage] 🎨 Step 2: Building image prompt from scene description...");
       const { buildImagePrompt } = await import("./contentGeneration/buildImagePrompt");
       const imagePrompt = buildImagePrompt(sceneDescription, "hero");
-      
-      console.log("[generateImage] 📝 Prompt length:", imagePrompt.prompt.length, "chars");
-      console.log("[generateImage] 📝 Prompt preview:", imagePrompt.prompt.substring(0, 200) + "...");
       
       // Use correct Imagen API endpoint format
       // Imagen 3.0 was shut down on Nov 10, 2025, using Imagen 4.0
@@ -637,10 +554,6 @@ export const generateImage = async (
       
       // Note: negativePrompt is no longer supported - do not include it
       
-      console.log("[generateImage] 🌐 Making request to Google Gemini API...");
-      console.log("[generateImage] 🌐 URL:", apiUrl.replace(apiKey, "***"));
-      console.log("[generateImage] 🌐 Request body keys:", Object.keys(requestBody));
-      
       // Try Google Gemini Imagen API
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -651,12 +564,8 @@ export const generateImage = async (
         signal: AbortSignal.timeout(30000)
       });
 
-      console.log("[generateImage] 🌐 Google Gemini response status:", response.status, response.statusText);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("[generateImage] 📦 Google Gemini response data keys:", Object.keys(data));
-        console.log("[generateImage] 📦 Response structure:", JSON.stringify(data).substring(0, 500));
         
         // Check for different response formats (Imagen 4.0 format)
         let imageBase64: string | null = null;
@@ -690,16 +599,13 @@ export const generateImage = async (
         }
         
         if (imageBase64) {
-          console.log("[generateImage] ✅✅✅ Image generated via Google Gemini");
-          const imageDataLength = imageBase64.length;
-          console.log("[generateImage] 📊 Image data length:", imageDataLength, "chars");
           // Convert base64 to data URL
           return {
             imageUrl: `data:image/png;base64,${imageBase64}`
           };
         } else {
           const errorDetails = JSON.stringify(data).substring(0, 500);
-          console.warn("[generateImage] ⚠️ Google Gemini response OK but no image data:", errorDetails);
+          console.error("[generateImage] ⚠️ Google Gemini response OK but no image data:", errorDetails);
           throw new Error(`Google Gemini API returned success but no image data. Response: ${errorDetails}`);
         }
       } else {

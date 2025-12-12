@@ -11,33 +11,21 @@ const hypothesesValidationQueryResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 const hypothesesValidation =
                     await hypothesesValidationService.getHypothesesValidation(
                         projectHypothesisId,
                         context.userId
                     );
-                if (
-                    hypothesesValidation &&
-                    !hypothesesValidation?.summaryInterview
-                ) {
-                    await hypothesesValidationService.deleteHypothesesValidation(
-                        projectHypothesisId,
-                        context.userId
-                    );
-
-                    await createValidationPart({
-                        projectHypothesisId: projectHypothesisId,
-                        userId: context.userId,
-                    });
-
-                    return await hypothesesValidationService.getHypothesesValidation(
-                        projectHypothesisId,
-                        context.userId
-                    );
-                }
+                
+                // Просто возвращаем то, что есть (или null, если нет валидации)
+                // Не генерируем автоматически - пользователь должен нажать кнопку
                 return hypothesesValidation;
             } catch (err) {
-                elevateError(err);
+                throw elevateError(err);
             }
         },
     },

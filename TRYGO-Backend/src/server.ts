@@ -1,6 +1,29 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Global error handlers to prevent crashes
+process.on('uncaughtException', (error: Error) => {
+    console.error('❌ [UNCAUGHT_EXCEPTION] Fatal error:', error);
+    console.error('Stack:', error.stack);
+    // In development, log and continue. In production, you might want to exit
+    // But even in production, try to keep server running for critical services
+    if (process.env.NODE_ENV === 'production') {
+        // Give some time for logs to be written
+        setTimeout(() => {
+            process.exit(1);
+        }, 1000);
+    }
+});
+
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+    console.error('❌ [UNHANDLED_REJECTION] Unhandled promise rejection:', reason);
+    if (reason instanceof Error) {
+        console.error('Stack:', reason.stack);
+    }
+    // Log but don't exit - allow server to continue running
+    // This is critical - many async operations can fail without killing the server
+});
+
 import express from 'express';
 import { ApolloServer } from '@apollo/server';
 import cors from 'cors';
@@ -10,7 +33,7 @@ import { connectMainDB } from './configuration/db';
 // import fileRoutes from './routes/fileRoutes';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { expressMiddleware } from '@apollo/server/express4';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { resolversArray } from './resolvers/_indexResolvers';
 import { loadGraphQLFiles } from './utils';
@@ -28,6 +51,9 @@ import imagesRouter from './routes/images';
 
 const app = express();
 const PORT = process.env.PORT || 5001; // Changed from 4000 to avoid conflicts with SEO Agent backend (4100) and macOS ControlCenter (5000)
+
+// Create HTTP server instance (will be assigned in startServer)
+let httpServer: Server | null = null;
 
 // Health check endpoint - must respond quickly for Render
 // This allows Render to verify the service is up before full initialization
@@ -109,7 +135,7 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly
 app.options('*', cors(corsOptions));
 
-const httpServer = createServer(app);
+httpServer = createServer(app);
 
 const typeDefs = loadGraphQLFiles();
 
@@ -140,7 +166,7 @@ const server = new ApolloServer({
                   footer: false,
               })
             : ApolloServerPluginLandingPageLocalDefault({ footer: false }),
-        ApolloServerPluginDrainHttpServer({ httpServer })
+        ApolloServerPluginDrainHttpServer({ httpServer: httpServer! })
     ],
 });
 
@@ -164,12 +190,30 @@ async function startServer() {
         logStep('SERVER_STARTUP', 'start', 'Initializing server...');
         
         logStep('APOLLO_SERVER', 'start', 'Starting Apollo Server...');
-        await server.start();
-        logStep('APOLLO_SERVER', 'success', 'Apollo Server started');
+        try {
+            await server.start();
+            logStep('APOLLO_SERVER', 'success', 'Apollo Server started');
+        } catch (error: any) {
+            logStep('APOLLO_SERVER', 'error', `Failed to start: ${error.message}`);
+            console.error('Apollo Server startup error:', error);
+            throw error; // Apollo Server is critical - fail if it can't start
+        }
 
         logStep('MONGODB_CONNECTION', 'start', 'Connecting to MongoDB...');
-        await connectMainDB();
-        logStep('MONGODB_CONNECTION', 'success', 'MongoDB connected');
+        try {
+            await connectMainDB();
+            logStep('MONGODB_CONNECTION', 'success', 'MongoDB connected');
+        } catch (error: any) {
+            logStep('MONGODB_CONNECTION', 'error', `Failed to connect: ${error.message}`);
+            console.error('MongoDB connection failed:', error);
+            // In development, allow server to start even if MongoDB fails (for testing)
+            // In production, this should be fatal
+            if (process.env.NODE_ENV === 'production') {
+                throw error;
+            } else {
+                console.warn('⚠️  Continuing without MongoDB connection (development mode)');
+            }
+        }
 
         logStep('GRAPHQL_MIDDLEWARE', 'start', 'Setting up GraphQL middleware...');
         app.use(
@@ -243,10 +287,19 @@ async function startServer() {
         }
 
         logStep('SOCKET_IO', 'start', 'Setting up Socket.io...');
-        setupSocketIOServer(httpServer);
-        logStep('SOCKET_IO', 'success', 'Socket.io set up');
+        try {
+            await setupSocketIOServer(httpServer);
+            logStep('SOCKET_IO', 'success', 'Socket.io set up');
+        } catch (error: any) {
+            logStep('SOCKET_IO', 'error', `Failed to setup Socket.io: ${error.message}`);
+            console.error('Socket.io setup error:', error);
+            // Don't block server startup if Socket.io fails
+        }
         
         logStep('HTTP_SERVER', 'start', `Starting HTTP server on port ${PORT}...`);
+        if (!httpServer) {
+            throw new Error('HTTP server not initialized');
+        }
         httpServer.listen(PORT, () => {
             const startupTime = Date.now() - startTime;
             logStep('HTTP_SERVER', 'success', `Server is running on http://localhost:${PORT}`);
@@ -254,6 +307,23 @@ async function startServer() {
             console.log(`📊 GraphQL endpoint: http://localhost:${PORT}/graphql`);
             console.log(`📊 Health check: http://localhost:${PORT}/health`);
             console.log(`📊 Root endpoint: http://localhost:${PORT}/`);
+        }).on('error', (error: NodeJS.ErrnoException) => {
+            if (error.code === 'EADDRINUSE') {
+                logStep('HTTP_SERVER', 'error', `Port ${PORT} is already in use. Please stop the existing server or use a different port.`);
+                console.error(`❌ Port ${PORT} is already in use.`);
+                console.error(`💡 Try: lsof -ti:${PORT} | xargs kill -9`);
+                console.error(`💡 Or use: ./start-server-safe.sh`);
+                console.error(`💡 Or change PORT in .env file`);
+            } else {
+                logStep('HTTP_SERVER', 'error', `Failed to start server: ${error.message}`);
+                console.error('❌ Server error:', error);
+                console.error('Error code:', error.code);
+                console.error('Error stack:', error.stack);
+            }
+            // Exit after a delay to allow logs to be written
+            setTimeout(() => {
+                process.exit(1);
+            }, 1000);
         });
     } catch (error: any) {
         const startupTime = Date.now() - startTime;
@@ -263,7 +333,50 @@ async function startServer() {
     }
 }
 
+// Graceful shutdown handler
+const gracefulShutdown = async (signal: string) => {
+    console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+    
+    try {
+        // Stop accepting new connections
+        if (httpServer) {
+            httpServer.close(() => {
+                console.log('✅ HTTP server closed');
+            });
+        }
+        
+        // Stop Agenda jobs
+        await agenda.stop();
+        console.log('✅ Agenda jobs stopped');
+        
+        // Close MongoDB connection
+        const mongoose = await import('mongoose');
+        if (mongoose.default.connection.readyState === 1) {
+            await mongoose.default.connection.close();
+            console.log('✅ MongoDB connection closed');
+        }
+        
+        console.log('✅ Graceful shutdown completed');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during graceful shutdown:', error);
+        process.exit(1);
+    }
+};
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Start server
 startServer().catch((error) => {
-    console.error('❌ Fatal error:', error);
-    process.exit(1);
+    console.error('❌ Fatal error during startup:', error);
+    if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+    }
+    // Give time for logs to be written before exiting
+    setTimeout(() => {
+        process.exit(1);
+    }, 2000);
 });

@@ -217,7 +217,6 @@ export const SeoPostingSettingsPanel = ({
 
     setTestingConnection(true);
     try {
-      console.log("[SeoPostingSettingsPanel] Testing WordPress connection...");
       const { data, errors } = await testWordPressConnectionMutation({
         wordpressBaseUrl: normalizedUrl,
         wordpressUsername: currentSettings.wordpressUsername.trim(),
@@ -234,7 +233,7 @@ export const SeoPostingSettingsPanel = ({
         try {
           localStorage.setItem(passwordKey, currentSettings.wordpressAppPassword.trim());
         } catch (e) {
-          console.warn("[SeoPostingSettingsPanel] Failed to save password to localStorage:", e);
+          // Ignore localStorage errors
         }
         
         // Update draft settings with normalized URL
@@ -292,7 +291,6 @@ export const SeoPostingSettingsPanel = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      console.log("[SeoPostingSettingsPanel] Saving settings with wordpressPostType:", selectedPostType);
       await updateSettings(
         projectId,
         hypothesisId,
@@ -337,24 +335,12 @@ export const SeoPostingSettingsPanel = ({
                      (baseUrl && username ? getSavedPassword() : null);
 
     if (!baseUrl || !username || !password) {
-      console.warn("[SeoPostingSettingsPanel] Cannot load WordPress data - missing credentials:", {
-        hasBaseUrl: !!baseUrl,
-        hasUsername: !!username,
-        hasPassword: !!password
-      });
       return;
     }
 
     setLoadingCategories(true);
     try {
-      console.log("[SeoPostingSettingsPanel] Loading WordPress data...", {
-        baseUrl,
-        username,
-        hasPassword: !!password
-      });
-      
       // Load post types first
-      console.log("[SeoPostingSettingsPanel] Fetching post types...");
       const postTypesResult = await getWordPressPostTypesQuery({
         wordpressBaseUrl: baseUrl,
         wordpressUsername: username,
@@ -366,8 +352,6 @@ export const SeoPostingSettingsPanel = ({
       
       if (postTypesResult.data?.wordpressPostTypes) {
         const allPostTypes = postTypesResult.data.wordpressPostTypes;
-        console.log("[SeoPostingSettingsPanel] ✅ Post types loaded:", allPostTypes.length);
-        console.log("[SeoPostingSettingsPanel] Available post types:", allPostTypes.map(pt => `${pt.name} (${pt.label}, public: ${pt.public})`));
         setPostTypes(allPostTypes);
         
         // Check if current post type is in the list
@@ -375,20 +359,17 @@ export const SeoPostingSettingsPanel = ({
         if (!availablePostTypes.includes(postTypeToUse)) {
           // Only reset if the post type is not available AND it's not explicitly set by user
           const defaultPostType = availablePostTypes.includes("post") ? "post" : availablePostTypes[0];
-          console.log(`[SeoPostingSettingsPanel] Post type "${postTypeToUse}" not available, switching to "${defaultPostType}"`);
           setSelectedPostType(defaultPostType);
           postTypeToUse = defaultPostType;
         } else {
           // Ensure selectedPostType matches the saved/available post type
           if (selectedPostType !== postTypeToUse) {
-            console.log(`[SeoPostingSettingsPanel] Syncing selectedPostType to "${postTypeToUse}" from settings`);
             setSelectedPostType(postTypeToUse);
           }
         }
       }
 
       // Load categories for the determined post type
-      console.log("[SeoPostingSettingsPanel] Fetching categories for post type:", postTypeToUse);
       const categoriesInput: GetWordPressCategoriesInput = {
         wordpressBaseUrl: baseUrl,
         wordpressUsername: username,
@@ -398,8 +379,6 @@ export const SeoPostingSettingsPanel = ({
       const categoriesResult = await getWordPressCategoriesQuery(categoriesInput);
 
       if (categoriesResult.data?.wordpressCategories) {
-        console.log("[SeoPostingSettingsPanel] ✅ Categories loaded:", categoriesResult.data.wordpressCategories.length);
-        console.log("[SeoPostingSettingsPanel] Categories:", categoriesResult.data.wordpressCategories.map((c: WordPressCategory) => `${c.name} (${c.slug}, id:${c.id})`));
         setCategories(categoriesResult.data.wordpressCategories);
         
         // Restore saved category from settings if available and exists in loaded categories
@@ -409,10 +388,8 @@ export const SeoPostingSettingsPanel = ({
             (cat: WordPressCategory) => cat.id === savedCategoryId
           );
           if (savedCategoryExists) {
-            console.log(`[SeoPostingSettingsPanel] Restoring saved category: ${savedCategoryId}`);
             setSelectedCategoryId(savedCategoryId);
           } else {
-            console.log(`[SeoPostingSettingsPanel] Saved category ${savedCategoryId} not found in loaded categories`);
             // Only clear if current selection also doesn't exist
             const currentCategoryExists = selectedCategoryId 
               ? categoriesResult.data.wordpressCategories.some((cat: WordPressCategory) => cat.id === selectedCategoryId)
@@ -429,14 +406,12 @@ export const SeoPostingSettingsPanel = ({
           
           // If selected category doesn't exist in loaded categories, clear selection
           if (selectedCategoryId && !currentCategoryExists) {
-            console.log("[SeoPostingSettingsPanel] Selected category not found in loaded categories, clearing selection");
             setSelectedCategoryId(null);
           }
         }
       }
 
       // Load tags for the selected post type
-      console.log("[SeoPostingSettingsPanel] Fetching tags for post type:", postTypeToUse);
       const tagsInput: GetWordPressTagsInput = {
         wordpressBaseUrl: baseUrl,
         wordpressUsername: username,
@@ -446,7 +421,6 @@ export const SeoPostingSettingsPanel = ({
       const tagsResult = await getWordPressTagsQuery(tagsInput);
       
       if (tagsResult.data?.wordpressTags) {
-        console.log("[SeoPostingSettingsPanel] ✅ Tags loaded:", tagsResult.data.wordpressTags.length);
         setTags(tagsResult.data.wordpressTags);
         
         // Restore saved tags from settings if available
@@ -456,15 +430,10 @@ export const SeoPostingSettingsPanel = ({
           const availableTagIds = tagsResult.data.wordpressTags.map((tag: WordPressTag) => tag.id);
           const validSavedTagIds = savedTagIds.filter((id: number) => availableTagIds.includes(id));
           if (validSavedTagIds.length > 0) {
-            console.log(`[SeoPostingSettingsPanel] Restoring saved tags: ${validSavedTagIds.join(', ')}`);
             setSelectedTagIds(validSavedTagIds);
-          } else {
-            console.log(`[SeoPostingSettingsPanel] Saved tags not found in loaded tags`);
           }
         }
       }
-      
-      console.log("[SeoPostingSettingsPanel] ✅ WordPress data loaded successfully");
     } catch (error: any) {
       console.error("[SeoPostingSettingsPanel] ❌ Failed to load WordPress data:", error);
       console.error("[SeoPostingSettingsPanel] Error details:", {
@@ -533,14 +502,12 @@ export const SeoPostingSettingsPanel = ({
     // Initialize post type - only set if not already initialized or if settings changed after save
     if (settings?.wordpressPostType) {
       if (!postTypeInitialized) {
-        console.log(`[SeoPostingSettingsPanel] Initializing post type from settings: ${settings.wordpressPostType}`);
         setSelectedPostType(settings.wordpressPostType);
         setPostTypeInitialized(true);
       } else {
         // Always sync with settings after initialization to ensure consistency
         setSelectedPostType((current) => {
           if (current !== settings.wordpressPostType) {
-            console.log(`[SeoPostingSettingsPanel] Post type changed in settings after save: ${settings.wordpressPostType}`);
             return settings.wordpressPostType;
           }
           return current;
@@ -552,7 +519,6 @@ export const SeoPostingSettingsPanel = ({
     if (settings?.wordpressDefaultCategoryId !== undefined) {
       setSelectedCategoryId((current) => {
         if (current !== settings.wordpressDefaultCategoryId) {
-          console.log(`[SeoPostingSettingsPanel] Initializing category from settings: ${settings.wordpressDefaultCategoryId}`);
           return settings.wordpressDefaultCategoryId;
         }
         return current;
@@ -566,7 +532,6 @@ export const SeoPostingSettingsPanel = ({
         const currentTagsStr = JSON.stringify([...current].sort());
         const savedTagsStr = JSON.stringify([...savedTags].sort());
         if (currentTagsStr !== savedTagsStr) {
-          console.log(`[SeoPostingSettingsPanel] Initializing tags from settings: ${savedTags.join(', ')}`);
           return [...savedTags];
         }
         return current;
@@ -587,7 +552,6 @@ export const SeoPostingSettingsPanel = ({
   };
 
   const handlePostTypeChange = async (postType: string) => {
-    console.log("[SeoPostingSettingsPanel] Post type changed to:", postType);
     setSelectedPostType(postType);
     // Update draft settings with new post type
     setDraftSettings(

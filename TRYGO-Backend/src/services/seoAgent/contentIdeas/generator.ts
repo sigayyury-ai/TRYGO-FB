@@ -427,17 +427,10 @@ export async function generateIdeasFromOpenAI(
     throw new Error(error);
   }
 
-  // Логирование для отладки
-  const projectTitle = context.project?.title || "Unknown";
-  const hypothesisTitle = context.hypothesis?.title || "Unknown";
-  console.log(`[generator] Category: ${category} | Project: ${projectTitle} | Hypothesis: ${hypothesisTitle} | Count: ${count} | Language: ${language}`);
-
   const prompt = buildPrompt(context, category, count, language);
 
   const client = getOpenAIClient();
   const primaryModel = model && model.trim().length > 0 ? model.trim() : config.SEO_AGENT.openAiModel;
-  
-  console.log(`[generator] Using model: ${primaryModel}`);
 
   async function runOnce(usingModel: string) {
     return client.chat.completions.create({
@@ -460,24 +453,14 @@ export async function generateIdeasFromOpenAI(
 
   let response;
   try {
-    console.log(`[generator] Calling OpenAI API with model: ${primaryModel}`);
     response = await runOnce(primaryModel);
-    console.log(`[generator] OpenAI API response received`);
   } catch (err: any) {
     const fallback = config.SEO_AGENT.openAiModel;
     const canFallback = primaryModel !== fallback;
     console.error("[generator] Model call failed for", primaryModel, "error:", err?.message || err);
-    if (err?.status) {
-      console.error("[generator] OpenAI API status:", err.status);
-    }
-    if (err?.response) {
-      console.error("[generator] OpenAI API response:", JSON.stringify(err.response, null, 2));
-    }
     if (canFallback) {
-      console.warn("[generator] Falling back to default model:", fallback);
       try {
         response = await runOnce(fallback);
-        console.log(`[generator] Fallback model succeeded`);
       } catch (fallbackErr: any) {
         console.error("[generator] Fallback model also failed:", fallbackErr?.message || fallbackErr);
         throw new Error(`OpenAI API failed: ${err?.message || err}. Fallback also failed: ${fallbackErr?.message || fallbackErr}`);
@@ -491,20 +474,14 @@ export async function generateIdeasFromOpenAI(
 
   if (!content) {
     console.error("[generator] Empty response from OpenAI");
-    console.error("[generator] Full response:", JSON.stringify(response, null, 2));
     throw new Error("Empty response from OpenAI");
   }
-
-  console.log(`[generator] Received content length: ${content.length} characters`);
-  console.log(`[generator] Content preview: ${content.substring(0, 200)}...`);
 
   let parsed: any;
   try {
     parsed = JSON.parse(content);
-    console.log(`[generator] JSON parsed successfully, found ${parsed.ideas?.length || 0} ideas`);
   } catch (error) {
     console.error("[generator] JSON parse error:", error);
-    console.error("[generator] Full response content:", content);
     throw new Error(`Invalid JSON from OpenAI: ${error instanceof Error ? error.message : String(error)}`);
   }
 
@@ -525,17 +502,11 @@ export async function generateIdeasFromOpenAI(
     .filter((idea: GeneratedIdeaResult) => idea.title.length > 0); // Убираем идеи без заголовка
 
   if (ideas.length === 0) {
-    console.warn("[generator] No valid ideas found in response");
     throw new Error("No valid ideas generated from OpenAI");
   }
 
   const uniqueIdeas = dedupeIdeas(ideas);
 
-  if (uniqueIdeas.length < ideas.length) {
-    console.log(`[generator] Removed ${ideas.length - uniqueIdeas.length} duplicate ideas`);
-  }
-
-  console.log(`[generator] Returning ${uniqueIdeas.length} unique ideas`);
   return uniqueIdeas;
 }
 

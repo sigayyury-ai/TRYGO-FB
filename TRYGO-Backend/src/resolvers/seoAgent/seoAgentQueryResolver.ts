@@ -149,40 +149,13 @@ const seoAgentQueryResolver = {
                     .sort({ updatedAt: -1 })
                     .exec();
                 
-                console.log(`[seoAgentClusters] Found ${clusters.length} clusters with exact match`);
-                
                 // If no clusters found and hypothesisId is provided, try without hypothesisId filter
                 // This helps with migration scenarios where hypothesisId might have changed
                 if (clusters.length === 0 && args.hypothesisId) {
-                    // Removed verbose logging
                     const queryWithoutHypothesis = { projectId: args.projectId };
                     clusters = await SeoCluster.find(queryWithoutHypothesis)
                         .sort({ updatedAt: -1 })
                         .exec();
-                    console.log(`[seoAgentClusters] Found ${clusters.length} clusters without hypothesisId filter`);
-                }
-                
-                // Log sample cluster data for debugging migration issues
-                if (clusters.length > 0) {
-                    // Removed verbose logging - sample cluster
-                } else {
-                    // Check if any clusters exist for this project at all
-                    const totalClustersForProject = await SeoCluster.countDocuments({ projectId: args.projectId }).exec();
-                    // Removed verbose logging
-                    
-                    if (totalClustersForProject > 0 && args.hypothesisId) {
-                        // Log sample clusters to see what hypothesisIds exist
-                        const sampleClusters = await SeoCluster.find({ projectId: args.projectId })
-                            .limit(3)
-                            .select('hypothesisId projectId')
-                            .exec();
-                        console.log(`[seoAgentClusters] Sample hypothesisIds in database:`, 
-                            sampleClusters.map(c => ({ 
-                                hypothesisId: c.hypothesisId, 
-                                projectId: c.projectId 
-                            }))
-                        );
-                    }
                 }
 
                 // Always return an array, never null
@@ -264,6 +237,13 @@ const seoAgentQueryResolver = {
                         preferredDays: ['Tuesday', 'Thursday'],
                         autoPublishEnabled: false,
                         wordpressConnected: false,
+                        wordpressBaseUrl: null,
+                        wordpressUsername: null,
+                        wordpressPostType: null,
+                        wordpressDefaultCategoryId: null,
+                        wordpressDefaultTagIds: [], // Required non-nullable field - always return array
+                        language: null,
+                        timezone: null,
                         updatedAt: new Date().toISOString(),
                     };
                 }
@@ -279,6 +259,13 @@ const seoAgentQueryResolver = {
                     }),
                     autoPublishEnabled: false, // TODO: Add to model if needed
                     wordpressConnected: false, // Default to false, can be checked via testWordPressConnection mutation
+                    wordpressBaseUrl: settings.wordpressBaseUrl || null,
+                    wordpressUsername: settings.wordpressUsername || null,
+                    wordpressPostType: settings.wordpressPostType || null,
+                    wordpressDefaultCategoryId: settings.wordpressDefaultCategoryId || null,
+                    wordpressDefaultTagIds: settings.wordpressDefaultTagIds || [], // Required non-nullable field - always return array
+                    language: settings.language || null,
+                    timezone: settings.timezone || null,
                     updatedAt: settings.updatedAt?.toISOString() || new Date().toISOString(),
                 };
             } catch (err) {
@@ -292,6 +279,13 @@ const seoAgentQueryResolver = {
                     preferredDays: ['Tuesday', 'Thursday'],
                     autoPublishEnabled: false,
                     wordpressConnected: false,
+                    wordpressBaseUrl: null,
+                    wordpressUsername: null,
+                    wordpressPostType: null,
+                    wordpressDefaultCategoryId: null,
+                    wordpressDefaultTagIds: [], // Required non-nullable field - always return array
+                    language: null,
+                    timezone: null,
                     updatedAt: new Date().toISOString(),
                 };
             }
@@ -304,7 +298,6 @@ const seoAgentQueryResolver = {
         ) {
             try {
                 const userId = authService.getUserIdFromToken(context.token);
-                console.log(`[seoAgentContentIdeas] projectId: ${args.projectId}, hypothesisId: ${args.hypothesisId}, userId: ${userId}`);
                 
                 // Verify user has access to this project
                 await projectService.getProjectById(args.projectId, userId);
@@ -316,15 +309,12 @@ const seoAgentQueryResolver = {
                 if (args.hypothesisId) {
                     query.hypothesisId = args.hypothesisId;
                 }
-
-                console.log(`[seoAgentContentIdeas] Query:`, JSON.stringify(query));
                 
                 // Query SeoContentItem for content ideas
                 // Content ideas are typically items with status "draft" or items that haven't been fully developed
                 const contentItems = await SeoContentItem.find(query)
                     .sort({ updatedAt: -1 })
                     .exec();
-                console.log(`[seoAgentContentIdeas] Found ${contentItems.length} content items`);
 
                 // Map to ContentIdea format
                 // Always return an array, never null
@@ -351,7 +341,7 @@ const seoAgentQueryResolver = {
                 const userId = authService.getUserIdFromToken(context.token);
                 // Log only in development
                 if (process.env.NODE_ENV !== 'production') {
-                    console.log(`[contentItemByBacklogIdea] backlogIdeaId: ${args.backlogIdeaId}, userId: ${userId}`);
+                    // Removed verbose logging - only log errors
                 }
                 
                 // Find content item by backlogIdeaId
@@ -360,7 +350,7 @@ const seoAgentQueryResolver = {
                 }).exec();
 
                 if (!contentItem) {
-                    console.log(`[contentItemByBacklogIdea] No content item found for backlogIdeaId: ${args.backlogIdeaId}`);
+                    // No content item found - this is normal, not an error
                     return null;
                 }
 

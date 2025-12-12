@@ -46,8 +46,6 @@ class WordPressClient {
         username: config.SEO_AGENT.wordpressUsername,
         appPassword: config.SEO_AGENT.wordpressAppPassword
       };
-    } else {
-      console.warn("[WordPress] No WordPress credentials configured");
     }
   }
 
@@ -80,8 +78,6 @@ class WordPressClient {
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        console.log("[WordPress] Connection test successful, user:", userData.name || userData.slug);
         return { success: true };
       } else {
         const errorText = await response.text();

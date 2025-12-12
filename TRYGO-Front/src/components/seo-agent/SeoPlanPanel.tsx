@@ -32,43 +32,6 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
       const { data } = await getSeoAgentBacklogQuery(projectId, hypothesisId);
       const items = data?.seoAgentBacklog || [];
       
-      // Log queue status for debugging
-      const scheduledItems = items.filter(item => item.status === BacklogStatus.SCHEDULED);
-      const inProgressItems = items.filter(item => item.status === BacklogStatus.IN_PROGRESS);
-      const pendingItems = items.filter(item => item.status === BacklogStatus.PENDING);
-      
-      console.log("📊 [STATUS_CHECK] ===== ПРОВЕРКА СТАТУСОВ =====");
-      console.log("📊 [STATUS_CHECK] Общая статистика:", {
-        total: items.length,
-        scheduled: scheduledItems.length,
-        inProgress: inProgressItems.length,
-        pending: pendingItems.length
-      });
-      
-      if (scheduledItems.length > 0) {
-        console.log("📊 [STATUS_CHECK] 📅 Запланированные материалы (SCHEDULED):", scheduledItems.map(item => ({
-          id: item.id,
-          title: item.title,
-          date: item.scheduledDate,
-          status: item.status
-        })));
-      }
-      
-      if (inProgressItems.length > 0) {
-        console.log("📊 [STATUS_CHECK] 🚀 Опубликованные материалы (IN_PROGRESS):", inProgressItems.map(item => ({
-          id: item.id,
-          title: item.title,
-          date: item.scheduledDate,
-          status: item.status
-        })));
-      }
-      
-      if (pendingItems.length > 0) {
-        console.log("📊 [STATUS_CHECK] ⏳ В ожидании (PENDING):", pendingItems.length, "материалов");
-      }
-      
-      console.log("📊 [STATUS_CHECK] ===== ПРОВЕРКА ЗАВЕРШЕНА =====");
-      
       setBacklogItems(items);
     } catch (error: unknown) {
       console.error("Error loading backlog:", error);
@@ -128,45 +91,6 @@ export const SeoPlanPanel = ({ projectId, hypothesisId }: SeoPlanPanelProps) => 
   // Items in sprint = scheduled + in_progress + completed (not shown in backlog)
   const inSprintCount = scheduledCount + inProgressCount + completedCount;
   
-  // Log current sprint status - MUST be before conditional return to maintain hook order
-  useEffect(() => {
-    console.log("📊 [SPRINT_STATUS] ===== ТЕКУЩЕЕ СОСТОЯНИЕ СПРИНТА =====");
-    console.log("📊 [SPRINT_STATUS] Всего элементов в беклоге:", backlogItems.length);
-    console.log("📊 [SPRINT_STATUS] В спринте:", inSprintCount, {
-      scheduled: scheduledCount,
-      inProgress: inProgressCount,
-      completed: completedCount
-    });
-    console.log("📊 [SPRINT_STATUS] В беклоге (PENDING):", pendingCount);
-    
-    if (scheduledCount > 0) {
-      const scheduledItems = backlogItems.filter(item => item.status === BacklogStatus.SCHEDULED);
-      console.log("📊 [SPRINT_STATUS] 📅 Запланированные материалы:", scheduledItems.map(i => ({
-        id: i.id,
-        title: i.title,
-        scheduledDate: i.scheduledDate
-      })));
-    }
-    
-    if (inProgressCount > 0) {
-      const inProgressItems = backlogItems.filter(item => item.status === BacklogStatus.IN_PROGRESS);
-      console.log("📊 [SPRINT_STATUS] 🚀 Опубликованные материалы:", inProgressItems.map(i => ({
-        id: i.id,
-        title: i.title,
-        scheduledDate: i.scheduledDate
-      })));
-    }
-    
-    if (completedCount > 0) {
-      const completedItems = backlogItems.filter(item => item.status === BacklogStatus.COMPLETED);
-      console.log("📊 [SPRINT_STATUS] ✅ Завершенные материалы:", completedItems.map(i => ({
-        id: i.id,
-        title: i.title
-      })));
-    }
-    
-    console.log("📊 [SPRINT_STATUS] ===== КОНЕЦ СТАТУСА =====");
-  }, [backlogItems, inSprintCount, scheduledCount, inProgressCount, completedCount, pendingCount]);
 
   if (backlogLoading || settingsLoading) {
     return (

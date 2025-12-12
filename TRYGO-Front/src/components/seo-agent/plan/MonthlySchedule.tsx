@@ -123,13 +123,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       item.status === BacklogStatus.IN_PROGRESS ||
       item.status === BacklogStatus.COMPLETED
     );
-    console.log("📅 [SPRINT_FILTER] Фильтрация элементов для спринта:", {
-      total: backlogItems.length,
-      scheduled: backlogItems.filter(i => i.status === BacklogStatus.SCHEDULED).length,
-      inProgress: backlogItems.filter(i => i.status === BacklogStatus.IN_PROGRESS).length,
-      completed: backlogItems.filter(i => i.status === BacklogStatus.COMPLETED).length,
-      filtered: filtered.length
-    });
     return filtered;
   }, [backlogItems]);
   
@@ -173,26 +166,11 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
   const [postingItemId, setPostingItemId] = useState<string | null>(null);
   const [visibleWeeksCount, setVisibleWeeksCount] = useState<number>(1);
 
-  // Debug: log when dialog state changes
-  useEffect(() => {
-    if (openDateSelectionDialog) {
-      console.log("[MonthlySchedule] Date selection dialog opened:", {
-        itemId: openDateSelectionDialog.item.id,
-        itemTitle: openDateSelectionDialog.item.title
-      });
-    }
-  }, [openDateSelectionDialog]);
-
   // Expose method to open schedule dialog from parent
   useImperativeHandle(ref, () => ({
     openScheduleDialog: (item: BacklogIdeaDto) => {
-      console.log("[MonthlySchedule] openScheduleDialog called with item:", {
-        id: item.id,
-        title: item.title
-      });
       // Open date selection dialog to let user choose from all available slots
       setOpenDateSelectionDialog({ item });
-      console.log("[MonthlySchedule] Date selection dialog state set");
     },
   }));
   
@@ -277,22 +255,10 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
   const handlePostNow = async (item: ScheduledItem) => {
     if (postingItemId === item.id) return; // Prevent double-click
     
-    console.log("🚀 [PUBLISH] ===== НАЧАЛО ПУБЛИКАЦИИ =====");
-    console.log("🚀 [PUBLISH] Материал:", {
-      itemId: item.id,
-      backlogItemId: item.backlogItemId,
-      title: item.title,
-      currentStatus: item.status,
-      scheduledDate: item.date.toISOString(),
-      projectId,
-      hypothesisId
-    });
-    
     setPostingItemId(item.id);
     try {
 
       // Get content item ID from backlog idea
-      console.log("🚀 [PUBLISH] Шаг 1: Получение content item для backlog:", item.backlogItemId);
       const { data: contentData } = await getContentItemByBacklogIdeaQuery(item.backlogItemId);
       if (!contentData?.contentItemByBacklogIdea) {
         console.error("🚀 [PUBLISH] ❌ Content item не найден!");
@@ -300,7 +266,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       }
 
       const contentItemId = contentData.contentItemByBacklogIdea.id;
-      console.log("🚀 [PUBLISH] ✅ Content item найден:", contentItemId);
 
       toast({
         title: "Publishing...",
@@ -308,7 +273,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       });
 
       // Call actual publish API
-      console.log("🚀 [PUBLISH] Шаг 2: Вызов API публикации в WordPress...");
       const { data: publishData, errors } = await publishToWordPressMutation({
         contentItemId,
         projectId,
@@ -336,16 +300,9 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
         throw new Error("WordPress did not confirm publication. Missing post ID or URL.");
       }
 
-      console.log("🚀 [PUBLISH] ✅ WordPress подтвердил публикацию!", {
-        wordPressPostId: result.wordPressPostId,
-        wordPressPostUrl: result.wordPressPostUrl
-      });
-
       // ONLY NOW update status - after explicit WordPress confirmation
       // Update status to IN_PROGRESS only after successful publication
       // Keep IN_PROGRESS status so item stays visible in sprint (not archived)
-      console.log("🚀 [PUBLISH] Шаг 3: Обновление статуса на IN_PROGRESS (после подтверждения от WordPress)...");
-      console.log("🚀 [PUBLISH] До обновления - статус был:", item.status);
       await updateBacklogItem(
         item.backlogItemId,
         item.title,
@@ -355,8 +312,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
         item.clusterId,
         item.date.toISOString() // Keep scheduledDate so it stays in sprint
       );
-      console.log("🚀 [PUBLISH] ✅ Статус обновлен на IN_PROGRESS (остается в спринте)");
-      console.log("🚀 [PUBLISH] ===== ПУБЛИКАЦИЯ ЗАВЕРШЕНА УСПЕШНО =====");
 
       toast({
         title: "Success",
@@ -392,25 +347,9 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
   };
 
   const handleRemoveFromPlan = async (itemId: string) => {
-    console.log("🗑️ [REMOVE] ===== УДАЛЕНИЕ ИЗ СПРИНТА =====");
-    console.log("🗑️ [REMOVE] Item ID:", itemId);
-    
     try {
       const item = backlogItems.find(i => i.id === itemId);
       if (item) {
-        console.log("🗑️ [REMOVE] Найден материал:", {
-          id: item.id,
-          title: item.title,
-          currentStatus: item.status,
-          scheduledDate: item.scheduledDate
-        });
-        
-        // Allow removal even for published items - user can return them to backlog for revision
-        if (item.status === BacklogStatus.IN_PROGRESS) {
-          console.log("🗑️ [REMOVE] ⚠️ Удаление опубликованного материала (возврат в беклог на доработку)...");
-        }
-        
-        console.log("🗑️ [REMOVE] Обновление статуса на PENDING (возврат в беклог)...");
         // Change status back to PENDING and clear scheduledDate
         // This will make the item appear in Backlog Ideas again
         await updateBacklogItem(
@@ -422,19 +361,13 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
           item.clusterId,
           null // Clear scheduledDate
         );
-        console.log("🗑️ [REMOVE] ✅ Статус обновлен на PENDING - элемент вернется в Backlog Ideas");
         
         setScheduledItems(items => items.filter(i => i.id !== itemId));
-        console.log("🗑️ [REMOVE] ✅ Удален из локального состояния спринта");
         
         // Refresh backlog to show the item in Backlog Ideas
         if (onBacklogUpdated) {
-          console.log("🗑️ [REMOVE] Обновление беклога для отображения элемента...");
           await onBacklogUpdated();
-          console.log("🗑️ [REMOVE] ✅ Беклог обновлен - элемент должен появиться в Backlog Ideas");
         }
-        
-        console.log("🗑️ [REMOVE] ===== УДАЛЕНИЕ ЗАВЕРШЕНО - ЭЛЕМЕНТ В БЕКЛОГЕ =====");
         
         toast({
           title: "Removed from plan",
@@ -442,13 +375,9 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
             ? "Published item moved back to backlog for revision"
             : "Item moved back to backlog and will appear in Backlog Ideas",
         });
-      } else {
-        console.warn("🗑️ [REMOVE] ⚠️ Материал не найден в backlogItems!");
       }
     } catch (error: any) {
-      console.error("🗑️ [REMOVE] ===== ОШИБКА УДАЛЕНИЯ =====");
-      console.error("🗑️ [REMOVE] Ошибка:", error);
-      console.error("🗑️ [REMOVE] ===== КОНЕЦ ОШИБКИ =====");
+      console.error("🗑️ [REMOVE] Ошибка удаления:", error);
       
       toast({
         title: "Error",
@@ -464,19 +393,8 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
     backlogItem: BacklogIdeaDto,
     slotDate: Date
   ) => {
-      console.log("➕ [ADD_TO_SPRINT] ===== ДОБАВЛЕНИЕ В СПРИНТ =====");
-      console.log("➕ [ADD_TO_SPRINT] Материал:", {
-        itemId: backlogItem.id,
-        itemTitle: backlogItem.title,
-        currentStatus: backlogItem.status,
-        slotDate: slotDate.toISOString(),
-        weekIndex,
-        slotIndex
-      });
-      
       try {
         // Update backlog item status to SCHEDULED with scheduledDate
-        console.log("➕ [ADD_TO_SPRINT] Шаг 1: Обновление статуса на SCHEDULED...");
         await updateBacklogItem(
           backlogItem.id,
           backlogItem.title,
@@ -486,10 +404,8 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
           backlogItem.clusterId,
           slotDate.toISOString()
         );
-        console.log("➕ [ADD_TO_SPRINT] ✅ Статус обновлен на SCHEDULED");
         
       // Add to local state with the scheduled date
-        console.log("➕ [ADD_TO_SPRINT] Шаг 2: Добавление в локальное состояние спринта...");
         const newItem: ScheduledItem = {
           id: backlogItem.id,
           title: backlogItem.title,
@@ -500,8 +416,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
         status: BacklogStatus.SCHEDULED, // New items are scheduled
         };
       setScheduledItems(items => [...items, newItem].sort((a, b) => a.date.getTime() - b.date.getTime()));
-        console.log("➕ [ADD_TO_SPRINT] ✅ Добавлен в локальное состояние спринта");
-        console.log("➕ [ADD_TO_SPRINT] ===== ДОБАВЛЕНИЕ ЗАВЕРШЕНО =====");
         
         toast({
         title: "Scheduled",
@@ -744,7 +658,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
       <Dialog 
         open={!!openDateSelectionDialog}
         onOpenChange={(open) => {
-          console.log("[MonthlySchedule] Date selection dialog onOpenChange:", open);
           if (!open) {
             setOpenDateSelectionDialog(null);
           }
@@ -762,14 +675,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             {(() => {
               const dialogItem = openDateSelectionDialog?.item;
-              console.log("[MonthlySchedule] Rendering date selection dialog", {
-                hasItem: !!dialogItem,
-                itemId: dialogItem?.id,
-                itemTitle: dialogItem?.title,
-                pendingItemsCount: pendingItems.length,
-                scheduledItemsCount: scheduledItems.length,
-                openDateSelectionDialog: openDateSelectionDialog
-              });
 
               // Get all available slots across all weeks
               const availableSlots: Array<{ weekIndex: number; slotIndex: number; date: Date }> = [];
@@ -791,8 +696,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
                 }
               }
               
-              console.log("[MonthlySchedule] Available slots found:", availableSlots.length);
-              
               if (availableSlots.length === 0) {
                 return (
                   <div className="text-center py-8 text-gray-500">
@@ -813,13 +716,6 @@ export const MonthlySchedule = forwardRef<MonthlyScheduleRef, MonthlySchedulePro
                         onClick={async () => {
                           const dialogItem = openDateSelectionDialog?.item;
                           if (dialogItem) {
-                            console.log("[MonthlySchedule] Date selected, scheduling item:", {
-                              itemId: dialogItem.id,
-                              itemTitle: dialogItem.title,
-                              slotDate: slot.date.toISOString(),
-                              weekIndex: slot.weekIndex,
-                              slotIndex: slot.slotIndex
-                            });
                             // Use the item directly from dialog, don't require it to be in pendingItems
                             await handleAddFromBacklog(slot.weekIndex, slot.slotIndex, dialogItem, slot.date);
                             setOpenDateSelectionDialog(null);

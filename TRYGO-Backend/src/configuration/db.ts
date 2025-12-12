@@ -26,12 +26,20 @@ const connectMainDB = async () => {
         // Handle connection events
         mongoose.connection.on('error', (error) => {
             const timestamp = new Date().toISOString();
+            // Don't log MongoClientClosedError during hot reload - it's expected
+            if (error.message?.includes('client was closed') || error.name === 'MongoClientClosedError') {
+                // Silent - this happens during hot reload
+                return;
+            }
             console.error(`[${timestamp}] ❌ [MONGODB] Connection error: ${error.message}`);
         });
 
         mongoose.connection.on('disconnected', () => {
             const timestamp = new Date().toISOString();
-            console.warn(`[${timestamp}] ⚠️  [MONGODB] Disconnected`);
+            // Only warn if not in development hot reload
+            if (process.env.NODE_ENV === 'production') {
+                console.warn(`[${timestamp}] ⚠️  [MONGODB] Disconnected`);
+            }
         });
 
         mongoose.connection.on('reconnected', () => {

@@ -24,25 +24,25 @@ export function buildImagePrompt(
       ? "Focus the composition as a cinematic wide shot with a pronounced foreground. Use a 16:9 aspect ratio."
       : "Create a tighter composition, emphasizing key details in the middle ground. Use a 4:3 aspect ratio.";
 
-  // Build the final prompt in English
+  // Build the final prompt with creative freedom
   const prompt = [
-    "Create a realistic, detailed, professional photograph based on the following precise scene description:",
+    "Create a compelling, authentic photograph based on this creative scene description:",
     "",
     cleanDescription,
     "",
-    "Technical requirements:",
-    "- Realistic photography style: natural, authentic, and lifelike",
-    "- Clear, natural colors with realistic textures",
-    "- Thoughtful composition with foreground, middle ground, and background layers",
-    "- No glossy magazine aesthetic - aim for authentic, professional photography",
-    "- High quality, sharp focus on the main subject",
+    "Style and quality:",
+    "- Realistic, natural photography with authentic feel",
+    "- Professional quality but not overly polished or stock-photo-like",
+    "- Natural colors and textures that feel real",
+    "- Creative composition that serves the scene (not formulaic)",
+    "- Vary the approach - each image should feel unique",
     framing,
     "",
-    "Strict exclusions:",
-    "- NO text blocks, captions, words, letters, numbers, or symbols of any kind",
-    "- NO logos, memes, infographics, UI elements, or watermarks",
-    "- NO graphical elements or design overlays",
-    "- The image must be completely free of any textual information"
+    "Absolutely no text or graphics:",
+    "- NO text, words, letters, numbers, symbols, or captions",
+    "- NO logos, UI elements, watermarks, memes, or infographics",
+    "- NO design overlays or graphical elements",
+    "- Pure photography only"
   ].join("\n");
 
   const aspectRatio = variant === "hero" ? "16:9" : "4:3";

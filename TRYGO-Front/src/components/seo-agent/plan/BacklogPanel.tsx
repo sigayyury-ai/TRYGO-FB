@@ -150,19 +150,6 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
     const completedCount = backlogItems.filter(i => i.status === BacklogStatus.COMPLETED).length;
     const pendingCount = items.length;
     
-    if (scheduledCount > 0 || inProgressCount > 0 || completedCount > 0) {
-      console.log("📋 [BACKLOG_FILTER] Фильтрация элементов:", {
-        total: backlogItems.length,
-        pending: pendingCount,
-        scheduled: scheduledCount,
-        inProgress: inProgressCount,
-        completed: completedCount,
-        shownInBacklog: pendingCount,
-        hiddenFromBacklog: scheduledCount + inProgressCount + completedCount
-      });
-    }
-    
-    // Removed excessive logging - was causing performance issues
     
     // Apply search filter
     if (searchQuery.trim()) {
@@ -341,13 +328,6 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
   }, [backlogItems]);
 
   const handleGenerateContent = async (item: BacklogIdeaDto) => {
-    console.log("[BacklogPanel] Starting content generation:", {
-      backlogIdeaId: item.id,
-      projectId,
-      hypothesisId,
-      itemTitle: item.title
-    });
-    
     // Clear any existing polling interval for this item
     const existingInterval = pollingIntervalsRef.current.get(item.id);
     if (existingInterval) {
@@ -363,8 +343,6 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
         projectId,
         hypothesisId,
       });
-      
-      console.log("[BacklogPanel] Content generation response:", data);
 
       if (data?.generateContentForBacklogIdea) {
         const contentItem = data.generateContentForBacklogIdea;
@@ -759,16 +737,6 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
           onApprove={async () => {
             // CRITICAL: Save editingContent reference BEFORE any async operations or state updates
             const currentEditingContent = editingContent;
-            
-            console.log("✅ [APPROVE] ===== APPROVE И ДОБАВЛЕНИЕ В СПРИНТ =====");
-            console.log("✅ [APPROVE] Материал:", {
-              editingContentId: currentEditingContent?.id,
-              backlogIdeaId: currentEditingContent?.backlogIdeaId,
-              title: currentEditingContent?.title,
-              backlogItemsCount: backlogItems.length,
-              hasOnScheduleItem: !!onScheduleItem,
-              contentItemsMapSize: contentItemsMap.size
-            });
 
             if (!currentEditingContent) {
               console.error("✅ [APPROVE] ❌ editingContent is null! Cannot proceed.");
@@ -776,30 +744,15 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
             }
 
             // Find the corresponding backlog item BEFORE closing editor
-            console.log("✅ [APPROVE] Шаг 1: Поиск backlog item...");
             const backlogItem = backlogItems.find(item => {
               // Match by backlogIdeaId if available
               if (currentEditingContent.backlogIdeaId) {
-                const matches = item.id === currentEditingContent.backlogIdeaId;
-                if (matches) {
-                  console.log("✅ [APPROVE] ✅ Найден по backlogIdeaId:", item.id);
-                }
-                return matches;
+                return item.id === currentEditingContent.backlogIdeaId;
               }
               // Fallback: find by checking if this content item belongs to this backlog item
               const contentItem = contentItemsMap.get(item.id);
-              const matches = contentItem?.id === currentEditingContent.id;
-              if (matches) {
-                console.log("✅ [APPROVE] ✅ Найден по contentItem.id:", item.id);
-              }
-              return matches;
+              return contentItem?.id === currentEditingContent.id;
             });
-
-            console.log("✅ [APPROVE] Результат поиска:", backlogItem ? {
-              id: backlogItem.id,
-              title: backlogItem.title,
-              status: backlogItem.status
-            } : "❌ NOT FOUND");
 
             // Store backlog item reference before closing editor
             const itemToSchedule = backlogItem;
@@ -832,37 +785,24 @@ export const BacklogPanel = ({ projectId, hypothesisId, backlogItems, onSchedule
 
               // Refresh backlog items list
               if (onBacklogUpdated) {
-                console.log("[BacklogPanel] Calling onBacklogUpdated");
                 await onBacklogUpdated();
               }
 
               // Open schedule dialog with the approved item
               if (onScheduleItem) {
-                console.log("✅ [APPROVE] Шаг 4: Открытие диалога выбора даты для item:", itemToSchedule.id);
                 // Use requestAnimationFrame to ensure DOM is updated
                 requestAnimationFrame(() => {
                   setTimeout(() => {
-                    console.log("✅ [APPROVE] Вызов onScheduleItem...");
                     try {
                       onScheduleItem(itemToSchedule);
-                      console.log("✅ [APPROVE] ✅ onScheduleItem вызван успешно");
-                      console.log("✅ [APPROVE] ===== APPROVE ЗАВЕРШЕН =====");
                     } catch (error) {
                       console.error("✅ [APPROVE] ❌ Ошибка вызова onScheduleItem:", error);
                     }
                   }, 300);
                 });
-              } else {
-                console.warn("✅ [APPROVE] ⚠️ onScheduleItem не предоставлен!");
               }
             } else {
-              console.warn("✅ [APPROVE] ⚠️ Не удалось найти backlog item для content:", currentEditingContent.id);
-              console.warn("[BacklogPanel] Available backlog items:", backlogItems.map(i => ({
-                id: i.id,
-                title: i.title,
-                status: i.status
-              })));
-              console.warn("[BacklogPanel] Content items map keys:", Array.from(contentItemsMap.keys()));
+              console.error("✅ [APPROVE] ⚠️ Не удалось найти backlog item для content:", currentEditingContent.id);
             }
 
             toast({

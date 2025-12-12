@@ -14,6 +14,7 @@ import { createHypothesesParts } from '../hypothesis/createHypothesesParts';
 import { sendErrorToTg } from '../sendErrorToTg';
 import userService from '../../services/UserService';
 import { checkIfProjectGenerationAllowed } from '../subscription/checkIfProjectGenerationAllowed';
+import { safeEmit } from './safeEmit';
 
 export interface GenerateProjectInput {
     startType: ProjectStartType;
@@ -67,7 +68,7 @@ export const generateProject = async ({
                 hasProject: !!response.project,
                 errorMessage: response.errorMessage,
             });
-            socket.emit(EVENT_NAMES.projectGenerationError, {
+            safeEmit(socket, EVENT_NAMES.projectGenerationError, {
                 errorMessage: response.errorMessage,
             } as ProjectGenerationError);
             return;
@@ -130,7 +131,7 @@ export const generateProject = async ({
         });
         
         console.log(`[${timestamp}] [generateProject-SocketIO] SUCCESS: Project creation completed, emitting event`);
-        socket.emit(EVENT_NAMES.projectGenerated, {
+        safeEmit(socket, EVENT_NAMES.projectGenerated, {
             projectId: project._id.toString(),
         } as ProjectGeneratedEvent);
     } catch (error) {

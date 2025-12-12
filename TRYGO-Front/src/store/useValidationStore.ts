@@ -43,19 +43,67 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
   uploadJtbdInsightsModal: false,
 
   createHypothesesValidation: async (projectHypothesisId) => {
+    if (!projectHypothesisId) {
+      set({ error: "Project hypothesis ID is required", loading: false });
+      return;
+    }
+
     set({ loading: true, error: null });
 
     try {
-      const { data } = await createHypothesesValidation(projectHypothesisId);
+      // First, quickly check if data exists
+      const existingCheck = await getHypothesesValidationQuery(projectHypothesisId);
+      
+      // If data exists, we're done
+      if (existingCheck.data?.getHypothesesValidation) {
+        set({ 
+          hypothesesValidation: existingCheck.data.getHypothesesValidation,
+          loading: false, 
+          error: null 
+        });
+        return;
+      }
 
-      const hypothesesValidation = data.createHypothesesValidation;
+      // If no data exists, create new
+      const { data, error: mutationError } = await createHypothesesValidation(projectHypothesisId);
+
+      if (mutationError) {
+        // If error is "already exists", try to fetch existing data
+        if (mutationError.message?.includes('already exists')) {
+          await get().getHypothesesValidation(projectHypothesisId);
+          set({ loading: false, error: null });
+          return;
+        }
+        
+        throw mutationError;
+      }
+
+      const hypothesesValidation = data?.createHypothesesValidation;
+
+      if (!hypothesesValidation) {
+        throw new Error('No data returned from createHypothesesValidation mutation');
+      }
 
       set({
         hypothesesValidation,
         loading: false,
+        error: null,
       });
     } catch (error: unknown) {
-      let errorMessage = "Failed to load hypotheses Market Research Data";
+      console.error('[useValidationStore] Error in createHypothesesValidation:', error);
+      
+      // If error is "already exists", try to fetch existing data
+      if (error instanceof Error && error.message?.includes('already exists')) {
+        try {
+          await get().getHypothesesValidation(projectHypothesisId);
+          set({ loading: false, error: null });
+          return;
+        } catch (fetchError) {
+          console.error('[useValidationStore] Error fetching existing data:', fetchError);
+        }
+      }
+      
+      let errorMessage = "Failed to create hypotheses Validation Data";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -67,20 +115,50 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
   },
 
   getHypothesesValidation: async (projectHypothesisId) => {
+    if (!projectHypothesisId) {
+      set({ hypothesesValidation: null, loading: false, error: null });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      const { data } = await getHypothesesValidationQuery(projectHypothesisId);
-      const hypothesesValidation = data.getHypothesesValidation;
+      const { data, error: queryError } = await getHypothesesValidationQuery(projectHypothesisId);
+      
+      if (queryError) {
+        // Если это ошибка "not found" или null, просто устанавливаем null без ошибки
+        if (queryError.message?.includes('not found') || queryError.message?.includes('null') || queryError.message?.includes('Cannot return null')) {
+          set({
+            hypothesesValidation: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+        throw queryError;
+      }
+
+      const hypothesesValidation = data?.getHypothesesValidation || null;
 
       set({
         hypothesesValidation,
         loading: false,
+        error: null,
       });
     } catch (error: unknown) {
-      let errorMessage = "Failed to load hypotheses Market Research Data";
+      let errorMessage = "Failed to load hypotheses Validation Data";
       if (error instanceof Error) {
         errorMessage = error.message;
+        // Если это GraphQL ошибка "not found" или null, не показываем ошибку - просто нет данных
+        if (error.message.includes('not found') || error.message.includes('Cannot return null') || error.message.includes('null')) {
+          set({
+            hypothesesValidation: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
       }
+      console.error('[useValidationStore] Error loading validation:', error);
       set({
         error: errorMessage,
         loading: false,

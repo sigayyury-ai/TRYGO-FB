@@ -20,15 +20,8 @@ agenda.define('sendDailyStatistic', async (job: any) => {
     }
 });
 
-// Handle graceful shutdown
-const graceful = async () => {
-    await agenda.stop();
-    console.log('Agenda stopped');
-    process.exit(0);
-};
-
-process.on('SIGTERM', graceful);
-process.on('SIGINT', graceful);
+// Note: Graceful shutdown is now handled in server.ts
+// This file only exports agenda instance
 
 export default agenda;
 

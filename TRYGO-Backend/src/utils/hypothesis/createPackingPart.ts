@@ -47,7 +47,6 @@ export const createPackingPart = async ({
             projectHypothesis,
             promptPart
         );
-        console.log('prompt', prompt);
         const gptResponse =
             await chatGPTService.createAnswerWithAssistantJsonSchema(
                 JsonSchemaType.HYPOTHESES_PACKING,
@@ -66,7 +65,7 @@ export const createPackingPart = async ({
             id: '',
         });
     } catch (error) {
-        console.error(error);
+        console.error('[createPackingPart] Critical error:', error);
         throw error;
     }
 };

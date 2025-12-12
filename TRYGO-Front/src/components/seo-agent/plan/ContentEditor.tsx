@@ -90,19 +90,11 @@ export const ContentEditor = ({
   const handleGenerateImage = async () => {
     setGeneratingImage(true);
     try {
-      console.log("[ContentEditor] Starting image generation:", {
-        contentItemId: contentItem.id,
-        title: contentItem.title,
-        description: contentItem.outline
-      });
-
       const { data, errors } = await generateImageForContentMutation({
         contentItemId: contentItem.id,
         title: contentItem.title,
         description: contentItem.outline,
       });
-
-      console.log("[ContentEditor] Image generation response:", { data, errors });
 
       if (errors && errors.length > 0) {
         throw new Error(errors[0].message || "Failed to generate image");
@@ -153,14 +145,6 @@ export const ContentEditor = ({
   };
 
   const handleRegenerate = async () => {
-    console.log("[ContentEditor] handleRegenerate called");
-    console.log("[ContentEditor] contentItem:", {
-      id: contentItem.id,
-      title: contentItem.title,
-      backlogIdeaId: (contentItem as any).backlogIdeaId,
-      allKeys: Object.keys(contentItem)
-    });
-
     const backlogIdeaId = (contentItem as any).backlogIdeaId;
     if (!backlogIdeaId) {
       console.error("[ContentEditor] No backlogIdeaId found in contentItem");
@@ -178,30 +162,16 @@ export const ContentEditor = ({
         "This will completely replace the current content. Are you sure you want to regenerate?"
       );
       if (!confirmed) {
-        console.log("[ContentEditor] Regeneration cancelled by user");
         return;
       }
     }
 
     setRegenerating(true);
     try {
-      console.log("[ContentEditor] Starting full regeneration:", {
-        backlogIdeaId,
-        projectId,
-        hypothesisId,
-        title: contentItem.title
-      });
-
       const { data, errors } = await generateContentForBacklogIdeaMutation({
         backlogIdeaId,
         projectId,
         hypothesisId,
-      });
-
-      console.log("[ContentEditor] Regeneration mutation response:", {
-        hasData: !!data,
-        hasErrors: !!errors,
-        errorsCount: errors?.length || 0
       });
 
       if (errors && errors.length > 0) {
@@ -212,51 +182,34 @@ export const ContentEditor = ({
       if (data?.generateContentForBacklogIdea) {
         const generated = data.generateContentForBacklogIdea;
         
-        console.log("[ContentEditor] Regeneration response:", {
-          hasContent: !!generated.content,
-          contentLength: generated.content?.length || 0,
-          hasImage: !!generated.imageUrl,
-          hasOutline: !!generated.outline,
-          status: generated.status
-        });
-        
         // Update content
         if (generated.content) {
-          console.log("[ContentEditor] Updating content in editor...");
           // Update state first
           setContent(generated.content);
           
           // Update Quill editor if it exists
           const quill = quillRef.current?.getEditor();
           if (quill) {
-            console.log("[ContentEditor] Updating Quill editor...");
             // Use setTimeout to ensure state update is processed
             setTimeout(() => {
               try {
                 quill.clipboard.dangerouslyPasteHTML(generated.content || "");
                 // Clear selection after update
                 quill.setSelection(null);
-                console.log("[ContentEditor] Quill editor updated successfully");
               } catch (quillError) {
                 console.error("[ContentEditor] Error updating Quill:", quillError);
               }
             }, 0);
-          } else {
-            console.warn("[ContentEditor] Quill editor not found");
           }
-        } else {
-          console.warn("[ContentEditor] No content in regeneration response");
         }
         
         // Update image if generated
         if (generated.imageUrl) {
-          console.log("[ContentEditor] Updating image URL");
           setImageUrl(generated.imageUrl);
         }
         
         // Update outline if available
         if (generated.outline) {
-          console.log("[ContentEditor] Updating outline");
           // Update contentItem outline if needed
           (contentItem as any).outline = generated.outline;
         }
@@ -300,20 +253,9 @@ export const ContentEditor = ({
   const handleSave = async () => {
     setSaving(true);
     try {
-      console.log("[ContentEditor] Starting save:", {
-        contentItemId: contentItem.id,
-        title: contentItem.title,
-        hasContent: !!content
-      });
-
       // Get latest content from Quill editor to ensure we save the most recent version
       const quill = quillRef.current?.getEditor();
       const latestContent = quill ? quill.root.innerHTML : content;
-      
-      console.log("[ContentEditor] Content to save:", {
-        contentLength: latestContent.length,
-        hasImage: !!imageUrl
-      });
 
       const { data, errors } = await upsertContentItemMutation({
         id: contentItem.id,
@@ -328,8 +270,6 @@ export const ContentEditor = ({
         status: "DRAFT",
         userId: localStorage.getItem("userId") || "system",
       });
-
-      console.log("[ContentEditor] Save response:", { data, errors });
 
       if (errors && errors.length > 0) {
         throw new Error(errors[0].message || "Failed to save content");
@@ -431,12 +371,6 @@ export const ContentEditor = ({
     e?.preventDefault();
     if (!chatInput.trim() || isProcessingChat) return;
 
-    console.log("[ContentEditor] handleChatSubmit called:", {
-      chatInput: chatInput.trim(),
-      isProcessingChat,
-      contentItemId: contentItem.id
-    });
-
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
@@ -477,12 +411,6 @@ export const ContentEditor = ({
       
       if (hasSelection && selectionToUse) {
         // Rewrite only the selected portion
-        console.log("[ContentEditor] Calling rewriteTextSelectionMutation:", {
-          contentItemId: contentItem.id,
-          selectedTextLength: selectionToUse.text.length,
-          instruction
-        });
-        
         const { data, errors } = await rewriteTextSelectionMutation({
           contentItemId: contentItem.id,
           selectedText: selectionToUse.text,
@@ -490,8 +418,6 @@ export const ContentEditor = ({
           contextAfter: selectionToUse.contextAfter,
           instruction: instruction
         });
-        
-        console.log("[ContentEditor] rewriteTextSelectionMutation response:", { data, errors });
 
         if (errors && errors.length > 0) {
           throw new Error(errors[0].message || "Failed to rewrite text");
@@ -540,17 +466,10 @@ export const ContentEditor = ({
         }
       } else {
         // No selection - apply instruction to entire content
-        console.log("[ContentEditor] Calling regenerateContentMutation:", {
-          contentItemId: contentItem.id,
-          instruction
-        });
-        
         const { data, errors } = await regenerateContentMutation(
           contentItem.id,
           instruction
         );
-        
-        console.log("[ContentEditor] regenerateContentMutation response:", { data, errors });
 
         if (errors && errors.length > 0) {
           throw new Error(errors[0].message || "Failed to regenerate content");
@@ -612,20 +531,12 @@ export const ContentEditor = ({
   };
 
   const handleApprove = async () => {
-    console.log("[ContentEditor] handleApprove called", {
-      contentItemId: contentItem.id,
-      backlogIdeaId: (contentItem as any).backlogIdeaId,
-      hasContent: !!content.trim(),
-      hasImage: !!imageUrl
-    });
-
     setApproving(true);
     try {
       if (!user?.id) {
         throw new Error("User not authenticated");
       }
 
-      console.log("[ContentEditor] Upserting content item...");
       await upsertContentItemMutation({
         id: contentItem.id,
         projectId,
@@ -640,24 +551,19 @@ export const ContentEditor = ({
         status: "READY",
             userId: userId,
       });
-      console.log("[ContentEditor] Content item upserted successfully");
 
-      console.log("[ContentEditor] Approving content item...");
       await approveContentItemMutation({
         contentItemId: contentItem.id,
         projectId,
         hypothesisId,
       });
-      console.log("[ContentEditor] Content item approved successfully");
 
       toast({
         title: "Success",
         description: "Content approved and added to queue",
       });
 
-      console.log("[ContentEditor] Calling onApprove callback");
       onApprove();
-      console.log("[ContentEditor] onApprove callback completed");
     } catch (error: any) {
       console.error("[ContentEditor] Error in handleApprove:", error);
       toast({

@@ -29,6 +29,21 @@ const httpLink = new HttpLink({
       // Always log errors, but with less detail in production
       const isDev = import.meta.env.DEV;
       
+      // Check if it's a connection refused error
+      if (error?.message?.includes('Failed to fetch') || 
+          error?.message?.includes('ERR_CONNECTION_REFUSED') ||
+          error?.code === 'ECONNREFUSED') {
+        if (isDev) {
+          console.error('[seoAgentClient] ❌ Backend connection refused:', {
+            url: uri,
+            error: error.message,
+            hint: 'Make sure the backend server is running on port 5001'
+          });
+        }
+        // Don't throw - let Apollo Client handle retries
+        throw error;
+      }
+      
       if (isDev) {
         console.error('[seoAgentClient] ❌ Fetch error:', error);
         console.error('[seoAgentClient] Error details:', {

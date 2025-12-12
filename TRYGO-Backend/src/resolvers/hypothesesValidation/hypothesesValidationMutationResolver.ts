@@ -16,6 +16,10 @@ const hypothesesValidationMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 return await hypothesesValidationService.changeHypothesesValidation(
                     input,
                     context.userId
@@ -30,28 +34,41 @@ const hypothesesValidationMutationResolver = {
             context: IContext
         ) {
             try {
-                console.log('[createHypothesesValidation] Creating validation:', {
-                    projectHypothesisId,
-                    userId: context.userId
-                });
-                
                 if (!context.userId) {
                     throw new Error('User not authenticated');
                 }
-                
-                const result = await hypothesesValidationService.createHypothesesValidation(
+
+                // First check if it already exists
+                const existing = await hypothesesValidationService.getHypothesesValidation(
                     projectHypothesisId,
                     context.userId
                 );
                 
-                console.log('[createHypothesesValidation] Validation created successfully:', {
-                    id: result._id.toString(),
-                    projectHypothesisId: result.projectHypothesisId.toString(),
-                });
-                
-                return result;
+                if (existing) {
+                    return existing;
+                }
+
+                // If not exists, create new
+                return await hypothesesValidationService.createHypothesesValidation(
+                    projectHypothesisId,
+                    context.userId
+                );
             } catch (error) {
-                console.error('[createHypothesesValidation] Error:', error);
+                // If error is "already exists", try to return existing data
+                if (error instanceof Error && error.message.includes('already exists')) {
+                    try {
+                        const existing = await hypothesesValidationService.getHypothesesValidation(
+                            projectHypothesisId,
+                            context.userId
+                        );
+                        if (existing) {
+                            return existing;
+                        }
+                    } catch (fetchError) {
+                        // Silent fail, throw original error
+                    }
+                }
+                
                 throw elevateError(error);
             }
         },
@@ -62,6 +79,10 @@ const hypothesesValidationMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 return await hypothesesValidationService.uploadHypothesesValidationCustomerInterview(input, context.userId);
             } catch (error) {
                 throw elevateError(error);
@@ -76,6 +97,10 @@ const hypothesesValidationMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 await hypothesesValidationService.deleteHypothesesValidation(
                     input.projectHypothesisId,
                     context.userId

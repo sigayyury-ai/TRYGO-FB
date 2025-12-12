@@ -42,7 +42,7 @@ export interface SummaryInterview {
 }
 
 export interface GetHypothesesValidationResponse {
-  getHypothesesValidation: HypothesesValidation;
+  getHypothesesValidation: HypothesesValidation | null;
 }
 
 export const getHypothesesValidationQuery = (projectHypothesisId: string) => {

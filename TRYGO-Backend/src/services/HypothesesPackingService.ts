@@ -25,7 +25,7 @@ class HypothesesPackingService {
                 userId,
             });
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesPackingService] Error in createHypothesesPacking:', error);
             throw error;
         }
     }
@@ -36,7 +36,7 @@ class HypothesesPackingService {
         try {
             return await this.model.create(data);
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesPackingService] Error in initHypothesesPacking:', error);
             throw error;
         }
     }
@@ -51,7 +51,7 @@ class HypothesesPackingService {
                 userId,
             });
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesPackingService] Error in getHypothesesPacking:', error);
             throw error;
         }
     }
@@ -65,12 +65,12 @@ class HypothesesPackingService {
                 projectHypothesisId,
                 userId
             );
-                    if (!hypothesesPacking) {
+            if (!hypothesesPacking) {
                 throw new Error('Hypotheses packing not found');
             }
             return hypothesesPacking;
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesPackingService] Error in getHypothesesPackingWithCheck:', error);
             throw error;
         }
     }
@@ -95,7 +95,7 @@ class HypothesesPackingService {
             }
             return hypothesesPacking;
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesPackingService] Error in changeHypothesesPacking:', error);
             throw error;
         }
     }
@@ -104,7 +104,7 @@ class HypothesesPackingService {
         try {
             await this.model.findOneAndDelete({ projectHypothesisId, userId });
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesPackingService] Error in deleteHypothesesPacking:', error);
             throw error;
         }
     }

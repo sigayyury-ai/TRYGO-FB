@@ -40,7 +40,6 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
   // Load content ideas from API - обернуто в useCallback
   const loadContentIdeas = useCallback(async () => {
     if (!projectId) {
-      console.warn("[SeoContentPanel] ⚠️ No projectId, skipping load");
       return;
     }
     
@@ -58,11 +57,6 @@ export const SeoContentPanel = ({ projectId, hypothesisId }: SeoContentPanelProp
       const { data } = await getSeoAgentContentIdeasQuery(projectId, hypothesisId);
       
       const ideas = data?.seoAgentContentIdeas || [];
-      
-      // Reduced logging - only log errors or important warnings
-      if (ideas.length === 0) {
-        console.warn("[SeoContentPanel] ⚠️ No ideas returned from API");
-      }
       
       setContentIdeas(ideas);
     } catch (error: unknown) {

@@ -25,11 +25,23 @@ export interface ChangeHypothesisPackingResponse {
   createHypothesesPacking: CreateHypothesesPackingDto;
 }
 
-export const createHypothesesPackingMutation = (
+export const createHypothesesPackingMutation = async (
   projectHypothesisId: string
 ) => {
-  return MUTATE<ChangeHypothesisPackingResponse>({
-    mutation: CREATE_HYPOTHESES_PACKING,
-    variables: { projectHypothesisId },
-  });
+  try {
+    const result = await MUTATE<ChangeHypothesisPackingResponse>({
+      mutation: CREATE_HYPOTHESES_PACKING,
+      variables: { projectHypothesisId },
+    });
+    
+    if (result.errors && result.errors.length > 0) {
+      console.error('[createHypothesesPacking] GraphQL error:', result.errors[0].message);
+      throw new Error(result.errors[0].message || 'GraphQL error');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[createHypothesesPacking] Critical error:', error);
+    throw error;
+  }
 };
