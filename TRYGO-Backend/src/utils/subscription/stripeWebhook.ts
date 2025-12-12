@@ -58,12 +58,12 @@ export const stripeWebhook = async (req: any, res: any) => {
                     session,
                     stripe
                 );
-                console.log(`Invoice.paid: ${dataObject.status}`);
+                // Removed verbose logging
 
                 break;
             case 'invoice.payment_failed':
                 await subscriptionService.invoicePaymentFailed(dataObject);
-                console.log(`invoice.payment_failed: ${dataObject.status}`);
+                // Removed verbose logging
 
                 break;
             case 'customer.subscription.updated':
@@ -72,16 +72,12 @@ export const stripeWebhook = async (req: any, res: any) => {
                     session,
                     stripe
                 );
-                console.log(
-                    `customer.subscription.updated: ${dataObject.status}`
-                );
+                // Removed verbose logging
 
                 break;
             case 'customer.subscription.deleted':
                 await subscriptionService.subscriptionDeleted(dataObject);
-                console.log(
-                    `customer.subscription.deleted: ${dataObject.status}`
-                );
+                // Removed verbose logging
 
                 break;
             default:
