@@ -90,7 +90,7 @@ const mapContentItem = (doc: SeoContentItemDoc) => {
 };
 
 const mapContentIdea = (doc: SeoContentItemDoc) => {
-    const isDismissed = false; // TODO: Add dismissed field to SeoContentItem model if needed
+    const isDismissed = doc.dismissed || false;
     return {
         id: doc._id.toString(),
         projectId: doc.projectId,
@@ -913,49 +913,66 @@ Please rewrite ONLY the selected text according to the instruction. Return only 
                 // Load SEO context
                 const seoContext = await loadSeoContext(args.projectId, args.hypothesisId, userId);
 
-                // Generate ideas
-                const category = args.category || "INFORMATIONAL";
-                const categoryForDb = mapContentCategoryToDb(category);
-                const ideas = await generateIdeasFromOpenAI({
-                    context: seoContext,
-                    category: categoryForDb,
-                    count: 5,
-                    language: seoContext.language || "English"
-                });
+                // If category is specified, generate only for that category
+                // Otherwise, generate for all categories
+                const categoriesToGenerate = args.category 
+                    ? [args.category]
+                    : ["PAINS", "GOALS", "TRIGGERS", "PRODUCT_FEATURES", "BENEFITS", "FAQS", "INFORMATIONAL"];
 
-                // Map to ContentIdea format and save to database
-                const contentIdeas = await Promise.all(
-                    ideas.map(async (idea) => {
-                        // Check for duplicates
-                        const existing = await SeoContentItem.findOne({
-                            projectId: args.projectId,
-                            hypothesisId: args.hypothesisId,
-                            title: idea.title
-                        }).exec();
+                const allContentIdeas: any[] = [];
 
-                        if (existing) {
-                            return mapContentIdea(existing);
-                        }
-
-                        // Create new content idea
-                        const contentItem = new SeoContentItem({
-                            projectId: args.projectId,
-                            hypothesisId: args.hypothesisId,
-                            title: idea.title,
-                            category: categoryForDb as any,
-                            format: "blog",
-                            outline: idea.summary,
-                            status: "draft",
-                            createdBy: userId,
-                            updatedBy: userId
+                // Generate ideas for each category
+                for (const category of categoriesToGenerate) {
+                    try {
+                        const categoryForDb = mapContentCategoryToDb(category);
+                        const ideas = await generateIdeasFromOpenAI({
+                            context: seoContext,
+                            category: categoryForDb,
+                            count: 5,
+                            language: seoContext.language || "English"
                         });
-                        await contentItem.save();
 
-                        return mapContentIdea(contentItem);
-                    })
-                );
+                        // Map to ContentIdea format and save to database
+                        const contentIdeas = await Promise.all(
+                            ideas.map(async (idea) => {
+                                // Check for duplicates
+                                const existing = await SeoContentItem.findOne({
+                                    projectId: args.projectId,
+                                    hypothesisId: args.hypothesisId,
+                                    title: idea.title
+                                }).exec();
 
-                return contentIdeas;
+                                if (existing) {
+                                    return mapContentIdea(existing);
+                                }
+
+                                // Create new content idea
+                                const contentItem = new SeoContentItem({
+                                    projectId: args.projectId,
+                                    hypothesisId: args.hypothesisId,
+                                    title: idea.title,
+                                    category: categoryForDb as any,
+                                    format: "blog",
+                                    outline: idea.summary,
+                                    status: "draft",
+                                    createdBy: userId,
+                                    updatedBy: userId
+                                });
+                                await contentItem.save();
+
+                                return mapContentIdea(contentItem);
+                            })
+                        );
+
+                        allContentIdeas.push(...contentIdeas);
+                    } catch (categoryError: any) {
+                        // Log error for this category but continue with others
+                        console.error(`[generateContentIdeas] Error generating ideas for category ${category}:`, categoryError?.message || categoryError);
+                        // Continue with next category instead of failing completely
+                    }
+                }
+
+                return allContentIdeas;
             } catch (err) {
                 elevateError(err);
             }
@@ -1080,6 +1097,121 @@ Please rewrite ONLY the selected text according to the instruction. Return only 
                     message: undefined,
                     error: err.message || "Failed to test WordPress connection"
                 };
+            }
+        },
+
+        async addContentIdeaToBacklog(
+            _: never,
+            args: {
+                input: {
+                    contentIdeaId: string;
+                    title: string;
+                    description?: string;
+                    contentType: string;
+                    clusterId?: string;
+                };
+            },
+            context: IContext
+        ) {
+            try {
+                const userId = authService.getUserIdFromToken(context.token);
+
+                // Find content idea
+                const contentIdea = await SeoContentItem.findById(args.input.contentIdeaId).exec();
+                if (!contentIdea) {
+                    throw new Error('Content idea not found');
+                }
+
+                // Verify user has access to this project
+                await projectService.getProjectById(contentIdea.projectId, userId);
+
+                // Check if backlog item already exists for this content idea
+                const existingBacklogItem = await SeoBacklogIdea.findOne({
+                    projectId: contentIdea.projectId,
+                    hypothesisId: contentIdea.hypothesisId,
+                    title: args.input.title
+                }).exec();
+
+                if (existingBacklogItem) {
+                    // Return existing backlog item
+                    return {
+                        id: existingBacklogItem._id.toString(),
+                        projectId: existingBacklogItem.projectId,
+                        hypothesisId: existingBacklogItem.hypothesisId || null,
+                        title: existingBacklogItem.title,
+                        description: existingBacklogItem.description || null,
+                        contentType: "ARTICLE" as const,
+                        clusterId: existingBacklogItem.clusterId || null,
+                        status: mapBacklogStatus(existingBacklogItem.status),
+                        scheduledDate: existingBacklogItem.scheduledDate ? existingBacklogItem.scheduledDate.toISOString() : null,
+                        createdAt: existingBacklogItem.createdAt.toISOString(),
+                        updatedAt: existingBacklogItem.updatedAt.toISOString(),
+                    };
+                }
+
+                // Create new backlog item from content idea
+                const backlogItem = new SeoBacklogIdea({
+                    projectId: contentIdea.projectId,
+                    hypothesisId: contentIdea.hypothesisId,
+                    title: args.input.title,
+                    description: args.input.description || contentIdea.outline || undefined,
+                    category: contentIdea.category || "info",
+                    status: "backlog",
+                    clusterId: args.input.clusterId || undefined,
+                    createdBy: userId,
+                    updatedBy: userId,
+                });
+
+                const savedItem = await backlogItem.save();
+
+                // Update content idea status to indicate it's been added to backlog
+                contentIdea.status = "draft"; // Keep as draft, can be updated later
+                contentIdea.updatedBy = userId;
+                await contentIdea.save();
+
+                return {
+                    id: savedItem._id.toString(),
+                    projectId: savedItem.projectId,
+                    hypothesisId: savedItem.hypothesisId || null,
+                    title: savedItem.title,
+                    description: savedItem.description || null,
+                    contentType: "ARTICLE" as const,
+                    clusterId: savedItem.clusterId || null,
+                    status: mapBacklogStatus(savedItem.status),
+                    scheduledDate: savedItem.scheduledDate ? savedItem.scheduledDate.toISOString() : null,
+                    createdAt: savedItem.createdAt.toISOString(),
+                    updatedAt: savedItem.updatedAt.toISOString(),
+                };
+            } catch (err) {
+                elevateError(err);
+            }
+        },
+
+        async dismissContentIdea(
+            _: never,
+            args: { id: string },
+            context: IContext
+        ) {
+            try {
+                const userId = authService.getUserIdFromToken(context.token);
+
+                // Find content idea
+                const contentIdea = await SeoContentItem.findById(args.id).exec();
+                if (!contentIdea) {
+                    throw new Error('Content idea not found');
+                }
+
+                // Verify user has access to this project
+                await projectService.getProjectById(contentIdea.projectId, userId);
+
+                // Mark as dismissed
+                contentIdea.dismissed = true;
+                contentIdea.updatedBy = userId;
+                await contentIdea.save();
+
+                return mapContentIdea(contentIdea);
+            } catch (err) {
+                elevateError(err);
             }
         },
 

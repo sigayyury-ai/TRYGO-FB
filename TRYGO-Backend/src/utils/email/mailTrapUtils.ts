@@ -10,7 +10,7 @@ const sender = {
     email: config.MAIL_TRAP.emailAddress!,
 };
 
-const sendEmailWithTemplateNoSubject = async (
+export const sendEmailWithTemplateNoSubject = async (
     email: string,
     template_uuid: string,
     template_variables?: any

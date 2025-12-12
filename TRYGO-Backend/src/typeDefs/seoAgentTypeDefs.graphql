@@ -223,8 +223,10 @@ input CreateSeoAgentBacklogIdeaInput {
 
 input AddContentIdeaToBacklogInput {
   contentIdeaId: ID!
-  projectId: ID!
-  hypothesisId: ID!
+  title: String!
+  description: String
+  contentType: String!
+  clusterId: ID
 }
 
 input CreateCustomContentIdeaInput {

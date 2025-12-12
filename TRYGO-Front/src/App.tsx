@@ -38,6 +38,7 @@ import GTMDetails from "./pages/GTMDetails";
 import SubscriptionExpiredModal from "./components/SubscriptionExpiredModal";
 import useSubscription from "./hooks/use-subscription";
 import HotjarProvider from "./providers/HotjarProvider/HotjarProvider";
+import EmbedWidgetPage from "./pages/embed/widget";
 
 const queryClient = new QueryClient();
 
@@ -161,6 +162,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/embed/widget" element={<EmbedWidgetPage />} />
               <Route
                 path="/dashboard"
                 element={

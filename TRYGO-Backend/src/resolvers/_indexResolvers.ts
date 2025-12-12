@@ -28,6 +28,7 @@ import seoAgentQueryResolver from './seoAgent/seoAgentQueryResolver';
 import seoAgentMutationResolver from './seoAgent/seoAgentMutationResolver';
 import promoCodeQueryResolver from './promoCode/promoCodeQueryResolver';
 import promoCodeMutationResolver from './promoCode/promoCodeMutationResolver';
+import embeddedOnboardingMutationResolver from './embeddedOnboarding/embeddedOnboardingMutationResolver';
 
 export const resolversArray = {
     Query: {
@@ -63,5 +64,6 @@ export const resolversArray = {
         ...projectAssistantMutationResolver.Mutation,
         ...requestFeatureMutationResolver.Mutation,
         ...seoAgentMutationResolver.Mutation,
+        ...embeddedOnboardingMutationResolver.Mutation,
     },
 };
