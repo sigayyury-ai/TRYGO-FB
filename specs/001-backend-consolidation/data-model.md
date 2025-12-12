@@ -236,3 +236,4 @@ SeoBacklogIdea (1) ──< (N) SeoContentItem (via backlogIdeaId)
 - All models require `projectId` and most require `hypothesisId`
 - User tracking via `createdBy` and `updatedBy` fields
 - Status fields use enums for type safety
+

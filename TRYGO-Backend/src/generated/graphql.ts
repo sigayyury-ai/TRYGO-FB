@@ -98,6 +98,10 @@ export enum BacklogStatus {
   Scheduled = 'SCHEDULED'
 }
 
+export type ChangeEmailInput = {
+  newEmail: Scalars['String']['input'];
+};
+
 export type ChangeHypothesesCoreInput = {
   channels?: InputMaybe<Array<ChannelInput>>;
   costStructure?: InputMaybe<Scalars['String']['input']>;
@@ -582,6 +586,7 @@ export type Mutation = {
   addContentIdeaToBacklog: BacklogIdea;
   approveContentItem: ContentItem;
   authThrowThirdParty: AuthResponse;
+  changeEmail: AuthResponse;
   changeHypothesesCore: HypothesesCore;
   changeHypothesesGtm: HypothesesGtm;
   changeHypothesesGtmDetailedChannel: HypothesesGtmDetailedChannel;
@@ -657,6 +662,11 @@ export type MutationApproveContentItemArgs = {
 
 export type MutationAuthThrowThirdPartyArgs = {
   input: AuthThrowThirdPartyInput;
+};
+
+
+export type MutationChangeEmailArgs = {
+  input: ChangeEmailInput;
 };
 
 
@@ -1370,6 +1380,7 @@ export type UserDto = {
   email?: Maybe<Scalars['String']['output']>;
   freeTrialDueTo?: Maybe<Scalars['Date']['output']>;
   id: Scalars['ID']['output'];
+  isProjectGenerated: Scalars['Boolean']['output'];
   role: UserRole;
 };
 
@@ -1480,6 +1491,7 @@ export type ResolversTypes = {
   BacklogIdeaInput: BacklogIdeaInput;
   BacklogStatus: BacklogStatus;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  ChangeEmailInput: ChangeEmailInput;
   ChangeHypothesesCoreInput: ChangeHypothesesCoreInput;
   ChangeHypothesesGtmDetailedChannelInput: ChangeHypothesesGtmDetailedChannelInput;
   ChangeHypothesesGtmInput: ChangeHypothesesGtmInput;
@@ -1599,6 +1611,7 @@ export type ResolversParentTypes = {
   BacklogIdea: BacklogIdea;
   BacklogIdeaInput: BacklogIdeaInput;
   Boolean: Scalars['Boolean']['output'];
+  ChangeEmailInput: ChangeEmailInput;
   ChangeHypothesesCoreInput: ChangeHypothesesCoreInput;
   ChangeHypothesesGtmDetailedChannelInput: ChangeHypothesesGtmDetailedChannelInput;
   ChangeHypothesesGtmInput: ChangeHypothesesGtmInput;
@@ -1960,6 +1973,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   addContentIdeaToBacklog?: Resolver<ResolversTypes['BacklogIdea'], ParentType, ContextType, RequireFields<MutationAddContentIdeaToBacklogArgs, 'input'>>;
   approveContentItem?: Resolver<ResolversTypes['ContentItem'], ParentType, ContextType, RequireFields<MutationApproveContentItemArgs, 'input'>>;
   authThrowThirdParty?: Resolver<ResolversTypes['AuthResponse'], ParentType, ContextType, RequireFields<MutationAuthThrowThirdPartyArgs, 'input'>>;
+  changeEmail?: Resolver<ResolversTypes['AuthResponse'], ParentType, ContextType, RequireFields<MutationChangeEmailArgs, 'input'>>;
   changeHypothesesCore?: Resolver<ResolversTypes['HypothesesCore'], ParentType, ContextType, RequireFields<MutationChangeHypothesesCoreArgs, 'input'>>;
   changeHypothesesGtm?: Resolver<ResolversTypes['HypothesesGtm'], ParentType, ContextType, RequireFields<MutationChangeHypothesesGtmArgs, 'input'>>;
   changeHypothesesGtmDetailedChannel?: Resolver<ResolversTypes['HypothesesGtmDetailedChannel'], ParentType, ContextType, RequireFields<MutationChangeHypothesesGtmDetailedChannelArgs, 'input'>>;
@@ -2222,6 +2236,7 @@ export type UserDtoResolvers<ContextType = any, ParentType extends ResolversPare
   email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   freeTrialDueTo?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  isProjectGenerated?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   role?: Resolver<ResolversTypes['UserRole'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

@@ -16,9 +16,8 @@ import { AlertCircle } from "lucide-react";
 const Dashboard: FC = () => {
   const navigate = useNavigate();
   const [showGenerateProject, setShowGenerateProject] = useState(false);
-  const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [hasCheckedProjects, setHasCheckedProjects] = useState(false);
-  const { isAuthenticated, initializeAuth, userData, isLoading } =
+  const { isAuthenticated, initializeAuth, userData, isLoading, hasInitializedProject } =
     useUserStore();
   const {
     activeProject,
@@ -38,7 +37,6 @@ const Dashboard: FC = () => {
         }
 
         await loadProjects();
-        setHasLoadedProjects(true);
       } catch (error) {
         navigate("/error");
       }
@@ -48,31 +46,37 @@ const Dashboard: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Виконується тільки один раз при монтуванні
 
-  // Показуємо модалку тільки після першого завантаження проектів і тільки якщо немає проектів
-  // Використовуємо hasCheckedProjects, щоб перевірка виконувалась тільки один раз
+  // Показуємо модалку онбординга тільки якщо проект ще не був сгенерирован
+  // Використовуємо hasInitializedProject з userStore, який синхронізований з isProjectGenerated з БД
   useEffect(() => {
     // Перевіряємо тільки якщо:
-    // 1. Проекти завантажені (hasLoadedProjects)
-    // 2. Завантаження завершено (!projectsLoading)
+    // 1. Авторизація завершена (!isLoading)
+    // 2. Завантаження проектів завершено (!projectsLoading)
     // 3. Ще не перевіряли (!hasCheckedProjects)
-    if (hasLoadedProjects && !projectsLoading && !hasCheckedProjects) {
+    // Важливо: не показуємо модалку, поки йде завантаження
+    if (!isLoading && !projectsLoading && !hasCheckedProjects) {
       setHasCheckedProjects(true);
-      // Показуємо модалку тільки якщо дійсно немає проектів
-      if (projects.length === 0) {
-        setShowGenerateProject(true);
+      // Показуємо модалку тільки якщо проект ще не був сгенерирован (isProjectGenerated === false)
+      // hasInitializedProject синхронізований з isProjectGenerated з БД
+      if (!hasInitializedProject) {
+        // Додаємо невелику затримку, щоб уникнути мигання модалки
+        const timer = setTimeout(() => {
+          setShowGenerateProject(true);
+        }, 100);
+        return () => clearTimeout(timer);
       } else {
-        // Якщо є проекти, закриваємо модалку (на випадок якщо вона була відкрита)
+        // Якщо проект вже сгенерирован, закриваємо модалку
         setShowGenerateProject(false);
       }
     }
-  }, [projects.length, projectsLoading, hasLoadedProjects, hasCheckedProjects]);
+  }, [isLoading, projectsLoading, hasCheckedProjects, hasInitializedProject]);
 
-  // Закриваємо модалку, якщо з'явилися проекти
+  // Закриваємо модалку, якщо проект був сгенерирован
   useEffect(() => {
-    if (hasCheckedProjects && projects.length > 0 && showGenerateProject) {
+    if (hasInitializedProject && showGenerateProject) {
       setShowGenerateProject(false);
     }
-  }, [projects.length, hasCheckedProjects, showGenerateProject]);
+  }, [hasInitializedProject, showGenerateProject]);
 
   if (isLoading || projectsLoading) {
     return (
@@ -125,16 +129,19 @@ const Dashboard: FC = () => {
       </div>
 
       {/* Generate Project Modal */}
-      <GenerateProjectModal
-        isOpen={showGenerateProject}
-        onClose={() => {
-          // Не дозволяємо закрити модалку, якщо немає проектів
-          if (projects.length === 0) {
-            return;
-          }
-          setShowGenerateProject(false);
-        }}
-      />
+      {/* Показуємо модалку онбординга тільки якщо проект ще не був сгенерирован */}
+      {!projectsLoading && !isLoading && (
+        <GenerateProjectModal
+          isOpen={showGenerateProject}
+          onClose={() => {
+            // Не дозволяємо закрити модалку, якщо проект ще не сгенерирован
+            if (!hasInitializedProject) {
+              return;
+            }
+            setShowGenerateProject(false);
+          }}
+        />
+      )}
     </>
   );
 };

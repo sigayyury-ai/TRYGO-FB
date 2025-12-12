@@ -82,9 +82,18 @@ export const EditHypothesisModal: FC<EditHypothesisModalProps> = ({
   }, [hypothesis, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!hypothesis) return;
+    console.log('[EditHypothesisModal] onSubmit called with:', values);
+    if (!hypothesis) {
+      console.warn('[EditHypothesisModal] No hypothesis provided');
+      return;
+    }
 
     try {
+      console.log('[EditHypothesisModal] Calling changeHypothesis with:', {
+        id: hypothesis.id,
+        title: values.title,
+        description: values.description,
+      });
       await changeHypothesis({
         id: hypothesis.id,
         title: values.title,
@@ -98,9 +107,11 @@ export const EditHypothesisModal: FC<EditHypothesisModalProps> = ({
 
       onClose();
     } catch (error) {
+      console.error("[EditHypothesisModal] Error updating hypothesis:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update hypothesis";
       toast({
         title: "Error",
-        description: "Failed to update hypothesis",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -120,9 +131,11 @@ export const EditHypothesisModal: FC<EditHypothesisModalProps> = ({
       setShowDeleteDialog(false);
       onClose();
     } catch (error) {
+      console.error("Error deleting hypothesis:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete hypothesis";
       toast({
         title: "Error",
-        description: "Failed to delete hypothesis",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -139,9 +152,19 @@ export const EditHypothesisModal: FC<EditHypothesisModalProps> = ({
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Edit Hypothesis</DialogTitle>
+            <DialogDescription>
+              Update the title and description of your hypothesis.
+            </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                console.log('[EditHypothesisModal] Form submit event triggered');
+                form.handleSubmit(onSubmit)(e);
+              }} 
+              className="space-y-6"
+            >
               <FormField
                 control={form.control}
                 name="title"

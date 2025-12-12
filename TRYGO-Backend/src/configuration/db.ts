@@ -25,15 +25,18 @@ const connectMainDB = async () => {
 
         // Handle connection events
         mongoose.connection.on('error', (error) => {
-            console.error('❌ MongoDB connection error:', error.message);
+            const timestamp = new Date().toISOString();
+            console.error(`[${timestamp}] ❌ [MONGODB] Connection error: ${error.message}`);
         });
 
         mongoose.connection.on('disconnected', () => {
-            console.warn('⚠️ MongoDB disconnected');
+            const timestamp = new Date().toISOString();
+            console.warn(`[${timestamp}] ⚠️  [MONGODB] Disconnected`);
         });
 
         mongoose.connection.on('reconnected', () => {
-            console.log('✅ MongoDB reconnected');
+            const timestamp = new Date().toISOString();
+            console.log(`[${timestamp}] ✅ [MONGODB] Reconnected`);
         });
     } catch (error: any) {
         console.error('❌ Failed to connect to MongoDB:');

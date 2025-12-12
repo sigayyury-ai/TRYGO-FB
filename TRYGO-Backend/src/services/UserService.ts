@@ -386,6 +386,43 @@ class UserService {
         }
     }
 
+    async changeEmail(userId: string, newEmail: string): Promise<AuthResponse> {
+        try {
+            // Валидация нового email
+            await this.validateUserEmail(newEmail);
+
+            // Проверка, что новый email не занят другим пользователем
+            const existingUser = await this.getUserByEmailDefault(newEmail);
+            if (existingUser && existingUser._id.toString() !== userId) {
+                throw new Error('Email is already taken by another user');
+            }
+
+            // Получаем текущего пользователя
+            const user = await this.getUserById(userId);
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            // Проверка, что новый email отличается от текущего
+            if (user.email === newEmail) {
+                throw new Error('New email must be different from current email');
+            }
+
+            // Обновляем email
+            user.email = newEmail;
+            await user.save();
+
+            // Генерируем новый токен
+            const token = authService.generateToken(user.id);
+
+            return toAuthResponse(user, token);
+        } catch (error) {
+            console.error(error);
+            elevateError(error);
+            throw error;
+        }
+    }
+
     private async checkExistingUser(email: string): Promise<void> {
         try {
             const user = await this.model.findOne({ email: email });

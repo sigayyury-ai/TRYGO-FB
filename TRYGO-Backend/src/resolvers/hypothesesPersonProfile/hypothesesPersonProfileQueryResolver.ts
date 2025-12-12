@@ -15,7 +15,7 @@ const hypothesesPersonProfileQueryResolver = {
                     projectHypothesisId,
                     context.userId
                 );
-                console.log(`[getAllHypothesesPersonProfiles resolver] Returning ${profiles.length} profiles`);
+                // Removed verbose logging
                 return profiles;
             } catch (err) {
                 console.error(`[getAllHypothesesPersonProfiles resolver] Error:`, err);

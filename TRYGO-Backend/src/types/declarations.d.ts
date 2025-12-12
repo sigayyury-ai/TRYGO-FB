@@ -127,3 +127,4 @@ declare module 'jsonwebtoken' {
     export function verify(token: string, secretOrPublicKey: string, options?: VerifyOptions): JwtPayload | string;
     export function decode(token: string, options?: any): JwtPayload | string | null;
 }
+

@@ -8,6 +8,7 @@ export interface UserDataType {
   email: string;
   role: "ADMIN" | "USER";
   freeTrialDueTo?: string;
+  isProjectGenerated?: boolean;
 }
 
 interface UseUserStoreType {
@@ -44,6 +45,8 @@ export const useUserStore = create<UseUserStoreType>()(
             userData: user ?? null,
             isAuthenticated: !!user,
             token: token ?? null,
+            // Синхронизируем hasInitializedProject с isProjectGenerated из БД
+            hasInitializedProject: user?.isProjectGenerated ?? false,
           });
           if (token) {
             Cookies.set("token", token, {
@@ -93,7 +96,13 @@ export const useUserStore = create<UseUserStoreType>()(
             if (currentToken) {
               // Если есть токен, всегда проверяем его валидность через API
               const { user, token } = await getUserByTokenQuery();
-              set({ userData: user, isAuthenticated: true, token });
+              // Синхронизируем hasInitializedProject с isProjectGenerated из БД
+              set({ 
+                userData: user, 
+                isAuthenticated: true, 
+                token,
+                hasInitializedProject: user?.isProjectGenerated ?? false
+              });
             } else if (currentUserData) {
               // Если токена нет, но userData есть - очищаем (невалидное состояние)
               set({ userData: null, isAuthenticated: false });

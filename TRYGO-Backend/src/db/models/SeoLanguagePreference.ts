@@ -39,3 +39,4 @@ export const SeoLanguagePreference =
     SeoLanguagePreferenceSchema,
     "seoLanguagePreferences"
   );
+

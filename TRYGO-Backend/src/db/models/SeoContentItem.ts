@@ -78,3 +78,4 @@ export const SeoContentItem: Model<SeoContentItemDoc> = model<SeoContentItemDoc>
   "SeoContentItem",
   SeoContentItemSchema
 );
+

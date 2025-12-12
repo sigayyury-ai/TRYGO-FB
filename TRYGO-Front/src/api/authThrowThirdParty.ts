@@ -9,6 +9,7 @@ export const AUTH_THROW_THIRD_PARTY = gql`
         email
         role
         freeTrialDueTo
+        isProjectGenerated
       }
       token
     }
@@ -22,6 +23,7 @@ export interface AuthThrowThirdPartyResponseType {
       email: string;
       role: 'ADMIN' | 'USER';
       freeTrialDueTo?: string;
+      isProjectGenerated: boolean;
     };
     token: string;
   };

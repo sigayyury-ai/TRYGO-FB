@@ -120,15 +120,33 @@ class ProjectHypothesesService {
         userId: string
     ) {
         try {
+            // Build update object with only provided fields
+            const updateData: { title?: string; description?: string } = {};
+            if (input.title !== undefined && input.title !== null) {
+                updateData.title = input.title;
+            }
+            if (input.description !== undefined && input.description !== null) {
+                updateData.description = input.description;
+            }
+
+            // If no fields to update, return the existing document
+            if (Object.keys(updateData).length === 0) {
+                const existing = await this.model.findOne({
+                    _id: input.id,
+                    userId,
+                });
+                if (!existing) {
+                    throw new Error('Project hypothesis not found');
+                }
+                return existing;
+            }
+
             const projectHypothesis = await this.model.findOneAndUpdate(
                 {
                     _id: input.id,
                     userId,
                 },
-                {
-                    title: input.title,
-                    description: input.description,
-                },
+                updateData,
                 {
                     new: true,
                 }
@@ -145,10 +163,14 @@ class ProjectHypothesesService {
 
     async deleteProjectHypothesis(id: string, userId: string) {
         try {
-            return await this.model.findOneAndDelete({
+            const deleted = await this.model.findOneAndDelete({
                 _id: id,
                 userId,
             });
+            if (!deleted) {
+                throw new Error('Project hypothesis not found');
+            }
+            return deleted;
         } catch (error) {
             console.error(error);
             throw error;

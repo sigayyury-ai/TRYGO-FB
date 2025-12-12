@@ -1,5 +1,5 @@
 import { FC, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,15 @@ const Auth: FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { register, login, loginWithGoogle, forgotPassword, changePassword, isLoading: authLoading } = useAuthStore();
+  
+  // Check if user is already authenticated
+  const isLoggedIn = useUserStore((state) => state.isAuthenticated);
+  const hasInitializedProject = useUserStore((state) => state.hasInitializedProject);
+  
+  // Redirect to dashboard if already logged in
+  if (isLoggedIn && hasInitializedProject) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -245,3 +245,4 @@ With multiple developers:
 - **Phase 7 (Polish)**: 8 tasks
 
 **Suggested MVP Scope**: Phases 1, 2, and 3 (User Story 1) - enables internal backend image generation, the primary use case.
+

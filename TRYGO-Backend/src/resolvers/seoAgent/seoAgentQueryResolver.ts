@@ -164,15 +164,7 @@ const seoAgentQueryResolver = {
                 
                 // Log sample cluster data for debugging migration issues
                 if (clusters.length > 0) {
-                    const sample = clusters[0];
                     // Removed verbose logging - sample cluster
-                        id: sample._id.toString(),
-                        projectId: sample.projectId,
-                        projectIdType: typeof sample.projectId,
-                        hypothesisId: sample.hypothesisId,
-                        hypothesisIdType: typeof sample.hypothesisId,
-                        title: sample.title
-                    });
                 } else {
                     // Check if any clusters exist for this project at all
                     const totalClustersForProject = await SeoCluster.countDocuments({ projectId: args.projectId }).exec();
@@ -235,7 +227,7 @@ const seoAgentQueryResolver = {
                 const backlogItems = await SeoBacklogIdea.find(query)
                     .sort({ updatedAt: -1 })
                     .exec();
-                console.log(`[seoAgentBacklog] Found ${backlogItems.length} items`);
+                // Removed verbose logging
 
                 // Always return an array, never null or undefined
                 return backlogItems.map(mapBacklogIdea) || [];

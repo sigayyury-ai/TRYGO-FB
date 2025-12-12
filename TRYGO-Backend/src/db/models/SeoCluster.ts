@@ -58,3 +58,4 @@ seoClusterSchema.index({ projectId: 1, hypothesisId: 1 });
 
 export const SeoCluster: Model<SeoClusterDoc> =
   mongoose.models.SeoCluster || mongoose.model<SeoClusterDoc>("SeoCluster", seoClusterSchema);
+

@@ -104,3 +104,4 @@ fi
 - Use `follow` or `watch` to monitor logs in real-time (Ctrl+C to stop)
 - Specify a number to control how many lines to show (default: 50)
 - Log files are created automatically when services start via `/start-all`
+

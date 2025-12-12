@@ -20,6 +20,8 @@ import RegenerateHypothesesCoreForm from "@/components/RegenerateHypothesesCoreF
 import { useToast } from "@/hooks/use-toast";
 import { useHypothesesCoreStore } from "@/store/useHypothesesCoreStore";
 import { useHypothesesPersonProfileStore } from "@/store/useHypothesesPersonProfileStore";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 
 interface CustomerSegment {
   name: string;
@@ -40,7 +42,16 @@ const CustomerSegmentsPage: FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { coreData, changeHypothesesCore } = useHypothesesCoreStore();
+  const { activeProject } = useProjects();
+  const { activeHypothesis } = useHypotheses({ projectId: activeProject?.id });
+  const { coreData, changeHypothesesCore, getHypothesesCore } = useHypothesesCoreStore();
+
+  // Загружаем coreData при изменении активной гипотезы
+  useEffect(() => {
+    if (activeHypothesis?.id) {
+      getHypothesesCore(activeHypothesis.id);
+    }
+  }, [activeHypothesis?.id, getHypothesesCore]);
 
   useEffect(() => {
     if (coreData.customerSegments) {

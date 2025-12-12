@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -47,6 +47,7 @@ import SubscriptionLimitsIndicator from "./SubscriptionLimitsIndicator";
 import { GenerateProjectModal } from "./GenerateProjectModal";
 import useSubscription from "@/hooks/use-subscription";
 import UpgradeModal from "./UpgradeModal";
+import { setActiveCustomerSegmentId, clearActiveIds } from "@/utils/activeState";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -93,7 +94,6 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
     useUserStore.getState().setHasInitializedProject(false);
     
     // Clear active project and hypothesis from cookies
-    const { clearActiveIds } = require('@/utils/activeState');
     clearActiveIds();
 
     // Clear all localStorage
@@ -137,16 +137,22 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
     setIsMenuOpen(false);
   };
 
-  const handleSetActive = (id: string) => {
+  const handleSetActive = useCallback((id: string) => {
+    if (!id || id === activeHypothesis?.id) {
+      return; // Не делаем ничего, если ID пустой или уже активен
+    }
+    
     // Сбрасываем selectedSegmentId при смене гипотезы
-    const { setActiveCustomerSegmentId } = require('@/utils/activeState');
     setActiveCustomerSegmentId(null);
+    
+    // Устанавливаем активную гипотезу (сохранит в cookies и обновит состояние)
     setActiveHypothesis(id);
+    
     toast({
       title: "Hypothesis activated",
       description: "This hypothesis is now active across all pages.",
     });
-  };
+  }, [activeHypothesis?.id, setActiveHypothesis]);
 
   const handleEditHypothesis = (hypothesis: ProjectHypothesis, event: React.MouseEvent) => {
     event.preventDefault();
@@ -158,8 +164,10 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
   const handleProjectChange = (value: string) => {
     if (value === "create-new-project") {
       setIsGenerateProjectOpen(true);
-    } else {
+    } else if (value && value !== activeProject?.id) {
+      // Устанавливаем новый активный проект
       setActiveProject(value);
+      // Гипотезы автоматически загрузятся через useHypotheses при изменении activeProject
     }
   };
 
@@ -194,12 +202,8 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
     }
   }, [projects, activeProject, setActiveProject]);
   
-  // Загружаем гипотезы при изменении активного проекта
-  useEffect(() => {
-    if (activeProject?.id) {
-      loadHypotheses(activeProject.id);
-    }
-  }, [activeProject?.id, loadHypotheses]);
+  // useHypotheses автоматически загружает гипотезы при изменении activeProject?.id
+  // Не нужно дублировать логику здесь
 
 
   return (
@@ -249,7 +253,7 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
             </div>
 
             {isLoggedIn && (
-              <div className="flex items-center space-x-4 max-w-[400px]">
+              <div className="flex items-center space-x-4 max-w-[400px] md:max-w-[600px]">
                 {/* Project Dropdown - показуємо тільки якщо є проекти */}
                 {projects && projects.length > 0 && (
                   <Select
@@ -283,7 +287,7 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
                 )}
 
                 {/* Hypothesis Dropdown - показуємо тільки якщо є гіпотези */}
-                {hypotheses && hypotheses.length > 0 && activeHypothesis && (
+                {hypotheses && hypotheses.length > 0 && (
                   <div className="max-w-[400px]">
                 <Select
                   value={activeHypothesis?.id ?? ""}
@@ -295,21 +299,21 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
                       } else {
                         setIsAddDialogOpen(true);
                       }
-                    } else {
+                    } else if (value) {
                       handleSetActive(value);
                     }
                   }}
                 >
                   <SelectTrigger
                     id="hypothesis-header"
-                    className="border border-blue-200/60 shadow-sm bg-blue-50/30 hover:bg-blue-50/50 px-3 py-2 text-base font-semibold gap-1 rounded-lg transition-colors"
+                    className="border border-blue-200/60 shadow-sm bg-blue-50/30 hover:bg-blue-50/50 px-3 py-2 text-base font-semibold gap-1 rounded-lg transition-colors min-w-[200px] md:min-w-[280px]"
                     useUpDownIcon
                   >
                     <SelectValue placeholder="Select your hypotheses" />
                   </SelectTrigger>
                   <SelectContent>
                     {hypotheses.map((hyp, index) => (
-                      <div key={hyp.id} className="relative">
+                      <div key={hyp.id} className="relative group">
                         <SelectItem 
                           value={hyp.id}
                           id={index === 0 ? "hypothesis-select" : undefined}
@@ -318,8 +322,16 @@ const Header: FC<HeaderProps> = ({ onMenuClick }) => {
                           {hyp.title}
                         </SelectItem>
                         <button
-                          onClick={(e) => handleEditHypothesis(hyp, e)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-blue-100 rounded-md bg-blue-50 border border-blue-200 transition-colors z-10"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleEditHypothesis(hyp, e);
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-blue-100 rounded-md bg-blue-50 border border-blue-200 transition-colors z-20 pointer-events-auto"
                           type="button"
                         >
                           <Edit className="h-4 w-4 text-blue-600 hover:text-blue-700" />

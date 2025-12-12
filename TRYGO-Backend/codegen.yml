@@ -7,3 +7,4 @@ generates:
       - typescript-resolvers
     config:
       skipTypename: true
+

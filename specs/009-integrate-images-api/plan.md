@@ -490,3 +490,4 @@ const response = await fetch(`${env.trygoBackendUrl}/api/images/generate`, ...)
 3. Create API routes (Phase 2.3)
 4. Integrate into server (Phase 2.4)
 5. Test and deploy (Phase 3)
+

@@ -173,3 +173,4 @@ const projectId = args[0];
 const hypothesisId = args[1];
 
 checkClusters(projectId, hypothesisId).catch(console.error);
+

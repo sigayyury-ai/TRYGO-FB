@@ -83,6 +83,9 @@ const UploadJtbdInterviewsModal: FC = () => {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Add New JTBD Interview Insight</DialogTitle>
+          <DialogDescription>
+            Add a new Jobs-to-be-Done interview insight to your validation data.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

@@ -14,6 +14,7 @@ import {
 } from '@/api/changeProjectHypothesis';
 import { deleteProjectHypothesisMutation } from '@/api/deleteProjectHypothesis';
 import { getActiveHypothesisId, setActiveHypothesisId } from '@/utils/activeState';
+import { useActiveProjectId, useActiveHypothesisId } from './useActiveIds';
 
 interface UseHypothesesOptions {
   projectId?: string;
@@ -26,6 +27,14 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
   const [activeHypothesis, setActiveHypothesis] = useState<ProjectHypothesis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Реактивно читаем activeProjectId из cookies для автоматического обновления
+  const activeProjectIdFromCookie = useActiveProjectId();
+  // Реактивно читаем activeHypothesisId из cookies для автоматического обновления
+  const activeHypothesisIdFromCookie = useActiveHypothesisId();
+  
+  // Используем projectId из опций или из cookies
+  const effectiveProjectId = projectId || activeProjectIdFromCookie || null;
 
   const loadHypotheses = useCallback(async (targetProjectId: string) => {
     if (!targetProjectId) {
@@ -67,6 +76,7 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
       if (savedHypothesisId) {
         // Ищем сохраненную гипотезу в свежих данных из API
         const found = loadedHypotheses.find(h => h.id === savedHypothesisId && h.projectId === targetProjectId);
+        
         if (found) {
           foundActiveHypothesis = found;
         } else {
@@ -76,9 +86,10 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
       }
 
       // Если не нашли в cookies или cookies пуст, берем первую гипотезу
-      if (!foundActiveHypothesis && loadedHypotheses.length > 0) {
+      // НО только если нет сохраненной гипотезы в cookies (чтобы не перезаписывать выбор пользователя)
+      if (!foundActiveHypothesis && loadedHypotheses.length > 0 && !savedHypothesisId) {
         foundActiveHypothesis = loadedHypotheses[0];
-        // Сохраняем в cookies
+        // Сохраняем в cookies только при первой загрузке
         setActiveHypothesisId(foundActiveHypothesis.id);
       }
 
@@ -102,25 +113,33 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
       return;
     }
 
+    // Сохраняем в cookies сразу - это главное!
+    setActiveHypothesisId(hypothesisId);
+    
+    // Обновляем локальное состояние, если гипотеза уже загружена
     const hypothesis = hypotheses.find((h) => h.id === hypothesisId);
+    
     if (hypothesis) {
-      // Сохраняем в cookies
-      setActiveHypothesisId(hypothesisId);
       setActiveHypothesis(hypothesis);
     }
+    // Если гипотеза еще не загружена, она будет установлена через useEffect ниже
   }, [hypotheses]);
 
   const changeHypothesis = useCallback(async (input: ChangeProjectHypothesisInput) => {
+    console.log('[useHypotheses] changeHypothesis called with:', input);
     setLoading(true);
     setError(null);
     try {
-      const { data } = await changeProjectHypothesisMutation({
+      const mutationInput = {
         input: {
           id: input.id,
           title: input.title,
           description: input.description,
         },
-      });
+      };
+      console.log('[useHypotheses] Calling mutation with:', mutationInput);
+      const { data } = await changeProjectHypothesisMutation(mutationInput);
+      console.log('[useHypotheses] Mutation response:', data);
 
       const updatedHypothesis = data.changeProjectHypothesis;
 
@@ -133,12 +152,14 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
         setActiveHypothesis(updatedHypothesis);
       }
     } catch (err: unknown) {
+      console.error('[useHypotheses] Error updating hypothesis:', err);
       let errorMessage = 'Failed to update hypothesis';
       if (err instanceof Error) {
         errorMessage = err.message;
       }
       setError(errorMessage);
       setLoading(false);
+      throw err; // Re-throw to let the component handle it
     }
   }, [activeHypothesis]);
 
@@ -173,14 +194,28 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
   }, [activeHypothesis, hypotheses]);
 
   useEffect(() => {
-    if (projectId) {
-      loadHypotheses(projectId);
+    if (effectiveProjectId) {
+      loadHypotheses(effectiveProjectId);
     } else {
       setHypotheses([]);
       setActiveHypothesis(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]); // Убираем loadHypotheses из зависимостей, чтобы избежать бесконечного цикла
+  }, [effectiveProjectId]); // Реагируем на изменения projectId из опций или cookies
+
+  // Реагируем на изменения activeHypothesisId из cookies
+  useEffect(() => {
+    if (activeHypothesisIdFromCookie && hypotheses.length > 0) {
+      const found = hypotheses.find(h => h.id === activeHypothesisIdFromCookie);
+      
+      if (found && found.id !== activeHypothesis?.id) {
+        setActiveHypothesis(found);
+      }
+    } else if (!activeHypothesisIdFromCookie && activeHypothesis) {
+      // Если cookie очищен, но есть активная гипотеза - очищаем состояние
+      setActiveHypothesis(null);
+    }
+  }, [activeHypothesisIdFromCookie, hypotheses, activeHypothesis]);
 
   return {
     hypotheses,

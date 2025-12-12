@@ -185,3 +185,4 @@ openssl rand -base64 32
 1. **Не коммитьте секреты** - все переменные с `sync: false` должны быть установлены вручную в Render Dashboard
 2. **Порядок деплоя**: сначала деплойте `trygo-main-backend`, затем обновите URL в `trygo-frontend`
 3. **Проверка**: после деплоя проверьте `/health` endpoint бэкенда
+

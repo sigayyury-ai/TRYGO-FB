@@ -14,3 +14,4 @@ export type FlexibleImagePrompt = ImagePrompt | { prompt: string; aspectRatio?: 
 export interface ImageProvider {
   generate(prompt: FlexibleImagePrompt): Promise<ImageGenerationResult>;
 }
+

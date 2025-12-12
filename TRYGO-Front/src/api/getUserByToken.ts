@@ -9,6 +9,7 @@ export const GET_USER_BY_TOKEN = gql`
         email
         role
         freeTrialDueTo
+        isProjectGenerated
       }
       token
     }
@@ -22,6 +23,7 @@ export interface GetUserByTokenResponseType {
       email: string;
       role: 'ADMIN' | 'USER';
       freeTrialDueTo?: string;
+      isProjectGenerated: boolean;
     };
     token: string;
   };

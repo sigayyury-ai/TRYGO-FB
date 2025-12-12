@@ -89,3 +89,4 @@ if (contentItem.imageUrl && settings?.wordpressBaseUrl && ...) {
 - ✅ Статусы обновляются правильно
 - ✅ Ошибки обрабатываются
 - ✅ Логирование включено
+

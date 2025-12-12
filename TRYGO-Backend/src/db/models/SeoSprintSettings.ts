@@ -61,3 +61,4 @@ export const SeoSprintSettings =
     SeoSprintSettingsSchema,
     "seoSprintSettings"
   );
+

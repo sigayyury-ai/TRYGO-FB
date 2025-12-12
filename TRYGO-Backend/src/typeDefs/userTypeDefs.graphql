@@ -27,6 +27,7 @@ type UserDTO {
     email: String
     role: UserRole!
     freeTrialDueTo: Date
+    isProjectGenerated: Boolean!
 }
 
 type AuthResponse {
@@ -59,12 +60,17 @@ input AuthThrowThirdPartyInput {
     googleIdToken: String!
 }
 
+input ChangeEmailInput {
+    newEmail: String!
+}
+
 type Mutation {
     register(input: RegisterInput!): AuthResponse!
     authThrowThirdParty(input: AuthThrowThirdPartyInput!): AuthResponse!
     login(input: LoginInput): AuthResponse!
     forgotPassword(email: String!): String!
     changePassword(input: ChangePasswordInput!): AuthResponse!
+    changeEmail(input: ChangeEmailInput!): AuthResponse!
     generateTokenThrowEmail(input: GenerateTokenThrowEmailInput!): String!
 }
 

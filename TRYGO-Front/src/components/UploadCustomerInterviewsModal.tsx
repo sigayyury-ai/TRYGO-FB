@@ -101,9 +101,9 @@ const UploadCustomerInterviewsModal: FC = () => {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Add New Customer Interview Insight</DialogTitle>
-          {/* <DialogDescription>
-            Create a new product or market hypothesis.
-          </DialogDescription> */}
+          <DialogDescription>
+            Add a new customer interview insight to your validation data.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

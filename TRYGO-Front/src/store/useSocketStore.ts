@@ -197,28 +197,26 @@ export const useSocketStore = create<SocketState>()(
             if (!projectId) return;
 
             try {
-              // NOTE: For socket events, we still need to use stores to get/update hypothesis list
-              // This will be refactored when we implement full cookie-based state management with API calls
-              const { useHypothesisStore } = await import('./useHypothesisStore');
-              
-              // 1. Обновляем список гипотез
-              await useHypothesisStore.getState().getHypotheses(projectId);
+              // Используем cookie-based подход: загружаем гипотезы через API
+              const { getProjectHypothesesQuery } = await import('@/api/getProjectHypotheses');
+              const { data } = await getProjectHypothesesQuery(projectId);
+              const hypotheses = data?.getProjectHypotheses || [];
 
-              // 2. Делаем активной последнюю гипотезу
-              const hypotheses = useHypothesisStore.getState().hypotheses;
               if (hypotheses.length > 0) {
-                const newHypothesis = hypotheses[hypotheses.length - 1];
-                // Update cookie with new hypothesis ID
+                // Находим новую гипотезу по ID из события
+                const newHypothesis = hypotheses.find(h => h.id === projectHypothesisId) || hypotheses[hypotheses.length - 1];
+                
+                // Обновляем cookie с новой гипотезой
                 const { setActiveHypothesisId } = await import('@/utils/activeState');
                 setActiveHypothesisId(newHypothesis.id);
                 
-                useHypothesisStore
-                  .getState()
-                  .setActiveHypothesis(newHypothesis.id);
-                  set({
-                    generatedHypothesisId: newHypothesis.id,
-                    isGeneratingHypothesis: false,
-                  });
+                // Диспатчим событие для обновления компонентов
+                window.dispatchEvent(new Event('cookiechange'));
+                
+                set({
+                  generatedHypothesisId: newHypothesis.id,
+                  isGeneratingHypothesis: false,
+                });
               }
             } catch (err) {
               // Silent error handling

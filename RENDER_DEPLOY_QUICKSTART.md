@@ -89,3 +89,4 @@ SEMANTICS_SERVICE_ORIGIN=https://trygo-frontend.onrender.com
 ## 🔗 Подробная документация
 
 См. [DEPLOY_RENDER.md](./DEPLOY_RENDER.md) для полной документации.
+

@@ -9,6 +9,7 @@ export const LOGIN = gql`
         email
         role
         freeTrialDueTo
+        isProjectGenerated
       }
       token
     }
@@ -22,6 +23,7 @@ export interface LoginResponseType {
       email: string;
       role: 'ADMIN' | 'USER';
       freeTrialDueTo?: string;
+      isProjectGenerated: boolean;
     };
     token: string;
   };

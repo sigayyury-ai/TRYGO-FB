@@ -392,3 +392,4 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Test after each user story completion
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+

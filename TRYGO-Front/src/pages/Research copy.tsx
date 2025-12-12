@@ -32,7 +32,6 @@ import CompetitorDetails from "@/components/market-research/CompetitorDetails";
 import AIAssistantChat from "@/components/AIAssistantChat";
 import { Textarea } from "@/components/ui/textarea";
 import EditableText from "@/components/EditableText";
-import { useHypothesisStore } from "@/store/useHypothesisStore";
 import { useHypothesesMarketResearchStore } from "@/store/useHypothesesMarketResearchStore";
 import LoaderSpinner from "@/components/LoaderSpinner";
 import {
@@ -40,6 +39,8 @@ import {
   CompetitorDto,
   CompetitorSocialMediaDto,
 } from "@/api/hypothesesMarketResearch";
+import { useProjects } from "@/hooks/useProjects";
+import { useHypotheses } from "@/hooks/useHypotheses";
 
 const Research: FC = () => {
   const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(
@@ -47,7 +48,8 @@ const Research: FC = () => {
   );
   const navigate = useNavigate();
 
-  const { activeHypothesis, loading: hypothesesLoading } = useHypothesisStore();
+  const { activeProject } = useProjects();
+  const { activeHypothesis, loading: hypothesesLoading } = useHypotheses({ projectId: activeProject?.id });
 
   const {
     researchData,

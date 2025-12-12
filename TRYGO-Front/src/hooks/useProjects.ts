@@ -87,6 +87,10 @@ export function useProjects() {
       let errorMessage = 'Failed to load projects';
       if (err instanceof Error) {
         errorMessage = err.message;
+        // Если это "Failed to fetch", даем более понятное сообщение
+        if (err.message === 'Failed to fetch' || err.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to server. Please check if backend is running on port 5001.';
+        }
       }
       console.error('[useProjects] Error loading projects:', err);
       setError(errorMessage);

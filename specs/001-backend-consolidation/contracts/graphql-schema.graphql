@@ -369,3 +369,4 @@ type Mutation {
 - Some types may already exist (compare before merging)
 - Ensure `scalar DateTime` is defined in base schema
 - All queries and mutations must be preserved for frontend compatibility
+

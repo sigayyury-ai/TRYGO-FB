@@ -114,3 +114,4 @@ export function buildImagePrompt(idea: IdeaInput, variant: ImageVariant): ImageP
     aspectRatio
   };
 }
+
