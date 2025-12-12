@@ -24,7 +24,7 @@ export interface AddContentIdeaToBacklogInput {
   title: string;
   description?: string;
   contentType: BacklogContentType;
-  clusterId?: string;
+  clusterId?: string | null;
 }
 
 export interface AddContentIdeaToBacklogResponse {

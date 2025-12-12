@@ -76,7 +76,7 @@ const mapContentType = (format: string): string => {
 };
 
 const mapContentIdea = (doc: SeoContentItemDoc) => {
-    const isDismissed = false; // TODO: Add dismissed field to SeoContentItem model if needed
+    const isDismissed = doc.dismissed || false;
     return {
         id: doc._id.toString(),
         projectId: doc.projectId,
@@ -302,8 +302,9 @@ const seoAgentQueryResolver = {
                 // Verify user has access to this project
                 await projectService.getProjectById(args.projectId, userId);
 
-                const query: { projectId: string; hypothesisId?: string } = {
+                const query: any = {
                     projectId: args.projectId,
+                    dismissed: { $ne: true } // Exclude dismissed ideas
                 };
 
                 if (args.hypothesisId) {
@@ -312,6 +313,7 @@ const seoAgentQueryResolver = {
                 
                 // Query SeoContentItem for content ideas
                 // Content ideas are typically items with status "draft" or items that haven't been fully developed
+                // Exclude dismissed ideas
                 const contentItems = await SeoContentItem.find(query)
                     .sort({ updatedAt: -1 })
                     .exec();

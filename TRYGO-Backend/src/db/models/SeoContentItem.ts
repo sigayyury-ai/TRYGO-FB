@@ -25,6 +25,7 @@ export interface SeoContentItemAttrs {
   content?: string; // Full generated article content
   imageUrl?: string; // Generated image URL
   status: ContentStatus;
+  dismissed?: boolean; // Whether the content idea has been dismissed
   createdBy: string;
   updatedBy: string;
   dueDate?: Date;
@@ -62,6 +63,11 @@ const SeoContentItemSchema = new Schema<SeoContentItemDoc>(
       type: String,
       enum: ["draft", "review", "ready", "published", "archived"],
       default: "draft",
+      index: true
+    },
+    dismissed: {
+      type: Boolean,
+      default: false,
       index: true
     },
     createdBy: { type: String, required: true },
