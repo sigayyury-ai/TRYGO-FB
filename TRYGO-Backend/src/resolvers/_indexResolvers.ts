@@ -3,6 +3,7 @@ import userMutationResolver from './users/userMutationResolver';
 import subscriptionQueryResolver from './subscription/subscriptionQueryResolver';
 import subscriptionMutationResolver from './subscription/subscriptionMutationResolver';
 import projectsQueryResolver from './projects/projectsQueryResolver';
+import projectsMutationResolver from './projects/projectsMutationResolver';
 import projectHypothesesQueryResolver from './projectHypotheses/projectHypothesesResolver';
 import projectHypothesesMutationResolver from './projectHypotheses/projectHypothesesMutationResolver';
 import hypothesesCoreQueryResolver from './hypothesesCore/hypothesesCoreQueryResolver';
@@ -50,6 +51,7 @@ export const resolversArray = {
         ...userMutationResolver.Mutation,
         ...subscriptionMutationResolver.Mutation,
         ...promoCodeMutationResolver.Mutation,
+        ...projectsMutationResolver.Mutation,
         ...projectHypothesesMutationResolver.Mutation,
         ...hypothesesCoreMutationResolver.Mutation,
         ...hypothesesMarketResearchMutationResolver.Mutation,

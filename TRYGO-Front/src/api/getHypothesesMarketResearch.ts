@@ -22,7 +22,7 @@ export interface HypothesesMarketResearch {
 }
 
 export interface GetHypothesesMarketResearchResponse {
-  getHypothesesMarketResearch: HypothesesMarketResearch;
+  getHypothesesMarketResearch: HypothesesMarketResearch | null;
 }
 
 export const getHypothesesMarketResearchQuery = (projectHypothesisId: string) => {

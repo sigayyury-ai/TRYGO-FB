@@ -10,11 +10,14 @@ const hypothesesMarketResearchQueryResolver = {
             context: IContext
         ) {
             try {
-                return await hypothesesMarketResearchService.getHypothesesMarketResearch(
+                const result = await hypothesesMarketResearchService.getHypothesesMarketResearch(
                     projectHypothesisId,
                     context.userId
                 );
+                // Если данных нет, возвращаем null (схема позволяет null)
+                return result || null;
             } catch (err) {
+                console.error('[HypothesesMarketResearchResolver] Error:', err);
                 elevateError(err);
             }
         },

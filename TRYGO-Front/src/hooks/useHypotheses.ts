@@ -126,20 +126,16 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
   }, [hypotheses]);
 
   const changeHypothesis = useCallback(async (input: ChangeProjectHypothesisInput) => {
-    console.log('[useHypotheses] changeHypothesis called with:', input);
     setLoading(true);
     setError(null);
     try {
-      const mutationInput = {
+      const { data } = await changeProjectHypothesisMutation({
         input: {
           id: input.id,
           title: input.title,
           description: input.description,
         },
-      };
-      console.log('[useHypotheses] Calling mutation with:', mutationInput);
-      const { data } = await changeProjectHypothesisMutation(mutationInput);
-      console.log('[useHypotheses] Mutation response:', data);
+      });
 
       const updatedHypothesis = data.changeProjectHypothesis;
 
@@ -152,7 +148,6 @@ export function useHypotheses(options: UseHypothesesOptions = {}) {
         setActiveHypothesis(updatedHypothesis);
       }
     } catch (err: unknown) {
-      console.error('[useHypotheses] Error updating hypothesis:', err);
       let errorMessage = 'Failed to update hypothesis';
       if (err instanceof Error) {
         errorMessage = err.message;

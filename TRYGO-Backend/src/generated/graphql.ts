@@ -347,6 +347,18 @@ export type CreateHypothesesGtmDetailedChannelInput = {
   projectHypothesisId: Scalars['ID']['input'];
 };
 
+export type CreateProjectHypothesisInput = {
+  description: Scalars['String']['input'];
+  projectId: Scalars['ID']['input'];
+  title: Scalars['String']['input'];
+};
+
+export type CreateProjectInput = {
+  info: Scalars['String']['input'];
+  startType: ProjectStartType;
+  url?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type CreateSeoAgentBacklogIdeaInput = {
   clusterId?: InputMaybe<Scalars['ID']['input']>;
   contentType: Scalars['String']['input'];
@@ -604,6 +616,8 @@ export type Mutation = {
   createHypothesesMarketResearch: HypothesesMarketResearch;
   createHypothesesPacking: HypothesesPacking;
   createHypothesesValidation: HypothesesValidation;
+  createProject: Project;
+  createProjectHypothesis: ProjectHypotheses;
   createPromoCode: PromoCode;
   createRequestFeature: Scalars['String']['output'];
   createSeoAgentBacklogIdea: BacklogIdea;
@@ -752,6 +766,16 @@ export type MutationCreateHypothesesPackingArgs = {
 
 export type MutationCreateHypothesesValidationArgs = {
   projectHypothesisId: Scalars['ID']['input'];
+};
+
+
+export type MutationCreateProjectArgs = {
+  input: CreateProjectInput;
+};
+
+
+export type MutationCreateProjectHypothesisArgs = {
+  input: CreateProjectHypothesisInput;
 };
 
 
@@ -1521,6 +1545,8 @@ export type ResolversTypes = {
   ContentType: ContentType;
   CreateCustomContentIdeaInput: CreateCustomContentIdeaInput;
   CreateHypothesesGtmDetailedChannelInput: CreateHypothesesGtmDetailedChannelInput;
+  CreateProjectHypothesisInput: CreateProjectHypothesisInput;
+  CreateProjectInput: CreateProjectInput;
   CreateSeoAgentBacklogIdeaInput: CreateSeoAgentBacklogIdeaInput;
   CustomerSegment: ResolverTypeWrapper<CustomerSegment>;
   CustomerSegmentInput: CustomerSegmentInput;
@@ -1636,6 +1662,8 @@ export type ResolversParentTypes = {
   ContentItemInput: ContentItemInput;
   CreateCustomContentIdeaInput: CreateCustomContentIdeaInput;
   CreateHypothesesGtmDetailedChannelInput: CreateHypothesesGtmDetailedChannelInput;
+  CreateProjectHypothesisInput: CreateProjectHypothesisInput;
+  CreateProjectInput: CreateProjectInput;
   CreateSeoAgentBacklogIdeaInput: CreateSeoAgentBacklogIdeaInput;
   CustomerSegment: CustomerSegment;
   CustomerSegmentInput: CustomerSegmentInput;
@@ -1991,6 +2019,8 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   createHypothesesMarketResearch?: Resolver<ResolversTypes['HypothesesMarketResearch'], ParentType, ContextType, RequireFields<MutationCreateHypothesesMarketResearchArgs, 'projectHypothesisId'>>;
   createHypothesesPacking?: Resolver<ResolversTypes['HypothesesPacking'], ParentType, ContextType, RequireFields<MutationCreateHypothesesPackingArgs, 'projectHypothesisId'>>;
   createHypothesesValidation?: Resolver<ResolversTypes['HypothesesValidation'], ParentType, ContextType, RequireFields<MutationCreateHypothesesValidationArgs, 'projectHypothesisId'>>;
+  createProject?: Resolver<ResolversTypes['Project'], ParentType, ContextType, RequireFields<MutationCreateProjectArgs, 'input'>>;
+  createProjectHypothesis?: Resolver<ResolversTypes['ProjectHypotheses'], ParentType, ContextType, RequireFields<MutationCreateProjectHypothesisArgs, 'input'>>;
   createPromoCode?: Resolver<ResolversTypes['PromoCode'], ParentType, ContextType, RequireFields<MutationCreatePromoCodeArgs, 'code' | 'subscriptionType'>>;
   createRequestFeature?: Resolver<ResolversTypes['String'], ParentType, ContextType, RequireFields<MutationCreateRequestFeatureArgs, 'requestedFeature'>>;
   createSeoAgentBacklogIdea?: Resolver<ResolversTypes['BacklogIdea'], ParentType, ContextType, RequireFields<MutationCreateSeoAgentBacklogIdeaArgs, 'input' | 'projectId'>>;

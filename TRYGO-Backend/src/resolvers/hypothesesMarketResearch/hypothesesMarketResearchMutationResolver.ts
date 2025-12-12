@@ -15,6 +15,10 @@ const hypothesesMarketResearchMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 return await hypothesesMarketResearchService.changeHypothesesMarketResearch(
                     input,
                     context.userId
@@ -29,12 +33,43 @@ const hypothesesMarketResearchMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
+                // First check if it already exists
+                const existing = await hypothesesMarketResearchService.getHypothesesMarketResearch(
+                    projectHypothesisId,
+                    context.userId
+                );
                 
+                if (existing) {
+                    return existing;
+                }
+
+                // If not exists, create new
                 return await hypothesesMarketResearchService.createHypothesesMarketResearch(
                     projectHypothesisId,
                     context.userId
                 );
             } catch (error) {
+                console.error('[createHypothesesMarketResearch] Error:', error);
+                
+                // If error is "already exists", try to return existing data
+                if (error instanceof Error && error.message.includes('already exists')) {
+                    try {
+                        const existing = await hypothesesMarketResearchService.getHypothesesMarketResearch(
+                            projectHypothesisId,
+                            context.userId
+                        );
+                        if (existing) {
+                            return existing;
+                        }
+                    } catch (fetchError) {
+                        console.error('[createHypothesesMarketResearch] Error fetching existing data:', fetchError);
+                    }
+                }
+                
                 throw elevateError(error);
             }
         },
@@ -45,6 +80,10 @@ const hypothesesMarketResearchMutationResolver = {
             context: IContext
         ) {
             try {
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+
                 await hypothesesMarketResearchService.deleteHypothesesMarketResearch(
                     input.projectHypothesisId,
                     context.userId

@@ -25,9 +25,24 @@ export interface ChangeProjectHypothesisResponse {
   createHypothesesMarketResearch: CreateHypothesesMarketResearchDto;
 }
 
-export const createHypothesesMarketResearch = (projectHypothesisId: string) => {
-  return MUTATE<ChangeProjectHypothesisResponse>({
-    mutation: CREATE_HYPOTHESES_MARKET_RESEARCH,
-    variables: { projectHypothesisId },
-  });
+export const createHypothesesMarketResearch = async (projectHypothesisId: string) => {
+  console.log('[createHypothesesMarketResearch API] Calling mutation with:', { projectHypothesisId });
+  
+  try {
+    const result = await MUTATE<ChangeProjectHypothesisResponse>({
+      mutation: CREATE_HYPOTHESES_MARKET_RESEARCH,
+      variables: { projectHypothesisId },
+    });
+    
+    if (result.errors && result.errors.length > 0) {
+      console.error('[createHypothesesMarketResearch API] GraphQL errors:', result.errors);
+      throw new Error(result.errors[0].message || 'GraphQL error');
+    }
+    
+    console.log('[createHypothesesMarketResearch API] Mutation successful:', result.data);
+    return result;
+  } catch (error) {
+    console.error('[createHypothesesMarketResearch API] Error:', error);
+    throw error;
+  }
 };

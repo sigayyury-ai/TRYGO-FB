@@ -27,24 +27,69 @@ export const useResearchStore = create<ResearchState>((set, get) => ({
   error: null,
 
   createHypothesesMarketResearch: async (projectHypothesisId) => {
+    if (!projectHypothesisId) {
+      set({ error: "Project hypothesis ID is required", loading: false });
+      return;
+    }
+
     set({ loading: true, error: null });
 
     try {
-      const { data } = await createHypothesesMarketResearch(
+      // First, quickly check if data exists
+      const existingCheck = await getHypothesesMarketResearchQuery(projectHypothesisId);
+      
+      // If data exists, we're done
+      if (existingCheck.data?.getHypothesesMarketResearch) {
+        set({ 
+          hypothesesMarketResearchData: existingCheck.data.getHypothesesMarketResearch,
+          loading: false, 
+          error: null 
+        });
+        return;
+      }
+
+      // If no data exists, create new (keep loading: true throughout the entire process)
+      const { data, error: mutationError } = await createHypothesesMarketResearch(
         projectHypothesisId
       );
 
-      const hypothesesMarketResearchData = data.createHypothesesMarketResearch;
+      if (mutationError) {
+        // If error is "already exists", try to fetch existing data
+        if (mutationError.message?.includes('already exists')) {
+          await get().getHypothesesMarketResearch(projectHypothesisId);
+          set({ loading: false, error: null });
+          return;
+        }
+        
+        throw mutationError;
+      }
+
+      const hypothesesMarketResearchData = data?.createHypothesesMarketResearch;
+
+      if (!hypothesesMarketResearchData) {
+        throw new Error('No data returned from createHypothesesMarketResearch mutation');
+      }
 
       set({
         hypothesesMarketResearchData,
         loading: false,
+        error: null,
       });
-
-      // Automatically fetch the latest data after creation to ensure state is up to date
-      await get().getHypothesesMarketResearch(projectHypothesisId);
     } catch (error: unknown) {
-      let errorMessage = "Failed to load hypotheses Market Research Data";
+      console.error('[useResearchStore] Error in createHypothesesMarketResearch:', error);
+      
+      // If error is "already exists", try to fetch existing data
+      if (error instanceof Error && error.message?.includes('already exists')) {
+        try {
+          await get().getHypothesesMarketResearch(projectHypothesisId);
+          set({ loading: false, error: null });
+          return;
+        } catch (fetchError) {
+          console.error('[useResearchStore] Error fetching existing data:', fetchError);
+        }
+      }
+      
+      let errorMessage = "Failed to create hypotheses Market Research Data";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -56,22 +101,52 @@ export const useResearchStore = create<ResearchState>((set, get) => ({
   },
 
   getHypothesesMarketResearch: async (projectHypothesisId) => {
+    if (!projectHypothesisId) {
+      set({ hypothesesMarketResearchData: null, loading: false, error: null });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      const { data } = await getHypothesesMarketResearchQuery(
+      const { data, error: queryError } = await getHypothesesMarketResearchQuery(
         projectHypothesisId
       );
-      const hypothesesMarketResearchData = data.getHypothesesMarketResearch;
+      
+      if (queryError) {
+        // Если это ошибка "not found" или null, просто устанавливаем null без ошибки
+        if (queryError.message?.includes('not found') || queryError.message?.includes('null')) {
+          set({
+            hypothesesMarketResearchData: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+        throw queryError;
+      }
+
+      const hypothesesMarketResearchData = data?.getHypothesesMarketResearch || null;
 
       set({
         hypothesesMarketResearchData,
         loading: false,
+        error: null,
       });
     } catch (error: unknown) {
       let errorMessage = "Failed to load hypotheses Market Research Data";
       if (error instanceof Error) {
         errorMessage = error.message;
+        // Если это GraphQL ошибка "not found" или null, не показываем ошибку - просто нет данных
+        if (error.message.includes('not found') || error.message.includes('Cannot return null') || error.message.includes('null')) {
+          set({
+            hypothesesMarketResearchData: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
       }
+      console.error('[useResearchStore] Error loading market research:', error);
       set({
         error: errorMessage,
         loading: false,

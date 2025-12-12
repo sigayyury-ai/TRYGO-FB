@@ -7,6 +7,7 @@ import projectService from '../../services/ProjectService';
 import hypothesesGtmService from '../../services/HypothesesGtmService';
 import { IHypothesesGtmChannel } from '../../types/IHypothesesGtm';
 import { JsonSchemaType } from '../../types/ChatGPT/JsonSchemaTypes';
+import { validateAndMigrateAssistantId } from './validateAndMigrateAssistantId';
 
 export const createGtmDetailedChannelPart = async ({
     projectHypothesisId,
@@ -27,7 +28,7 @@ export const createGtmDetailedChannelPart = async ({
                 projectHypothesisId,
                 userId
             );
-        const project = await projectService.getProjectById(
+        let project = await projectService.getProjectById(
             projectHypothesis.projectId.toString(),
             userId
         );
@@ -70,6 +71,17 @@ export const createGtmDetailedChannelPart = async ({
         }
         // const channel = core.channels.find((channel) => channel.channelType === channelType);
 
+        // Validate and migrate assistantId if needed
+        const validAssistantId = await validateAndMigrateAssistantId(project, userId);
+        
+        // If migration happened, get updated project
+        if (validAssistantId !== project.assistantId) {
+            project = await projectService.getProjectById(
+                projectHypothesis.projectId.toString(),
+                userId
+            );
+        }
+
         const prompt = prompts.createHypothesesGtmDetailedChannel(
             projectHypothesis,
             customerSegment,
@@ -79,7 +91,7 @@ export const createGtmDetailedChannelPart = async ({
         const gptResponse = await chatGPTService.createAnswerWithAssistantJsonSchema(
             JsonSchemaType.HYPOTHESES_GTM_DETAILED_CHANNEL,
             prompt,
-            project.assistantId,
+            validAssistantId,
             20000
         );
         const jsonData = gptResponse.response.response;

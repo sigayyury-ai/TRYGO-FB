@@ -21,7 +21,7 @@ class HypothesesMarketResearchervice {
                     userId
                 );
             if (existingHypothesesMarketResearch) {
-                throw new Error('Hypotheses market research already exists');
+                return existingHypothesesMarketResearch;
             }
 
             return await createMarketResearchPart({
@@ -29,7 +29,7 @@ class HypothesesMarketResearchervice {
                 userId,
             });
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesMarketResearchService] Error in createHypothesesMarketResearch:', error);
             throw error;
         }
     }
@@ -50,12 +50,13 @@ class HypothesesMarketResearchervice {
         userId: string
     ): Promise<IHypothesesMarketResearch | null> {
         try {
-            return await this.model.findOne({
+            const result = await this.model.findOne({
                 projectHypothesisId,
                 userId,
             });
+            return result;
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesMarketResearchService] Error getting market research:', error);
             throw error;
         }
     }

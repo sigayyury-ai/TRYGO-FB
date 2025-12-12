@@ -26,6 +26,16 @@ type ProjectDto{
     generationStatus: ProjectGenerationStatus!
 }
 
+input CreateProjectInput {
+    startType: ProjectStartType!
+    info: String!
+    url: String
+}
+
 type Query {
     getProjects: [ProjectDto!]!
+}
+
+type Mutation {
+    createProject(input: CreateProjectInput!): Project!
 }

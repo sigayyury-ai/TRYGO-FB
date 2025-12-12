@@ -1,5 +1,6 @@
-import { SubscriptionType } from '../../generated/graphql';
+import { SubscriptionType, UserRole } from '../../generated/graphql';
 import subscriptionService from '../../services/subscription/SubscriptionService';
+import userService from '../../services/UserService';
 
 export enum GenerationType {
     MARKET_RESEARCH = 'MARKET_RESEARCH',
@@ -12,6 +13,18 @@ export const checkIfGenerationAllowed = async (
     generationType: GenerationType
 ) => {
     try {
+        // Check if user is admin - admins have access to all generation types
+        try {
+            const user = await userService.getUserById(userId);
+            if (user && user.role === UserRole.Admin) {
+                console.log(`[checkIfGenerationAllowed] Admin user detected (${userId}) - allowing generation`);
+                return true;
+            }
+        } catch (userError) {
+            // If user not found, continue with subscription check
+            console.warn(`[checkIfGenerationAllowed] Could not fetch user for admin check:`, userError);
+        }
+
         let generationAllowed = false;
         const subscription = await subscriptionService.getSubscription(userId);
 

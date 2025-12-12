@@ -17,7 +17,14 @@ input ChangeProjectHypothesisInput {
     description: String
 }
 
+input CreateProjectHypothesisInput {
+    projectId: ID!
+    title: String!
+    description: String!
+}
+
 type Mutation {
+    createProjectHypothesis(input: CreateProjectHypothesisInput!): ProjectHypotheses!
     changeProjectHypothesis(input: ChangeProjectHypothesisInput!): ProjectHypotheses!
     deleteProjectHypothesis(id: ID!): Boolean!
 }

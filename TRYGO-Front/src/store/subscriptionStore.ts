@@ -13,6 +13,7 @@ import { getAssistantMessages } from '../api/getAssistantMessages';
 import { createSubscriptionCheckout } from '../api/createSubscriptionCheckout';
 import { getSubscriptionStripeSession } from '../api/getSubscriptionStripeSession';
 import { changeSubscription } from '../api/changeSubscription';
+import { useUserStore } from './useUserStore';
 
 interface SubscriptionState {
   subscription: Subscription | null;
@@ -36,7 +37,7 @@ interface SubscriptionState {
   canSendMessage: () => boolean;
   canCreateProject: (currentProjectsCount: number) => boolean;
   canCreateHypothesis: (currentHypothesesCount: number) => boolean;
-  hasFeatureAccess: (feature: 'icp' | 'validation' | 'gtm-channel') => boolean;
+  hasFeatureAccess: (feature: 'icp' | 'validation' | 'gtm-channel' | 'research' | 'packing') => boolean;
   isTrialExpired: (freeTrialDueTo?: string) => boolean;
   isSubscriptionActive: () => boolean;
   reset: () => void;
@@ -86,11 +87,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       forceRefreshSubscription: async () => {
         const { isFetchingSubscription } = get();
         // Only prevent if already fetching
-        if (isFetchingSubscription) return;
+        if (isFetchingSubscription) {
+          console.log('[forceRefreshSubscription] Already fetching, skipping...');
+          return;
+        }
         
-        set({ isFetchingSubscription: true, isLoading: true, error: null });
+        console.log('[forceRefreshSubscription] Forcing subscription refresh...');
+        set({ isFetchingSubscription: true, isLoading: true, error: null, hasInitializedSubscription: false });
         try {
           const subscription = await getSubscription();
+          console.log('[forceRefreshSubscription] Subscription refreshed:', subscription ? `Type: ${subscription.type}, Status: ${subscription.status}` : 'null');
           set({ 
             subscription, 
             isFetchingSubscription: false, 
@@ -98,10 +104,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             hasInitializedSubscription: true 
           });
         } catch (error) {
+          console.error('[forceRefreshSubscription] Error:', error);
           set({ 
             error: error instanceof Error ? error.message : 'Failed to fetch subscription',
             isFetchingSubscription: false,
-            isLoading: false
+            isLoading: false,
+            hasInitializedSubscription: true
           });
         }
       },
@@ -187,6 +195,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       canSendMessage: () => {
+        // Check if user is admin - admins have unlimited messages
+        const userData = useUserStore.getState().userData;
+        if (userData?.role === 'ADMIN') {
+          return true;
+        }
+        
         const { assistantMessages } = get();
         const currentPlan = get().getCurrentPlan();
         const limits = PLAN_LIMITS[currentPlan];
@@ -197,6 +211,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       canCreateProject: (currentProjectsCount: number) => {
+        // Check if user is admin - admins have unlimited projects
+        const userData = useUserStore.getState().userData;
+        if (userData?.role === 'ADMIN') {
+          return true;
+        }
+        
         const currentPlan = get().getCurrentPlan();
         const limits = PLAN_LIMITS[currentPlan];
         
@@ -204,6 +224,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       canCreateHypothesis: (currentHypothesesCount: number) => {
+        // Check if user is admin - admins have unlimited hypotheses
+        const userData = useUserStore.getState().userData;
+        if (userData?.role === 'ADMIN') {
+          return true;
+        }
+        
         const currentPlan = get().getCurrentPlan();
         const limits = PLAN_LIMITS[currentPlan];
         
@@ -211,6 +237,13 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       hasFeatureAccess: (feature: 'icp' | 'validation' | 'gtm-channel' | 'research' | 'packing') => {
+        // Check if user is admin - admins have access to all features
+        const userData = useUserStore.getState().userData;
+        if (userData?.role === 'ADMIN') {
+          console.log('[hasFeatureAccess] Admin user detected - granting access to all features');
+          return true;
+        }
+        
         const currentPlan = get().getCurrentPlan();
         const limits = PLAN_LIMITS[currentPlan];
         

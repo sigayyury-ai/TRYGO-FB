@@ -20,18 +20,31 @@ class HypothesesValidationService {
         userId: string
     ): Promise<IHypothesesValidation> {
         try {
+            console.log('[HypothesesValidationService] createHypothesesValidation called:', {
+                projectHypothesisId,
+                userId
+            });
+            
             const existingHypothesesValidation =
                 await this.getHypothesesValidation(projectHypothesisId, userId);
             if (existingHypothesesValidation) {
+                console.log('[HypothesesValidationService] Validation already exists, throwing error');
                 throw new Error('Hypotheses validation already exists');
             }
 
-            return await createValidationPart({
+            console.log('[HypothesesValidationService] Calling createValidationPart...');
+            const result = await createValidationPart({
                 projectHypothesisId,
                 userId,
             });
+            
+            console.log('[HypothesesValidationService] Validation created successfully:', {
+                id: result._id.toString(),
+            });
+            
+            return result;
         } catch (error) {
-            console.error(error);
+            console.error('[HypothesesValidationService] Error in createHypothesesValidation:', error);
             throw error;
         }
     }

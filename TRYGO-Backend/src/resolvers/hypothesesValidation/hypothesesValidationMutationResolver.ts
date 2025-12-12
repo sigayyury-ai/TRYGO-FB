@@ -30,11 +30,28 @@ const hypothesesValidationMutationResolver = {
             context: IContext
         ) {
             try {
-                return await hypothesesValidationService.createHypothesesValidation(
+                console.log('[createHypothesesValidation] Creating validation:', {
+                    projectHypothesisId,
+                    userId: context.userId
+                });
+                
+                if (!context.userId) {
+                    throw new Error('User not authenticated');
+                }
+                
+                const result = await hypothesesValidationService.createHypothesesValidation(
                     projectHypothesisId,
                     context.userId
                 );
+                
+                console.log('[createHypothesesValidation] Validation created successfully:', {
+                    id: result._id.toString(),
+                    projectHypothesisId: result.projectHypothesisId.toString(),
+                });
+                
+                return result;
             } catch (error) {
+                console.error('[createHypothesesValidation] Error:', error);
                 throw elevateError(error);
             }
         },

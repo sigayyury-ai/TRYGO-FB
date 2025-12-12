@@ -117,8 +117,13 @@ export const useSocketStore = create<SocketState>()(
           return;
         }
 
-        const socket = io(import.meta.env.VITE_WS_SERVER_URL || "ws://localhost:5001", {
-          transports: ["websocket"],
+        // Socket.io использует HTTP URL, не ws://
+        const wsUrl = import.meta.env.VITE_WS_SERVER_URL || "http://localhost:5001";
+        // Если передан ws://, заменяем на http://
+        const socketUrl = wsUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://');
+        
+        const socket = io(socketUrl, {
+          transports: ["websocket", "polling"], // Пробуем оба транспорта
           query: { token },
           reconnection: true, // Enable reconnection for stability
           reconnectionAttempts: 5,
@@ -162,9 +167,10 @@ export const useSocketStore = create<SocketState>()(
         );
 
         socket.on("connect_error", (err) => {
-          set({ error: `Connection error: ${err.message}`, isLoading: false, isInitializing: false });
-          // Don't auto-reconnect - prevent multiple connection attempts
-          console.error('Socket connection error:', err.message);
+          // Не показываем ошибку как критическую - WebSocket может быть необязательным
+          console.warn('Socket connection error (non-critical):', err.message);
+          set({ isConnected: false, isInitializing: false });
+          // Не устанавливаем error, чтобы не блокировать UI
         });
 
         socket.on("projectGenerated", (data) => {

@@ -9,6 +9,7 @@ import AIAssistantChat from "@/components/AIAssistantChat";
 import RegenerateResearchForm from "@/components/RegenerateResearchForm";
 import useSubscription from "@/hooks/use-subscription";
 import UpgradeModal from "@/components/UpgradeModal";
+import { useUserStore } from "@/store/useUserStore";
 
 const Research: FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -43,8 +44,26 @@ const Research: FC = () => {
   return (
     <div className="min-h-screen bg-validation-gradient bg-grid-pattern flex flex-col">
       {loading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <LoaderSpinner />
+        <div className="flex flex-1 items-center justify-center px-4">
+          <div className="text-center">
+            <div className="flex justify-center mb-6">
+              <Loader className="w-16 h-16 text-blue-600 animate-spin" />
+            </div>
+            <p className="text-blue-700 text-xl max-w-xl mx-auto font-semibold mb-2">
+              Generating Market Research...
+            </p>
+            <p className="mt-4 max-w-md mx-auto text-blue-800 text-base leading-relaxed">
+              This process takes about 30-60 seconds. Please wait while we analyze the market and generate comprehensive research data.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <div className="w-64 h-2 bg-blue-200 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-blue-600">
+              Analyzing competitors, market trends, and opportunities...
+            </p>
+          </div>
         </div>
       ) : !hypothesesMarketResearchData ? (
         <div className="flex flex-1 items-center justify-center px-4">
@@ -54,29 +73,34 @@ const Research: FC = () => {
             </div>
 
             <p className="text-blue-700 text-lg max-w-xl mx-auto">
-              The data for the “Research” page hasn’t been generated yet.
+              The data for the "Research" page hasn't been generated yet.
               Generate it now
             </p>
 
             <p className="mt-4 max-w-md mx-auto text-blue-800 text-base leading-relaxed">
-              Data generation takes about 30 seconds. If you’ve already started
-              the process, please wait until it’s completed
+              Data generation takes about 30-60 seconds. If you've already started
+              the process, please wait until it's completed
             </p>
 
             <Button
               variant={"default"}
               size="sm"
-              disabled={loading}
+              disabled={loading || !activeHypothesisId}
               onClick={() => {
                 if (!hasResearchAccess) {
                   setShowUpgradeModal(true);
-                } else {
-                  createHypothesesMarketResearch(activeHypothesisId);
+                  return;
                 }
+                
+                if (!activeHypothesisId) {
+                  return;
+                }
+                
+                createHypothesesMarketResearch(activeHypothesisId);
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white mt-4"
+              className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Generating..." : "Generate Data"}
+              Generate Data
             </Button>
           </div>
         </div>

@@ -8,6 +8,7 @@ import {
     checkIfGenerationAllowed,
     GenerationType,
 } from '../subscription/checkIfGenerationAllowed';
+import { validateAndMigrateAssistantId } from './validateAndMigrateAssistantId';
 
 export const createPackingPart = async ({
     projectHypothesisId,
@@ -26,10 +27,21 @@ export const createPackingPart = async ({
                 projectHypothesisId,
                 userId
             );
-        const project = await projectService.getProjectById(
+        let project = await projectService.getProjectById(
             projectHypothesis.projectId.toString(),
             userId
         );
+
+        // Validate and migrate assistantId if needed
+        const validAssistantId = await validateAndMigrateAssistantId(project, userId);
+        
+        // If migration happened, get updated project
+        if (validAssistantId !== project.assistantId) {
+            project = await projectService.getProjectById(
+                projectHypothesis.projectId.toString(),
+                userId
+            );
+        }
 
         const prompt = prompts.createHypothesesPacking(
             projectHypothesis,
@@ -40,7 +52,7 @@ export const createPackingPart = async ({
             await chatGPTService.createAnswerWithAssistantJsonSchema(
                 JsonSchemaType.HYPOTHESES_PACKING,
                 prompt,
-                project.assistantId,
+                validAssistantId,
                 20000
             );
         const jsonData = gptResponse.response.response;
