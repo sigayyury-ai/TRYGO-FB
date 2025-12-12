@@ -26,8 +26,6 @@ export interface ChangeProjectHypothesisResponse {
 }
 
 export const createHypothesesMarketResearch = async (projectHypothesisId: string) => {
-  console.log('[createHypothesesMarketResearch API] Calling mutation with:', { projectHypothesisId });
-  
   try {
     const result = await MUTATE<ChangeProjectHypothesisResponse>({
       mutation: CREATE_HYPOTHESES_MARKET_RESEARCH,
@@ -35,14 +33,13 @@ export const createHypothesesMarketResearch = async (projectHypothesisId: string
     });
     
     if (result.errors && result.errors.length > 0) {
-      console.error('[createHypothesesMarketResearch API] GraphQL errors:', result.errors);
+      console.error('[createHypothesesMarketResearch] GraphQL error:', result.errors[0].message);
       throw new Error(result.errors[0].message || 'GraphQL error');
     }
     
-    console.log('[createHypothesesMarketResearch API] Mutation successful:', result.data);
     return result;
   } catch (error) {
-    console.error('[createHypothesesMarketResearch API] Error:', error);
+    console.error('[createHypothesesMarketResearch] Critical error:', error);
     throw error;
   }
 };

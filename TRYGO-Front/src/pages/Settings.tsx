@@ -220,9 +220,7 @@ Please be concise, actionable, and focus on practical business advice. Always as
 
     try {
       setPromoCodeLoading(true);
-      console.log('[Settings] Activating promo code:', promoCode.trim());
       const result = await activatePromoCode(promoCode.trim());
-      console.log('[Settings] Promo code activation result:', result);
       
       if (result.success) {
         toast({
@@ -231,14 +229,9 @@ Please be concise, actionable, and focus on practical business advice. Always as
         });
         setPromoCode("");
         setPromoCodeInfo(null);
-        // Refresh subscription data - reset initialization flags to force refresh
-        console.log('[Settings] Refreshing subscription after promo code activation...');
         await refreshSubscription();
-        // Also refresh messages count
         await refreshMessages();
-        console.log('[Settings] Subscription refreshed after promo code activation');
       } else {
-        console.error('[Settings] Promo code activation failed:', result.message);
         toast({
           title: "Error",
           description: result.message || "Failed to activate promo code",
@@ -246,7 +239,7 @@ Please be concise, actionable, and focus on practical business advice. Always as
         });
       }
     } catch (error: any) {
-      console.error('[Settings] Error activating promo code:', error);
+      console.error('[Settings] Critical error activating promo code:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to activate promo code",

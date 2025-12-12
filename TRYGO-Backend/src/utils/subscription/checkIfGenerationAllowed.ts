@@ -17,12 +17,10 @@ export const checkIfGenerationAllowed = async (
         try {
             const user = await userService.getUserById(userId);
             if (user && user.role === UserRole.Admin) {
-                console.log(`[checkIfGenerationAllowed] Admin user detected (${userId}) - allowing generation`);
                 return true;
             }
         } catch (userError) {
             // If user not found, continue with subscription check
-            console.warn(`[checkIfGenerationAllowed] Could not fetch user for admin check:`, userError);
         }
 
         let generationAllowed = false;

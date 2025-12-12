@@ -53,8 +53,6 @@ const hypothesesMarketResearchMutationResolver = {
                     context.userId
                 );
             } catch (error) {
-                console.error('[createHypothesesMarketResearch] Error:', error);
-                
                 // If error is "already exists", try to return existing data
                 if (error instanceof Error && error.message.includes('already exists')) {
                     try {
@@ -66,7 +64,7 @@ const hypothesesMarketResearchMutationResolver = {
                             return existing;
                         }
                     } catch (fetchError) {
-                        console.error('[createHypothesesMarketResearch] Error fetching existing data:', fetchError);
+                        // Silent fail, throw original error
                     }
                 }
                 

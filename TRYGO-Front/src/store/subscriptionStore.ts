@@ -86,17 +86,11 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       forceRefreshSubscription: async () => {
         const { isFetchingSubscription } = get();
-        // Only prevent if already fetching
-        if (isFetchingSubscription) {
-          console.log('[forceRefreshSubscription] Already fetching, skipping...');
-          return;
-        }
+        if (isFetchingSubscription) return;
         
-        console.log('[forceRefreshSubscription] Forcing subscription refresh...');
         set({ isFetchingSubscription: true, isLoading: true, error: null, hasInitializedSubscription: false });
         try {
           const subscription = await getSubscription();
-          console.log('[forceRefreshSubscription] Subscription refreshed:', subscription ? `Type: ${subscription.type}, Status: ${subscription.status}` : 'null');
           set({ 
             subscription, 
             isFetchingSubscription: false, 
@@ -104,7 +98,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             hasInitializedSubscription: true 
           });
         } catch (error) {
-          console.error('[forceRefreshSubscription] Error:', error);
+          console.error('[forceRefreshSubscription] Critical error:', error);
           set({ 
             error: error instanceof Error ? error.message : 'Failed to fetch subscription',
             isFetchingSubscription: false,
@@ -240,7 +234,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         // Check if user is admin - admins have access to all features
         const userData = useUserStore.getState().userData;
         if (userData?.role === 'ADMIN') {
-          console.log('[hasFeatureAccess] Admin user detected - granting access to all features');
           return true;
         }
         
